@@ -12,4 +12,4 @@ This directory records significant architecture decisions: the context, the deci
 2. Fill in **Status**, **Date**, **Context**, **Decision** and **Consequences**.
 3. Add the record to the table above.
 
-Records are not edited after they are accepted. To change a decision, write a new record and mark the old one as **Superseded by NNNN**.
+The decision in an accepted record does not change. Clarifications are fine; to change a decision, write a new record and mark the old one as **Superseded by NNNN**.
