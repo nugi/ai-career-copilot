@@ -2,9 +2,10 @@
 
 This directory records significant architecture decisions: the context, the decision and its consequences.
 
-| #                                            | Decision                                        | Status   |
-| -------------------------------------------- | ----------------------------------------------- | -------- |
-| [0001](0001-use-postgresql-with-pgvector.md) | Use PostgreSQL with pgvector for vector storage | Accepted |
+| #                                                       | Decision                                        | Status   |
+| ------------------------------------------------------- | ----------------------------------------------- | -------- |
+| [0001](0001-use-postgresql-with-pgvector.md)            | Use PostgreSQL with pgvector for vector storage | Accepted |
+| [0002](0002-use-inertia-with-react-for-the-frontend.md) | Use Inertia with React for the frontend         | Accepted |
 
 ## Adding a record
 
