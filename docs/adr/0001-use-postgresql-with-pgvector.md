@@ -5,13 +5,14 @@
 
 ## Context
 
-Fit scoring, semantic job search and RAG need embeddings, and most queries mix them with relational filters (location, salary, jobs already applied to). Expected scale is up to a few hundred thousand jobs, on a small budget.
+Fit scoring, semantic job search and RAG need embeddings, and most queries mix them with relational filters (location, salary, jobs already applied to).
+Vector count grows with active job postings (1–5 vectors each), not with users.
 
 Options: PostgreSQL with pgvector, or a dedicated vector database (Pinecone, Qdrant) next to PostgreSQL.
 
 ## Decision
 
-Use PostgreSQL 18 with pgvector as the single datastore, with HNSW indexes. Pin the same pgvector version in development, CI and production.
+Use PostgreSQL 18 with pgvector as the single datastore, with HNSW indexes. Require pgvector 0.8 or newer, and pin the same version in development, CI and production.
 
 ## Consequences
 
@@ -23,7 +24,7 @@ Use PostgreSQL 18 with pgvector as the single datastore, with HNSW indexes. Pin 
 
 **Drawbacks**
 
-1. Lower ceiling at large scale: HNSW wants its index in memory, and vector queries compete with transactional load.
-2. Fewer vector-specific features: selective filters can reduce recall, and indexed `vector` columns are capped at 2,000 dimensions.
+1. Lower ceiling at large scale: HNSW wants its index in memory, and vector queries compete with transactional load. Mitigation: `halfvec` halves the memory per vector.
+2. Fewer vector-specific features: selective filters can reduce recall, and indexed `vector` columns are capped at 2,000 dimensions. Mitigation: iterative index scans (0.8+) restore recall under filters, and `halfvec` indexes up to 4,000 dimensions.
 
-**Revisit when**, after tuning, vectors exceed about 10 million, p95 vector latency misses the product target, or vector load slows transactional queries. Vector search stays behind a small service boundary so a move is contained.
+**Revisit when** the HNSW indexes take up more than about half of the database instance's RAM, after tuning. Estimate before ingesting: index size ≈ vectors × dimensions × 4 bytes (2 for `halfvec`), so 1M vectors at 1,536 dimensions ≈ 6 GB. In production, measure it with `pg_relation_size` on the HNSW indexes. Tune in this order before moving: `halfvec`, fewer dimensions, embeddings for active jobs only, a larger instance. Also revisit if p95 vector latency misses the product target or vector load slows transactional queries. Vector search stays behind a small service boundary so a move is contained.
