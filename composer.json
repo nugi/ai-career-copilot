@@ -49,7 +49,17 @@
             "@php artisan key:generate",
             "@php artisan migrate --force",
             "npm install",
-            "npm run build"
+            "npm run build",
+            "@setup:testing-database"
+        ],
+        "setup:docker": [
+            "Composer\\Config::disableProcessTimeout",
+            "docker compose up -d --wait",
+            "@setup"
+        ],
+        "setup:testing-database": [
+            "@putenv DB_DATABASE=career_copilot_testing",
+            "@php artisan migrate --force"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -68,7 +78,7 @@
             "@test"
         ],
         "types:check": [
-            "phpstan analyse"
+            "phpstan analyse --memory-limit=1G"
         ],
         "test": [
             "@php artisan config:clear --ansi",

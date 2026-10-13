@@ -1,0 +1,48 @@
+services:
+    pgsql:
+        image: 'pgvector/pgvector:0.8.7-pg18'
+        ports:
+            - '${DB_PORT:-5432}:5432'
+        environment:
+            POSTGRES_DB: '${DB_DATABASE:-career_copilot}'
+            POSTGRES_USER: '${DB_USERNAME:-postgres}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-password}'
+        volumes:
+            - 'pgsql-data:/var/lib/postgresql'
+        configs:
+            - source: create-testing-database
+              target: /docker-entrypoint-initdb.d/10-create-testing-database.sql
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'pg_isready',
+                    '-q',
+                    '-d',
+                    '${DB_DATABASE:-career_copilot}',
+                    '-U',
+                    '${DB_USERNAME:-postgres}',
+                ]
+            retries: 3
+            timeout: 5s
+
+    redis:
+        image: 'redis:8.8-alpine'
+        ports:
+            - '${REDIS_PORT:-6379}:6379'
+        volumes:
+            - 'redis-data:/data'
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            retries: 3
+            timeout: 5s
+
+configs:
+    create-testing-database:
+        content: |
+            SELECT 'CREATE DATABASE career_copilot_testing'
+            WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'career_copilot_testing')\gexec
+
+volumes:
+    pgsql-data:
+    redis-data:
