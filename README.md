@@ -1,5 +1,7 @@
 # AI Career Copilot
 
+[![CI](https://github.com/nugi/ai-career-copilot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nugi/ai-career-copilot/actions/workflows/ci.yml)
+
 Job hunting is scattered and mostly guesswork. Listings are spread across many job boards, it is hard to tell which roles actually fit your experience, and generic career advice does not say which skills to build next or how to present the ones you already have. AI Career Copilot brings jobs from Indonesia and remote-friendly companies worldwide into one place, scores how well each role fits your resume, explains the gaps, and helps you close them with a concrete skill plan and targeted resume and LinkedIn suggestions.
 
 > **Status:** early development. The features below, and parts of the stack (AI SDK, Redis, AWS), are being added incrementally.
@@ -66,6 +68,10 @@ Tests run against a real PostgreSQL database, `career_copilot_testing`, so vecto
 ```bash
 composer test
 ```
+
+## Contributing
+
+`main` is protected. Create a branch, open a pull request, and merge after the `ci` check passes. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## Architecture decisions
 
