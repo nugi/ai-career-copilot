@@ -38,7 +38,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property CarbonImmutable|null $expires_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property-read Collection<int, Skill> $skills
+ * @property-read Collection<int, Skill&object{pivot: Pivot}> $skills
  * @property-read Collection<int, JobMatch> $matches
  */
 #[Fillable([

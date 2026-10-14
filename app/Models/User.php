@@ -33,7 +33,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Profile|null $profile
  * @property-read Collection<int, Resume> $resumes
  * @property-read Resume|null $primaryResume
- * @property-read Collection<int, Skill> $skills
+ * @property-read Collection<int, Skill&object{pivot: UserSkill}> $skills
  * @property-read Collection<int, JobMatch> $jobMatches
  * @property-read Collection<int, AiUsage> $aiUsages
  */
