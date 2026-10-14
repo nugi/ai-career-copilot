@@ -37,6 +37,31 @@ test('an alias can point to only one skill', function () {
         ->toThrow(UniqueConstraintViolationException::class);
 });
 
+test('a typed name resolves to the skill with that name before any alias', function () {
+    $go = Skill::factory()->create(['name' => 'Go']);
+    Skill::factory()->create(['name' => 'Google Cloud'])->aliases()->create(['alias' => 'go']);
+
+    $resolved = Skill::findOrCreateByName(' GO ');
+
+    expect($resolved->is($go))->toBeTrue();
+});
+
+test('a typed alias resolves to its canonical skill', function () {
+    $kubernetes = Skill::factory()->create(['name' => 'Kubernetes']);
+    $kubernetes->aliases()->create(['alias' => 'k8s']);
+
+    $resolved = Skill::findOrCreateByName('K8S');
+
+    expect($resolved->is($kubernetes))->toBeTrue();
+});
+
+test('an unknown name creates a new skill', function () {
+    $skill = Skill::findOrCreateByName(' Svelte  Kit ');
+
+    expect($skill->wasRecentlyCreated)->toBeTrue()
+        ->and($skill->only('name', 'normalized_name'))->toBe(['name' => 'Svelte Kit', 'normalized_name' => 'svelte kit']);
+});
+
 test('a skill lists the job postings that ask for it', function () {
     $skill = Skill::factory()->create();
     $posting = JobPosting::factory()->create();

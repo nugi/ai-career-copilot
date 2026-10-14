@@ -99,3 +99,10 @@ test('the database rejects a negative count, size or cost', function (string $ta
     'ai_usages.latency_ms' => ['ai_usages', 'latency_ms'],
     'ai_usages.cost_usd' => ['ai_usages', 'cost_usd'],
 ]);
+
+test('the database rejects a profile version below 1', function () {
+    $row = rowIn('profiles');
+
+    expect(fn () => DB::table('profiles')->where($row)->update(['version' => 0]))
+        ->toThrow(QueryException::class, 'profiles_version_check');
+});

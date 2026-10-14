@@ -31,6 +31,8 @@ erDiagram
         bigint min_salary
         char3 salary_currency
         string salary_period
+        int version
+        timestamp completed_at
     }
     resumes {
         bigint id PK
@@ -129,6 +131,8 @@ One row per user with job preferences.
 | Load the signed-in user's profile (on each onboarding check) | `unique (user_id)` |
 
 `target_roles`, `preferred_locations` and `work_arrangements` are `jsonb` arrays. They are read only with their owner's profile and never filtered across users, so they do not get a table or an index. A CHECK keeps `work_arrangements` a list of known values (`jsonb_typeof(...) = 'array'` as well as `<@`, because `<@` alone also accepts a single string).
+
+`completed_at` is set when the user finishes onboarding; until then the app sends them back to it. `version` starts at 1 and increases whenever a preference or skill changes, so anything derived from the profile, such as an embedding, can tell that it is stale. How the minimum salary is compared with postings: [ADR 0004](adr/0004-compare-salaries-as-annual-gross-in-the-users-currency.md).
 
 ### resumes
 

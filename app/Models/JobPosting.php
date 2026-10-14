@@ -7,6 +7,7 @@ use App\Enums\EmploymentType;
 use App\Enums\SalaryPeriod;
 use App\Enums\SeniorityLevel;
 use App\Enums\WorkArrangement;
+use Carbon\CarbonImmutable;
 use Database\Factories\JobPostingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -15,7 +16,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -34,11 +34,11 @@ use Illuminate\Support\Carbon;
  * @property Currency|null $salary_currency
  * @property SalaryPeriod|null $salary_period
  * @property string $apply_url
- * @property Carbon $posted_at
- * @property Carbon|null $expires_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property-read Collection<int, Skill> $skills
+ * @property CarbonImmutable $posted_at
+ * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read Collection<int, Skill&object{pivot: Pivot}> $skills
  * @property-read Collection<int, JobMatch> $matches
  */
 #[Fillable([

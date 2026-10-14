@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use App\Enums\SkillProficiency;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\Pivot;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $user_id
  * @property int $skill_id
  * @property SkillProficiency $proficiency
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
 class UserSkill extends Pivot
 {

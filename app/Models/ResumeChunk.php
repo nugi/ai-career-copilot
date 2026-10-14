@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use App\Enums\ResumeSection;
+use Carbon\CarbonImmutable;
 use Database\Factories\ResumeChunkFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -17,8 +17,8 @@ use Illuminate\Support\Carbon;
  * @property ResumeSection $section
  * @property string $content
  * @property int $token_count
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Resume $resume
  */
 #[Fillable(['position', 'section', 'content', 'token_count'])]

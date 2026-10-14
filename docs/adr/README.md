@@ -2,11 +2,12 @@
 
 This directory records significant architecture decisions: the context, the decision and its consequences.
 
-| #                                                       | Decision                                        | Status   |
-| ------------------------------------------------------- | ----------------------------------------------- | -------- |
-| [0001](0001-use-postgresql-with-pgvector.md)            | Use PostgreSQL with pgvector for vector storage | Accepted |
-| [0002](0002-use-inertia-with-react-for-the-frontend.md) | Use Inertia with React for the frontend         | Accepted |
-| [0003](0003-store-job-skills-in-a-pivot-table.md)       | Store job skills in a pivot table               | Accepted |
+| #                                                                      | Decision                                                | Status   |
+| ---------------------------------------------------------------------- | ------------------------------------------------------- | -------- |
+| [0001](0001-use-postgresql-with-pgvector.md)                           | Use PostgreSQL with pgvector for vector storage         | Accepted |
+| [0002](0002-use-inertia-with-react-for-the-frontend.md)                | Use Inertia with React for the frontend                 | Accepted |
+| [0003](0003-store-job-skills-in-a-pivot-table.md)                      | Store job skills in a pivot table                       | Accepted |
+| [0004](0004-compare-salaries-as-annual-gross-in-the-users-currency.md) | Compare salaries as annual gross in the user's currency | Accepted |
 
 ## Adding a record
 

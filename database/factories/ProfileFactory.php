@@ -34,7 +34,18 @@ class ProfileFactory extends Factory
             'min_salary' => fake()->numberBetween(15, 30) * 1_000_000,
             'salary_currency' => Currency::Idr,
             'salary_period' => SalaryPeriod::Monthly,
+            'completed_at' => now(),
         ];
+    }
+
+    /**
+     * A user who started onboarding but has not finished it.
+     */
+    public function incomplete(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'completed_at' => null,
+        ]);
     }
 
     /**

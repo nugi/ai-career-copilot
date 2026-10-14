@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\SkillFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -11,18 +12,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @property int $id
  * @property string $name
  * @property string $normalized_name
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, SkillAlias> $aliases
- * @property-read Collection<int, JobPosting> $jobPostings
- * @property-read Collection<int, User> $users
+ * @property-read Collection<int, JobPosting&object{pivot: Pivot}> $jobPostings
+ * @property-read Collection<int, User&object{pivot: UserSkill}> $users
  */
 #[Fillable(['name'])]
 class Skill extends Model
@@ -36,6 +36,19 @@ class Skill extends Model
     public static function normalize(string $name): string
     {
         return Str::of($name)->squish()->lower()->toString();
+    }
+
+    /**
+     * Find the canonical skill for a name the user typed, matching its name first and then its aliases.
+     * An unknown name becomes a new skill, so the catalogue grows with what users actually list.
+     */
+    public static function findOrCreateByName(string $name): self
+    {
+        $normalized = static::normalize($name);
+
+        return static::query()->where('normalized_name', $normalized)->first()
+            ?? SkillAlias::query()->where('alias', $normalized)->first()->skill
+            ?? static::query()->createOrFirst(['normalized_name' => $normalized], ['name' => $name]);
     }
 
     /**
