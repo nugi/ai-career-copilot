@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use App\Enums\AiFeature;
+use Carbon\CarbonImmutable;
 use Database\Factories\AiUsageFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int $output_tokens
  * @property string $cost_usd
  * @property int|null $latency_ms
- * @property Carbon $created_at
+ * @property CarbonImmutable $created_at
  * @property-read User|null $user
  */
 #[Fillable(['user_id', 'feature', 'provider', 'model', 'input_tokens', 'output_tokens', 'cost_usd', 'latency_ms'])]

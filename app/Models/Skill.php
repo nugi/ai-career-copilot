@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\SkillFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -11,15 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @property int $id
  * @property string $name
  * @property string $normalized_name
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, SkillAlias> $aliases
  * @property-read Collection<int, JobPosting> $jobPostings
  * @property-read Collection<int, User> $users

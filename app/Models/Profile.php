@@ -5,13 +5,13 @@ namespace App\Models;
 use App\Enums\Currency;
 use App\Enums\SalaryPeriod;
 use App\Enums\WorkArrangement;
+use Carbon\CarbonImmutable;
 use Database\Factories\ProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -24,8 +24,8 @@ use Illuminate\Support\Collection;
  * @property int|null $min_salary Whole currency units, not cents.
  * @property Currency|null $salary_currency
  * @property SalaryPeriod|null $salary_period
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  */
 #[Fillable(['headline', 'target_roles', 'preferred_locations', 'work_arrangements', 'min_salary', 'salary_currency', 'salary_period'])]
