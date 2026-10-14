@@ -68,6 +68,7 @@ erDiagram
         bigint id PK
         string source
         string external_id
+        string dedup_key
         string title
         string company_name
         string work_arrangement
@@ -110,8 +111,9 @@ erDiagram
 ## Conventions
 
 - **Money** is stored as a whole amount in `bigint`, plus a `char(3)` currency (`IDR` or `USD`) and a period (`monthly` or `yearly`). It is never stored as a string. IDR has no minor unit in practice and salaries are quoted in whole dollars, so amounts are whole units, not cents. `bigint` holds a yearly IDR salary, which overflows `integer`.
-- **Enums** are `string` columns cast to PHP backed enums in `app/Enums`. A new case needs no migration.
-- **CHECK constraints** guard the rules that every writer must follow, including imports, queue jobs and raw SQL. These rules are salary range, currency, salary unit and score range. Validation repeats them for user-facing messages.
+- **Enums** are `string` columns cast to PHP backed enums in `app/Enums`, and each column has a CHECK constraint listing the allowed values. Adding a case therefore needs a migration that replaces the CHECK. `tests/Feature/Database/SchemaConstraintsTest.php` writes every case of every enum, so an enum and its CHECK cannot drift apart unnoticed.
+- **CHECK constraints** guard the rules that every writer must follow, including imports, queue jobs and raw SQL: enum values, salary range and unit, score range, and non-negative counts, sizes and costs. Validation repeats them for user-facing messages.
+- **No unsigned types:** PostgreSQL has none, and Laravel's `unsigned()` modifier is silently ignored. Columns that must not go negative have a `>= 0` CHECK instead.
 - **Foreign keys** get an index only when a query needs one. PostgreSQL does not index them automatically, and each table lists the queries that justify its indexes.
 - **Deletes:** deleting a user removes their profile, resumes, chunks, skills and matches. `ai_usages.user_id` becomes `null` so cost history survives. Deleting a resume keeps its matches and sets `resume_id` to `null`.
 - **Not yet in the schema:** embedding columns and HNSW indexes on `resume_chunks` and `job_postings` (added with semantic search, see [ADR 0001](adr/0001-use-postgresql-with-pgvector.md)), a full-text index for keyword search, and a trigram index for skill autocomplete.
@@ -126,7 +128,7 @@ One row per user with job preferences.
 | ------------------------------------------------------------ | ------------------ |
 | Load the signed-in user's profile (on each onboarding check) | `unique (user_id)` |
 
-`target_roles`, `preferred_locations` and `work_arrangements` are `jsonb` arrays. They are read only with their owner's profile and never filtered across users, so they do not get a table or an index.
+`target_roles`, `preferred_locations` and `work_arrangements` are `jsonb` arrays. They are read only with their owner's profile and never filtered across users, so they do not get a table or an index. A CHECK keeps `work_arrangements` a list of known values (`jsonb_typeof(...) = 'array'` as well as `<@`, because `<@` alone also accepts a single string).
 
 ### resumes
 
@@ -153,11 +155,12 @@ The catalogue holds a few thousand rows at most, so listing a skill's aliases ne
 
 ### user_skills
 
-| Query                                                                | Index                             |
-| -------------------------------------------------------------------- | --------------------------------- |
-| The user's skills with proficiency (profile, fit scoring, skill gap) | `primary key (user_id, skill_id)` |
+| Query                                                                        | Index                             |
+| ---------------------------------------------------------------------------- | --------------------------------- |
+| The user's skills with proficiency (profile, fit scoring, skill gap)         | `primary key (user_id, skill_id)` |
+| Move the links of a skill merged into another, or delete them with the skill | `(skill_id, user_id)`             |
 
-No index starts with `skill_id`: the product never asks "which users have skill X". Deleting a skill is a rare admin action, so a sequential scan for its cascade is acceptable.
+The product never asks "which users have skill X", but merging and deleting skills does. Without this index both scan the whole table, which grows with every user.
 
 ### job_postings
 
@@ -166,9 +169,11 @@ No index starts with `skill_id`: the product never asks "which users have skill 
 | The newest open postings                                                                       | `(posted_at)`                   |
 | The newest postings for one work arrangement (remote, hybrid, on-site)                         | `(work_arrangement, posted_at)` |
 | Postings that pay at least the user's minimum: `where salary_currency = ? and salary_max >= ?` | `(salary_currency, salary_max)` |
-| Upsert on import without duplicates                                                            | `unique (source, external_id)`  |
+| Upsert on import without duplicates: `on conflict (source, dedup_key)`                         | `unique (source, dedup_key)`    |
 
-CHECK constraints: `salary_min <= salary_max`, both non-negative, currency in (`IDR`, `USD`), and currency and period present whenever an amount is.
+`external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
+
+CHECK constraints: `salary_min <= salary_max`, both non-negative, currency in (`IDR`, `USD`), currency and period present whenever an amount is, and allowed values for `work_arrangement`, `employment_type`, `seniority` and `salary_period`.
 
 ### job_posting_skill
 
