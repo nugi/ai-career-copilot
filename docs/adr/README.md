@@ -6,6 +6,7 @@ This directory records significant architecture decisions: the context, the deci
 | ------------------------------------------------------- | ----------------------------------------------- | -------- |
 | [0001](0001-use-postgresql-with-pgvector.md)            | Use PostgreSQL with pgvector for vector storage | Accepted |
 | [0002](0002-use-inertia-with-react-for-the-frontend.md) | Use Inertia with React for the frontend         | Accepted |
+| [0003](0003-store-job-skills-in-a-pivot-table.md)       | Store job skills in a pivot table               | Accepted |
 
 ## Adding a record
 

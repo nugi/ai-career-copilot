@@ -75,4 +75,4 @@ composer test
 
 ## Architecture decisions
 
-Significant decisions are recorded as ADRs in [`docs/adr`](docs/adr/README.md).
+Significant decisions are recorded as ADRs in [`docs/adr`](docs/adr/README.md). The schema, and the queries each index serves, are documented in [`docs/erd.md`](docs/erd.md).
