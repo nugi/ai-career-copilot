@@ -27,7 +27,7 @@ Use the `job_posting_skill` pivot table as the source of truth, with a primary k
 
 For the AND filter, `jsonb` is about ten times faster. The pivot still wins on everything else:
 
-1. **Integrity.** Foreign keys keep every link pointing at a real skill. Merging a duplicate skill, or turning a skill into an alias, is one `UPDATE` on the pivot. In `jsonb` it means rewriting every affected posting with no constraint to catch mistakes.
+1. **Integrity.** Foreign keys keep every link pointing at a real skill. Merging a duplicate skill, or turning a skill into an alias, is two statements on each pivot: delete the links where the posting or user already has the target skill, then update the rest. Both pivots have an index that starts with `skill_id`, so neither statement scans the table. In `jsonb` it means rewriting every affected posting with no constraint to catch mistakes.
 2. **Attributes per link.** `is_required` is a column, and later weights or years of experience are more columns. In `jsonb` each element must become an object, and every query must match its shape.
 3. **Aggregations.** Skill demand, the skill-gap join against `user_skills`, and trends per skill are plain `GROUP BY` and joins, and run six times faster than unnesting arrays.
 4. **The AND filter is fast enough.** 150–180 ms is the worst case: two of the most common skills, no other filters. Real searches also filter on recency, location and salary, and the slow path is one query that a cache can absorb.

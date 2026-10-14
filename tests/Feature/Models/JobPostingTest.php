@@ -6,7 +6,42 @@ use App\Models\JobMatch;
 use App\Models\JobPosting;
 use App\Models\Skill;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+
+test('a source cannot list the same external ID twice', function () {
+    JobPosting::factory()->create(['source' => 'board', 'external_id' => 'job-42']);
+
+    expect(fn () => JobPosting::factory()->create(['source' => 'board', 'external_id' => 'job-42']))
+        ->toThrow(UniqueConstraintViolationException::class);
+});
+
+test('postings without an external ID are told apart by their apply URL', function () {
+    JobPosting::factory()->create(['source' => 'manual', 'external_id' => null, 'apply_url' => 'https://example.com/jobs/1']);
+
+    expect(fn () => JobPosting::factory()->create(['source' => 'manual', 'external_id' => null, 'apply_url' => 'https://example.com/jobs/1']))
+        ->toThrow(UniqueConstraintViolationException::class);
+});
+
+test('the same external ID from different sources is two postings', function () {
+    JobPosting::factory()->create(['source' => 'board-a', 'external_id' => 'job-42']);
+
+    $second = JobPosting::factory()->create(['source' => 'board-b', 'external_id' => 'job-42']);
+
+    $this->assertModelExists($second);
+});
+
+test('importing a posting again updates it instead of adding a duplicate', function (?string $externalId) {
+    $attributes = JobPosting::factory()->raw(['source' => 'board', 'external_id' => $externalId, 'title' => 'PHP Developer']);
+    JobPosting::query()->upsert([$attributes], uniqueBy: ['source', 'dedup_key'], update: ['title']);
+
+    JobPosting::query()->upsert([[...$attributes, 'title' => 'Senior PHP Developer']], uniqueBy: ['source', 'dedup_key'], update: ['title']);
+
+    expect(JobPosting::query()->sole()->title)->toBe('Senior PHP Developer');
+})->with([
+    'with an external ID' => 'job-42',
+    'without an external ID' => null,
+]);
 
 test('a posting lists its skills and whether each one is required', function () {
     $posting = JobPosting::factory()->create();
