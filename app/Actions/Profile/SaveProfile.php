@@ -14,6 +14,8 @@ class SaveProfile
      *
      * The profile version increases when anything that affects matching changes,
      * so data derived from the profile (such as embeddings) can detect it is stale.
+     * Saves for the same user run one at a time (the user row is locked, because
+     * a first save has no profile row to lock), so two saves never share a version.
      *
      * @param  array{headline: string|null, target_roles: list<string>, preferred_locations: list<string>, work_arrangements: list<string>, min_salary: int|null, salary_currency: string|null, salary_period: string|null}  $preferences
      * @param  list<array{name: string, proficiency: string}>  $skills
@@ -21,7 +23,9 @@ class SaveProfile
     public function handle(User $user, array $preferences, array $skills): Profile
     {
         return DB::transaction(function () use ($user, $preferences, $skills): Profile {
-            $profile = $user->profile ?? $user->profile()->make();
+            User::query()->whereKey($user->getKey())->lockForUpdate()->sole();
+
+            $profile = $user->profile()->first() ?? $user->profile()->make();
             $profile->fill($preferences);
 
             $changes = $user->skills()->sync($this->resolveSkills($skills));
