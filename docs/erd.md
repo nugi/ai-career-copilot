@@ -172,12 +172,12 @@ The product never asks "which users have skill X", but merging, deleting and pro
 
 ### job_postings
 
-| Query                                                                                          | Index                           |
-| ---------------------------------------------------------------------------------------------- | ------------------------------- |
-| The newest open postings                                                                       | `(posted_at)`                   |
-| The newest postings for one work arrangement (remote, hybrid, on-site)                         | `(work_arrangement, posted_at)` |
-| Postings that pay at least the user's minimum: `where salary_currency = ? and salary_max >= ?` | `(salary_currency, salary_max)` |
-| Upsert on import without duplicates: `on conflict (source, dedup_key)`                         | `unique (source, dedup_key)`    |
+| Query                                                                                                             | Index                           |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| The newest open postings                                                                                          | `(posted_at)`                   |
+| The newest postings for one work arrangement (remote, hybrid, on-site)                                            | `(work_arrangement, posted_at)` |
+| Postings that may pay the user's minimum: `where salary_currency = ? and (salary_max >= ? or salary_max is null)` | `(salary_currency, salary_max)` |
+| Upsert on import without duplicates: `on conflict (source, dedup_key)`                                            | `unique (source, dedup_key)`    |
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 
