@@ -39,7 +39,7 @@ class OnboardingController extends Controller
                 'proficiency' => $skill->pivot->proficiency->value,
             ]),
             'isComplete' => $profile?->isComplete() ?? false,
-            'skillSuggestions' => Skill::query()->orderBy('name')->pluck('name'),
+            'skillSuggestions' => Skill::query()->where('is_verified', true)->orderBy('name')->pluck('name'),
             'options' => [
                 'workArrangements' => $this->options(WorkArrangement::cases()),
                 'currencies' => $this->options(Currency::cases()),

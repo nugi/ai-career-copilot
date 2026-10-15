@@ -59,7 +59,9 @@ class SkillSeeder extends Seeder
     public function run(): void
     {
         foreach (self::SKILLS as $name => $aliases) {
-            $skill = Skill::query()->firstOrCreate(['normalized_name' => Skill::normalize($name)], ['name' => $name]);
+            $skill = Skill::query()->firstOrNew(['normalized_name' => Skill::normalize($name)], ['name' => $name]);
+            $skill->is_verified = true;
+            $skill->save();
 
             foreach ($aliases as $alias) {
                 $skill->aliases()->firstOrCreate(['alias' => Skill::normalize($alias)]);

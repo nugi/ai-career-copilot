@@ -26,19 +26,36 @@ Compare **annual gross cash in the user's currency**, and show amounts in the un
 4. **Do not adjust for cost of living.** The user's floor already reflects where they live, and a remote job pays them where they live. Postings are Indonesian or remote, so relocation is out of scope.
 5. **Classify each job against the floor** with three states instead of a yes or no:
     - **Meets:** the bottom of the range is at or above the floor.
-    - **Possible:** only the top of the range reaches the floor.
+    - **Possible:** the job could pay the floor, but its range does not show that it does.
     - **Below:** the top of the range is under the floor.
-6. **Keep the filter indexable.** Convert the user's floor once per search into each currency and period, then filter with `(salary_currency = 'USD' and salary_period = 'yearly' and salary_max >= ?) or …`. Each branch uses the `(salary_currency, salary_max)` index, and no stored amount is converted row by row.
+
+    A missing end is never filled in from the known end. A missing top ("From Rp15 juta") is unbounded, so the job is Meets when the bottom reaches the floor and Possible otherwise, never Below. A missing bottom ("Up to USD 60k") is unknown, so the job is Possible when the top reaches the floor and Below otherwise, never Meets.
+
+6. **Keep the filter indexable.** Convert the user's floor once per search into each currency and period. The filter removes only jobs that are certainly Below, so it also keeps every row whose top or unit is missing:
+
+    ```sql
+    (salary_currency = 'USD' and salary_period = 'yearly' and (salary_max >= ? or salary_max is null))
+    or …                                            -- one branch for each currency and period
+    or (salary_currency = 'IDR' and salary_period is null and (salary_max >= ? or salary_max is null))
+    or …                                            -- period unknown: see below
+    or salary_currency is null                      -- no salary, or a currency that cannot be compared
+    ```
+
+    Each branch uses the `(salary_currency, salary_max)` index, including the `is null` checks, and no stored amount is converted row by row. When the user hides jobs without a salary, the last branch is dropped and every other branch gets `and (salary_min is not null or salary_max is not null)`.
 
 When data is missing:
 
-| Missing              | Behavior                                                                                             | What the user sees                   |
-| -------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Salary               | Kept in results by default and neutral in the fit score. The user can hide these jobs with a filter. | "Salary not listed"                  |
-| One end of the range | The known end is used for both ends.                                                                 | "From Rp15 juta" or "Up to USD 60k"  |
-| Period               | Inferred from size: under Rp200 juta or under USD 10k means monthly, otherwise yearly.               | "≈ … (period estimated)"             |
-| Currency             | Inferred from the country (`ID` means IDR). Without a country, no comparison is made.                | "Can't compare: currency not listed" |
-| User's floor         | Nothing is filtered by salary, and salary has no weight in the fit score.                            | Amounts in the posting's own unit    |
+| Missing              | Behavior                                                                                                                                                                                                                                                                                                                                                                                              | What the user sees                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Salary               | Kept in results by default and neutral in the fit score. The user can hide these jobs with a filter.                                                                                                                                                                                                                                                                                                  | "Salary not listed"                                |
+| One end of the range | A missing top is unbounded and a missing bottom is unknown (rule 5). The job stays in the filter.                                                                                                                                                                                                                                                                                                     | "From Rp15 juta" or "Up to USD 60k"                |
+| Period               | Read from size only outside an ambiguity band, where both readings are plausible: Rp60–200 juta and USD 10k–30k. Under the band means monthly and over it means yearly. Inside the band, the job is classified under both readings: if both give the same state, that state is used, otherwise it is Possible. The filter compares the monthly reading inside the band, because it is the higher one. | "≈ … (period estimated)" or "≈ … (period unknown)" |
+| Currency             | Inferred from the country (`ID` means IDR). Without a country, no comparison is made.                                                                                                                                                                                                                                                                                                                 | "Can't compare: currency not listed"               |
+| User's floor         | Nothing is filtered by salary, and salary has no weight in the fit score.                                                                                                                                                                                                                                                                                                                             | Amounts in the posting's own unit                  |
+
+The bands come from the overlap of real salaries. Indonesian postings quote yearly pay almost only for professional roles, and those start above Rp60 juta, so anything smaller is monthly. Rp200 juta a month is far above any role the product lists, so anything larger is yearly. Between them sit junior yearly salaries (Rp120 juta) and senior monthly ones (Rp80 juta). USD has the same overlap: remote contracts pay USD 12k a month, and junior remote roles pay USD 25k a year.
+
+Today `job_postings_salary_unit_check` requires a currency and a period whenever an amount is stored, so postings with a missing period, or a missing currency and no country, cannot be stored yet. The import work relaxes that CHECK to allow `null` in both columns, together with the tests that assert it, because an inferred period stored as if it were posted would hide the "estimated" and "unknown" labels.
 
 ## Consequences
 
@@ -47,12 +64,13 @@ When data is missing:
 1. One rule for every combination, with the THR difference handled explicitly instead of hidden in a monthly × 12.
 2. Users see the converted amount, the rate and its date, so they can check the comparison.
 3. Salary filters stay fast at scale, because conversion happens once per query and not once per row.
-4. Missing data never removes a job silently, and every estimate is labelled.
+4. Missing data never removes a job: the filter drops only jobs that are certainly below the floor, and every estimate is labelled.
 
 **Drawbacks**
 
 1. A daily exchange-rate job and table to run. A stale rate shifts results near the floor.
 2. Gross-only comparison overstates contract pay compared with employment, because the contractor pays tax and benefits. The note mitigates this but does not quantify it.
-3. The period inference is a guess and will sometimes be wrong for very high or very low salaries.
+3. Outside the ambiguity bands the period is still a guess, and it is wrong for the rare yearly salary under Rp60 juta or monthly salary over Rp200 juta. Inside the bands, more jobs are Possible instead of a definite Meets or Below.
+4. Jobs with a missing top or period stay in filtered results, so a user with a high floor sees more Possible jobs.
 
 **Revisit when** postings include roles outside Indonesia that are not remote (cost of living starts to matter), when users ask to compare take-home pay, or when the gap between the ECB cross-rate and JISDOR moves "meets" or "below" for a noticeable share of jobs.

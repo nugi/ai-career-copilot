@@ -20,6 +20,17 @@ class SkillFactory extends Factory
     {
         return [
             'name' => Str::headline(fake()->unique()->slug(2)),
+            'is_verified' => true,
         ];
+    }
+
+    /**
+     * A skill a user typed that is not yet in the shared catalogue.
+     */
+    public function unverified(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'is_verified' => false,
+        ]);
     }
 }

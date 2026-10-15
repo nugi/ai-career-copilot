@@ -55,11 +55,11 @@ test('a typed alias resolves to its canonical skill', function () {
     expect($resolved->is($kubernetes))->toBeTrue();
 });
 
-test('an unknown name creates a new skill', function () {
+test('an unknown name creates a new unverified skill', function () {
     $skill = Skill::findOrCreateByName(' Svelte  Kit ');
 
     expect($skill->wasRecentlyCreated)->toBeTrue()
-        ->and($skill->only('name', 'normalized_name'))->toBe(['name' => 'Svelte Kit', 'normalized_name' => 'svelte kit']);
+        ->and($skill->only('name', 'normalized_name', 'is_verified'))->toBe(['name' => 'Svelte Kit', 'normalized_name' => 'svelte kit', 'is_verified' => false]);
 });
 
 test('a skill lists the job postings that ask for it', function () {

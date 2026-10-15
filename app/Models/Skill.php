@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  * @property int $id
  * @property string $name
  * @property string $normalized_name
+ * @property bool $is_verified Whether the skill is in the shared catalogue. Skills users type stay unverified, visible only in their own lists, until promoted.
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, SkillAlias> $aliases
@@ -31,6 +32,27 @@ class Skill extends Model
     use HasFactory;
 
     /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_verified' => false,
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_verified' => 'boolean',
+        ];
+    }
+
+    /**
      * Normalize a skill name or alias for lookups: trimmed, single-spaced and lowercase.
      */
     public static function normalize(string $name): string
@@ -39,8 +61,8 @@ class Skill extends Model
     }
 
     /**
-     * Find the canonical skill for a name the user typed, matching its name first and then its aliases.
-     * An unknown name becomes a new skill, so the catalogue grows with what users actually list.
+     * Find the skill for a name the user typed, matching its name first and then its aliases.
+     * An unknown name becomes a new unverified skill, so a typo never enters the shared catalogue.
      */
     public static function findOrCreateByName(string $name): self
     {

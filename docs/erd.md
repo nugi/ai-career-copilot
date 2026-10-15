@@ -55,6 +55,7 @@ erDiagram
         bigint id PK
         string name
         string normalized_name UK
+        boolean is_verified
     }
     skill_aliases {
         bigint id PK
@@ -154,8 +155,11 @@ One row per user with job preferences.
 | ------------------------------------------------------------------ | -------------------------- |
 | Resolve a typed name to a skill: `where normalized_name = ?`       | `unique (normalized_name)` |
 | Resolve an alias ("k8s", "golang") to its skill: `where alias = ?` | `unique (alias)`           |
+| Suggest skills while the user types: `where is_verified`           | none (see below)           |
 
-The catalogue holds a few thousand rows at most, so listing a skill's aliases needs no index on `skill_aliases.skill_id`. Names and aliases are normalized (trimmed, single-spaced, lowercase) by the models, so "PostgreSQL", " postgresql " and "POSTGRESQL" are the same skill.
+The catalogue holds a few thousand rows at most, so listing a skill's aliases needs no index on `skill_aliases.skill_id`, and listing the verified skills needs no index on `is_verified`. Names and aliases are normalized (trimmed, single-spaced, lowercase) by the models, so "PostgreSQL", " postgresql " and "POSTGRESQL" are the same skill.
+
+`is_verified` separates the shared catalogue from what users type. Seeded skills are verified. A name a user types that matches no skill or alias becomes an unverified skill: it appears in that user's own list, and in the list of anyone else who types the same name, but never in suggestions. That keeps typos such as "Laravell" out of other users' suggestions and out of the alias map used to read job postings. An unverified skill is promoted when enough users list it or when skill extraction also finds it in real postings.
 
 ### user_skills
 
@@ -164,16 +168,16 @@ The catalogue holds a few thousand rows at most, so listing a skill's aliases ne
 | The user's skills with proficiency (profile, fit scoring, skill gap)         | `primary key (user_id, skill_id)` |
 | Move the links of a skill merged into another, or delete them with the skill | `(skill_id, user_id)`             |
 
-The product never asks "which users have skill X", but merging and deleting skills does. Without this index both scan the whole table, which grows with every user.
+The product never asks "which users have skill X", but merging, deleting and promoting skills do (promotion counts the users who list an unverified skill). Without this index all three scan the whole table, which grows with every user.
 
 ### job_postings
 
-| Query                                                                                          | Index                           |
-| ---------------------------------------------------------------------------------------------- | ------------------------------- |
-| The newest open postings                                                                       | `(posted_at)`                   |
-| The newest postings for one work arrangement (remote, hybrid, on-site)                         | `(work_arrangement, posted_at)` |
-| Postings that pay at least the user's minimum: `where salary_currency = ? and salary_max >= ?` | `(salary_currency, salary_max)` |
-| Upsert on import without duplicates: `on conflict (source, dedup_key)`                         | `unique (source, dedup_key)`    |
+| Query                                                                                                             | Index                           |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| The newest open postings                                                                                          | `(posted_at)`                   |
+| The newest postings for one work arrangement (remote, hybrid, on-site)                                            | `(work_arrangement, posted_at)` |
+| Postings that may pay the user's minimum: `where salary_currency = ? and (salary_max >= ? or salary_max is null)` | `(salary_currency, salary_max)` |
+| Upsert on import without duplicates: `on conflict (source, dedup_key)`                                            | `unique (source, dedup_key)`    |
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 

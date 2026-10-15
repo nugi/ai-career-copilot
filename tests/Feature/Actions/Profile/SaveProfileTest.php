@@ -61,6 +61,18 @@ test('the version stays the same when nothing changes', function () use ($larave
     expect($profile->version)->toBe(1);
 });
 
+test('a save made with a stale copy of the user still gets a new version', function () use ($laravel) {
+    $saveProfile = app(SaveProfile::class);
+    $saveProfile->handle(User::factory()->create(), profilePreferences(), $laravel);
+    $staleUser = User::query()->with('profile')->sole();
+    $saveProfile->handle($staleUser->fresh(), profilePreferences(['min_salary' => 25_000_000]), $laravel);
+
+    $profile = $saveProfile->handle($staleUser, profilePreferences(['min_salary' => 30_000_000]), $laravel);
+
+    expect($profile->version)->toBe(3)
+        ->and($profile->fresh()->version)->toBe(3);
+});
+
 test('later saves keep the original completion time', function () use ($laravel) {
     $user = User::factory()->create();
     $saveProfile = app(SaveProfile::class);

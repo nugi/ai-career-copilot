@@ -138,17 +138,27 @@ test('skills the user types are matched to canonical skills by name or alias', f
         ->and(Skill::query()->count())->toBe(2);
 });
 
-test('an unknown skill is added to the catalogue', function () {
+test('an unknown skill is saved as unverified', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)->put(route('onboarding.update'), onboardingInput([
         'skills' => [['name' => 'Svelte', 'proficiency' => 'intermediate']],
     ]));
 
-    expect($user->skills->sole()->only('name', 'normalized_name'))->toBe([
+    expect($user->skills->sole()->only('name', 'normalized_name', 'is_verified'))->toBe([
         'name' => 'Svelte',
         'normalized_name' => 'svelte',
+        'is_verified' => false,
     ]);
+});
+
+test('skill suggestions include only verified skills', function () {
+    Skill::factory()->create(['name' => 'Laravel']);
+    Skill::factory()->unverified()->create(['name' => 'Laravell']);
+
+    $response = $this->actingAs(User::factory()->create())->get(route('onboarding.edit'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('skillSuggestions', ['Laravel']));
 });
 
 test('invalid preferences are rejected with a message and nothing is saved', function (array $overrides, string $field, string $message) {
