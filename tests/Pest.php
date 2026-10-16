@@ -1,5 +1,7 @@
 <?php
 
+use App\Ai\Agents\CareerAdvisor;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +49,51 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * A Responses API body from OpenAI that answers with the given text.
+ *
+ * @return array<string, mixed>
+ */
+function openAiAnswer(string $text): array
+{
+    return [
+        'id' => 'resp_123',
+        'object' => 'response',
+        'status' => 'completed',
+        'model' => 'gpt-6-luna',
+        'output' => [[
+            'type' => 'message',
+            'role' => 'assistant',
+            'content' => [['type' => 'output_text', 'text' => $text]],
+        ]],
+        'usage' => ['input_tokens' => 10, 'output_tokens' => 5],
+    ];
+}
+
+/**
+ * A Messages API body from Anthropic that answers with the given text.
+ *
+ * @return array<string, mixed>
+ */
+function anthropicAnswer(string $text): array
+{
+    return [
+        'id' => 'msg_123',
+        'type' => 'message',
+        'role' => 'assistant',
+        'model' => 'claude-haiku-5-5',
+        'content' => [['type' => 'text', 'text' => $text]],
+        'stop_reason' => 'end_turn',
+        'usage' => ['input_tokens' => 10, 'output_tokens' => 5],
+    ];
+}
+
+/**
+ * A career advisor for a user who has finished onboarding.
+ */
+function advisor(): CareerAdvisor
+{
+    return new CareerAdvisor(User::factory()->onboarded()->create());
 }
