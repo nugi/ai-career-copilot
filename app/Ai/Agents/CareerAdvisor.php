@@ -2,25 +2,21 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\CircuitBreaker;
 use App\Ai\Contracts\HasPromptVersion;
+use App\Ai\Middleware\AttachUserProfile;
 use App\Ai\Prompts\Instructions;
-use App\Enums\WorkArrangement;
-use App\Models\Skill;
 use App\Models\User;
-use App\Models\UserSkill;
-use Laravel\Ai\Attributes\Provider;
 use Laravel\Ai\Attributes\Timeout;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasMiddleware;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Stringable;
 
-#[Provider([
-    Lab::OpenAI->value => 'gpt-6-luna',
-    Lab::Anthropic->value => 'claude-haiku-5-5',
-])]
 #[Timeout(30)]
-class CareerAdvisor implements Agent, HasPromptVersion
+class CareerAdvisor implements Agent, HasMiddleware, HasPromptVersion, HasProviderOptions
 {
     use Promptable;
 
@@ -31,11 +27,11 @@ class CareerAdvisor implements Agent, HasPromptVersion
     /**
      * Get the instructions that the agent should follow.
      *
-     * The fixed prompt comes first, so providers can cache it across users.
+     * They are the same for every user. The user's profile goes in their message instead.
      */
     public function instructions(): Stringable|string
     {
-        return Instructions::load('career-advisor', self::PROMPT_VERSION)."\n".$this->aboutUser();
+        return Instructions::load('career-advisor', self::PROMPT_VERSION);
     }
 
     /**
@@ -47,36 +43,44 @@ class CareerAdvisor implements Agent, HasPromptVersion
     }
 
     /**
-     * Describe the user's job preferences and skills.
+     * Get the providers in failover order, mapped to their models.
      *
-     * Only the fields the advice depends on are sent to the providers. The headline
-     * and the salary stay out: the headline is free text that can name a person or
-     * an employer, and the salary is the most sensitive preference.
+     * The models are pinned, so an SDK update cannot change the model that a prompt version runs on.
+     * A provider whose circuit is open moves to the end of the list.
+     *
+     * @return array<string, string>
      */
-    private function aboutUser(): string
+    public function provider(): array
     {
-        $this->user->loadMissing(['profile', 'skills']);
-        $profile = $this->user->profile;
+        return app(CircuitBreaker::class)->order([
+            Lab::OpenAI->value => 'gpt-6-luna',
+            Lab::Anthropic->value => 'claude-haiku-5-5',
+        ]);
+    }
 
-        $skills = $this->user->skills
-            ->sortBy('name')
-            ->map(function (Skill $skill): string {
-                /** @var UserSkill $pivot */
-                $pivot = $skill->getRelation('pivot');
+    /**
+     * Get the provider-specific generation options.
+     *
+     * Career advice does not need extended reasoning, and both models bill it as output tokens.
+     *
+     * @return array<string, mixed>
+     */
+    public function providerOptions(Lab|string $provider): array
+    {
+        return match ($provider) {
+            Lab::OpenAI => ['reasoning' => ['effort' => 'none']],
+            Lab::Anthropic => ['thinking' => ['type' => 'disabled']],
+            default => [],
+        };
+    }
 
-                return "{$skill->name} ({$pivot->proficiency->label()})";
-            });
-
-        $lines = [
-            'Target roles' => $profile->target_roles ?? [],
-            'Preferred locations' => $profile->preferred_locations ?? [],
-            'Work arrangements' => $profile?->work_arrangements->map(fn (WorkArrangement $arrangement): string => $arrangement->label())->all() ?? [],
-            'Skills' => $skills->all(),
-        ];
-
-        return collect($lines)
-            ->map(fn (array $values, string $label): string => "- {$label}: ".($values === [] ? 'not set' : implode(', ', $values)))
-            ->prepend("## About this user\n")
-            ->implode("\n")."\n";
+    /**
+     * Get the middleware wrapping each generation step of the agent.
+     *
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [new AttachUserProfile($this->user)];
     }
 }
