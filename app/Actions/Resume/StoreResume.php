@@ -101,15 +101,19 @@ class StoreResume
     }
 
     /**
-     * Read the text layer of the PDF. Only a failed extraction becomes a validation error. The exception
-     * message is not passed on, because it can contain the file path or the text. Other errors, such as a
-     * missing binary, are configuration errors and reach the exception handler.
+     * Read the text layer of the PDF in content-stream order (the raw option). The default
+     * reading-order mode splits hanging bullets and right-aligned dates from their lines, and
+     * the layout mode mixes the lines of two-column resumes.
+     *
+     * Only a failed extraction becomes a validation error. The exception message is not passed on,
+     * because it can contain the file path or the text. Other errors, such as a missing binary,
+     * are configuration errors and reach the exception handler.
      */
     private function extractText(UploadedFile $file, string $binary): string
     {
         try {
             return (new Pdf($binary))
-                ->setOptions(['enc UTF-8'])
+                ->setOptions(['enc UTF-8', 'raw'])
                 ->setPdf($file->getRealPath())
                 ->text();
         } catch (CouldNotExtractText) {

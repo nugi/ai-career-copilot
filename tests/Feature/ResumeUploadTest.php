@@ -137,6 +137,40 @@ test('a missing pdftotext binary is a server error, not an unreadable file', fun
     expect($user->resumes()->count())->toBe(0);
 });
 
+test('a single column resume keeps bullets and dates on their lines', function () {
+    $user = User::factory()->onboarded()->create();
+    $file = new UploadedFile(base_path('tests/Fixtures/resumes/single-column-resume.pdf'), 'Single Column CV.pdf', 'application/pdf', null, true);
+
+    $this->actingAs($user)
+        ->post(route('resumes.store'), ['file' => $file])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('resumes.index'));
+
+    $content = $user->resumes()->sole()->content;
+
+    expect($content)->toContain('• Languages: PHP, SQL')
+        ->and($content)->toContain('• Frameworks: Laravel, Vue.js')
+        ->and($content)->toContain('Backend Engineer — PT Alpha, Jakarta Jan 2021 – Present')
+        ->and($content)->toContain('Junior Developer — PT Beta, Bandung Mar 2018 – Dec 2020')
+        ->and($content)->toContain("Bachelor's Degree in Informatics Graduated 2018");
+});
+
+test('a two column resume keeps each column together in content stream order', function () {
+    $user = User::factory()->onboarded()->create();
+    $file = new UploadedFile(base_path('tests/Fixtures/resumes/two-column-resume.pdf'), 'Two Column CV.pdf', 'application/pdf', null, true);
+
+    $this->actingAs($user)
+        ->post(route('resumes.store'), ['file' => $file])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('resumes.index'));
+
+    $content = $user->resumes()->sole()->content;
+
+    expect($content)->toContain("Backend Engineer, PT Alpha (2021 - Present)\nBuilt payment APIs for 3 banks.")
+        ->and($content)->toContain("Indonesian\nEnglish")
+        ->and(strpos($content, 'English') < strpos($content, 'EXPERIENCE'))->toBeTrue();
+});
+
 test('the resumes page lists only the current user\'s resumes', function () {
     $user = User::factory()->onboarded()->create();
     $mine = Resume::factory()->for($user)->create();

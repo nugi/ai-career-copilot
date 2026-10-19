@@ -41,8 +41,9 @@ class PiiRedactor
     /**
      * An Indonesian landline number with an area code in parentheses, with a leading 0, or with the prefix +62.
      * Examples: (021) 555-1234, 021-5551234, +62 21 5551234, (0274) 512345.
+     * The 0 alternative comes first, because PCRE2 10.47 with JIT does not match 021-5551234 when the parenthesised alternative comes first.
      */
-    private const LANDLINE_PHONE_PATTERN = '~(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u';
+    private const LANDLINE_PHONE_PATTERN = '~(?<!\d)(?:0\d{2,3}|\(0\d{2,3}\)|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u';
 
     /**
      * An international number: a + and a country code, then 7 to 12 more digits with optional spaces, dashes, dots or parentheses.
