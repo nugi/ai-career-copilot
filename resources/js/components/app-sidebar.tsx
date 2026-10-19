@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import {
     BookOpen,
+    FileText,
     FolderGit2,
     LayoutGrid,
     SlidersHorizontal,
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { edit as editOnboarding } from '@/routes/onboarding';
+import { index as resumesIndex } from '@/routes/resumes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -32,6 +34,11 @@ const mainNavItems: NavItem[] = [
         title: 'Job preferences',
         href: editOnboarding(),
         icon: SlidersHorizontal,
+    },
+    {
+        title: 'Resumes',
+        href: resumesIndex(),
+        icon: FileText,
     },
 ];
 

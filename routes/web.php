@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdvisorController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\ResumeController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -13,6 +14,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    Route::get('resumes', [ResumeController::class, 'index'])->name('resumes.index');
+    Route::post('resumes', [ResumeController::class, 'store'])->name('resumes.store');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'throttle:advisor'])->group(function () {
