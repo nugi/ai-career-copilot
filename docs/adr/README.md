@@ -9,6 +9,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0003](0003-store-job-skills-in-a-pivot-table.md)                      | Store job skills in a pivot table                       | Accepted |
 | [0004](0004-compare-salaries-as-annual-gross-in-the-users-currency.md) | Compare salaries as annual gross in the user's currency | Accepted |
 | [0005](0005-fail-over-on-provider-outages-only.md)                     | Fail over between AI providers on outages only          | Accepted |
+| [0006](0006-redact-contact-data-before-resume-text-is-stored.md)       | Redact contact data before resume text is stored        | Accepted |
 
 ## Adding a record
 
