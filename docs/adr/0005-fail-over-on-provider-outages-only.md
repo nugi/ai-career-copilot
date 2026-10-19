@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-15
-- **Amended:** 2026-10-16 (exhausted credits, circuit breaker)
+- **Amended:** 2026-10-16 (exhausted credits, circuit breaker), 2026-10-19 (the last provider's failures, streaming, timeouts)
 
 ## Context
 
@@ -35,7 +35,9 @@ Every failover follows these rules:
 - A failover sends the same request to the second provider, so both providers must be acceptable for the data in it. The advisor sends the question and the user's target roles, locations, work arrangements and skills, never the headline or the salary.
 - The answer records the provider and the model that produced it, and the log records the prompt version.
 - When every provider fails, the advisor reports the exception and responds with status 503.
-- A circuit breaker counts the failures of each provider. After 3 failures in a row within 60 seconds, the provider moves to the end of the list for 120 seconds, so requests do not wait for its timeout. After the cooldown the provider is tried again. One more failure opens the circuit again, and one success closes it. Every open and close is logged.
+- A circuit breaker counts the failures of each provider. After 3 failures in a row within 60 seconds, the provider moves to the end of the list for 120 seconds, so requests do not wait for its timeout. After the cooldown the provider is tried again. One more failure opens the circuit again, and one success closes it. Every open and close is logged. A failure of the last provider in the list counts too, also when every provider fails. Only failures that would fail over count, so a rejected key never opens a circuit.
+
+**Streaming answers** never fail over after the first token. A switch then would show the user half an answer from one model followed by a fresh answer from another. If a stream fails after it has started, the user sees what arrived, an error and a "try again" action. A stream that fails before its first token fails over like a single answer. The SDK already behaves this way: it rethrows a failure once a stream has yielded.
 
 ## Consequences
 
@@ -49,7 +51,7 @@ Every failover follows these rules:
 **Drawbacks**
 
 1. Answers can come from either model. Until evaluations exist, we cannot measure how the two models differ on the same prompt.
-2. A failing provider still costs the first requests up to the 30-second timeout before the circuit opens.
+2. A failing provider still costs the first 3 requests a wait before the circuit opens. A provider that cannot be reached fails at the HTTP client's 10-second connect timeout (about 13 seconds measured). A provider that accepts the connection and then hangs costs up to the 30-second request timeout. A shorter connect timeout, set through `Http::globalOptions()`, would cut the first case. The request timeout cannot be much shorter, because a long answer takes that long. Once answers stream, a time limit for the first token can be short.
 3. Structured output and multi-turn conversations are not covered by this decision. Each needs its own decision before it uses failover.
 
 **Revisit when** evaluations can compare both models on the same prompt version, or when an agent starts to return structured output or hold conversations.
