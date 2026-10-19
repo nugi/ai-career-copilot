@@ -20,7 +20,7 @@ class CareerAdvisor implements Agent, HasMiddleware, HasPromptVersion, HasProvid
 {
     use Promptable;
 
-    public const PROMPT_VERSION = 'v1';
+    public const PROMPT_VERSION = 'v2';
 
     public function __construct(public User $user) {}
 

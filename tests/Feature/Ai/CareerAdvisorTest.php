@@ -18,12 +18,12 @@ beforeEach(function () {
     Http::preventStrayRequests();
 });
 
-test('the instructions are the v1 prompt file and contain no profile', function () {
+test('the instructions are the current prompt file and contain no profile', function () {
     $advisor = advisor();
 
     expect((string) $advisor->instructions())
-        ->toBe(file_get_contents(resource_path('prompts/career-advisor/v1.md')))
-        ->and($advisor->promptVersion())->toBe('v1');
+        ->toBe(file_get_contents(resource_path('prompts/career-advisor/v2.md')))
+        ->and($advisor->promptVersion())->toBe(CareerAdvisor::PROMPT_VERSION);
 });
 
 test('the profile goes in the user message and the instructions stay fixed', function () {
@@ -39,7 +39,7 @@ test('the profile goes in the user message and the instructions stay fixed', fun
     $user->skills()->attach(Skill::factory()->create(['name' => 'PostgreSQL']), ['proficiency' => SkillProficiency::Intermediate]);
     $user->skills()->attach(Skill::factory()->create(['name' => 'Laravel']), ['proficiency' => SkillProficiency::Expert]);
 
-    $instructions = file_get_contents(resource_path('prompts/career-advisor/v1.md'));
+    $instructions = file_get_contents(resource_path('prompts/career-advisor/v2.md'));
     $userMessage = <<<'TEXT'
         <user_profile>
         - Target roles: Backend Engineer, Platform Engineer
@@ -110,7 +110,7 @@ test('each provider is asked with its pinned model', function () {
 
     advisor()->prompt('What should I learn next?');
 
-    $instructions = file_get_contents(resource_path('prompts/career-advisor/v1.md'));
+    $instructions = file_get_contents(resource_path('prompts/career-advisor/v2.md'));
 
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['model'] === 'gpt-6-luna');
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')
@@ -213,7 +213,7 @@ test('the log records the prompt version and metadata but not the question or th
         $logged = json_encode($context);
 
         return $message === 'ai.agent.prompted'
-            && $context['prompt_version'] === 'v1'
+            && $context['prompt_version'] === CareerAdvisor::PROMPT_VERSION
             && $context['provider'] === 'openai'
             && ! str_contains($logged, 'My private question')
             && ! str_contains($logged, 'Private answer text');

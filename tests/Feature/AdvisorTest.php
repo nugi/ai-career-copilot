@@ -50,7 +50,7 @@ test('an answer is returned as JSON with the prompt version', function () {
         ->assertOk()
         ->assertJsonStructure(['answer', 'provider', 'model', 'prompt_version'])
         ->assertJsonPath('answer', 'Start with one portfolio project.')
-        ->assertJsonPath('prompt_version', 'v1');
+        ->assertJsonPath('prompt_version', CareerAdvisor::PROMPT_VERSION);
 
     CareerAdvisor::assertPrompted(fn (AgentPrompt $prompt) => $prompt->contains('What should I learn next?')
         && $prompt->agent instanceof CareerAdvisor
