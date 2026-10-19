@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-14
+- **Amended:** 2026-10-19 (±5% tolerance band)
 
 ## Context
 
@@ -24,14 +25,16 @@ Compare **annual gross cash in the user's currency**, and show amounts in the un
 2. **Convert** with the ECB daily reference rates, which include IDR and USD, cross-rated through EUR. A daily scheduled job stores them in an `exchange_rates` table (date, currency, rate). The product uses the latest stored rate and always shows its date: "≈ Rp54–81 juta per month at Rp16,300 per USD (13 Oct)". If the rate is more than seven days old, the label says so. Bank Indonesia's JISDOR is the local reference rate but has no stable public API; the two rates differ by much less than salary ranges do.
 3. **Assume gross on both sides.** The form labels the floor "gross, before tax". The product does not estimate net pay, because PPh 21, BPJS and contractor tax depend on facts the product does not have. A contract or freelance posting gets a note: "no employer benefits or BPJS; you pay your own tax".
 4. **Do not adjust for cost of living.** The user's floor already reflects where they live, and a remote job pays them where they live. Postings are Indonesian or remote, so relocation is out of scope.
-5. **Classify each job against the floor** with three states instead of a yes or no:
-    - **Meets:** the bottom of the range is at or above the floor.
-    - **Possible:** the job could pay the floor, but its range does not show that it does.
-    - **Below:** the top of the range is under the floor.
+5. **Classify each job against the floor** with three states instead of a yes or no, using a ±5% tolerance band around the floor:
+    - **Meets:** the bottom of the range is at least 105% of the floor.
+    - **Possible:** the job could pay the floor, but its range does not show that it does, or an end of the range is within 5% of the floor.
+    - **Below:** the top of the range is under 95% of the floor.
 
-    A missing end is never filled in from the known end. A missing top ("From Rp15 juta") is unbounded, so the job is Meets when the bottom reaches the floor and Possible otherwise, never Below. A missing bottom ("Up to USD 60k") is unknown, so the job is Possible when the top reaches the floor and Below otherwise, never Meets.
+    A missing end is never filled in from the known end. A missing top ("From Rp15 juta") is unbounded, so the job is Meets when the bottom is at least 105% of the floor and Possible otherwise, never Below. A missing bottom ("Up to USD 60k") is unknown, so the job is Possible when the top is at least 95% of the floor and Below otherwise, never Meets.
 
-6. **Keep the filter indexable.** Convert the user's floor once per search into each currency and period. The filter removes only jobs that are certainly Below, so it also keeps every row whose top or unit is missing:
+    The band keeps a job's state stable. An exchange rate can move 1% in a day, so without it a job paying close to the floor could change between Meets and Below from one day to the next. That looks like a bug and adds noise to alerts and digests. The band is wider than a normal daily move and much narrower than a typical salary range.
+
+6. **Keep the filter indexable.** Convert 95% of the user's floor once per search into each currency and period. The filter removes only jobs that are certainly Below, so it also keeps every row whose top or unit is missing:
 
     ```sql
     (salary_currency = 'USD' and salary_period = 'yearly' and (salary_max >= ? or salary_max is null))
@@ -72,5 +75,6 @@ Today `job_postings_salary_unit_check` requires a currency and a period whenever
 2. Gross-only comparison overstates contract pay compared with employment, because the contractor pays tax and benefits. The note mitigates this but does not quantify it.
 3. Outside the ambiguity bands the period is still a guess, and it is wrong for the rare yearly salary under Rp60 juta or monthly salary over Rp200 juta. Inside the bands, more jobs are Possible instead of a definite Meets or Below.
 4. Jobs with a missing top or period stay in filtered results, so a user with a high floor sees more Possible jobs.
+5. The tolerance band turns jobs within 5% of the floor into Possible, including some that would pay it. A job just under the floor also stays in filtered results.
 
 **Revisit when** postings include roles outside Indonesia that are not remote (cost of living starts to matter), when users ask to compare take-home pay, or when the gap between the ECB cross-rate and JISDOR moves "meets" or "below" for a noticeable share of jobs.
