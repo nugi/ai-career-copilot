@@ -1,22 +1,25 @@
 <?php
 
-use App\Ai\PiiRedactor;
-
 test('pcre diagnostic', function () {
-    $text = 'Call 021-5551234 today';
+    $texts = ['Call 021-5551234 today', 'Call (021) 555-1234 today', 'Call +62 21 5551234 today', 'Call (0274) 512345 today'];
     $patterns = [
-        'full' => '~(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
-        'no_lookbehind' => '~(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
-        'no_lookahead' => '~(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}~u',
-        'no_u' => '~(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~',
-        'only_0_branch' => '~(?<!\d)0\d{2,3}[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
-        'escaped_dash' => '~(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ \-]?\d{2,3})[ \-]?\d{3,4}[ \-]?\d{3,4}(?!\d)~u',
+        'no_start_opt' => '~(*NO_START_OPT)(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
+        'reordered' => '~(?<!\d)(?:0\d{2,3}|\(0\d{2,3}\)|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
+        'paren_optional' => '~(?<!\d)(?:\(?0\d{2,3}\)?|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
+        'no_auto_possess' => '~(*NO_AUTO_POSSESS)(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u',
+        'no_jit' => 'NOJIT',
     ];
-    $out = ['PCRE '.PCRE_VERSION.' jit='.ini_get('pcre.jit')];
+    $full = '~(?<!\d)(?:\(0\d{2,3}\)|0\d{2,3}|\+62[ -]?\d{2,3})[ -]?\d{3,4}[ -]?\d{3,4}(?!\d)~u';
+    $out = ['PCRE '.PCRE_VERSION];
     foreach ($patterns as $name => $p) {
-        $out[] = $name.': '.var_export(preg_match($p, $text, $m), true).' '.json_encode($m).' err='.preg_last_error_msg();
+        if ($p === 'NOJIT') {
+            ini_set('pcre.jit', '0');
+            $p = $full.'S';
+        }
+        $hits = array_map(fn ($t) => preg_match($p, $t), $texts);
+        $out[] = $name.': '.implode('', $hits);
+        ini_set('pcre.jit', '1');
     }
-    $out[] = 'redactor: '.(new PiiRedactor)->redact($text);
 
     expect(implode(' || ', $out))->toBe('show');
 });
