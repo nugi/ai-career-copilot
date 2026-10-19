@@ -10,6 +10,7 @@ use Closure;
 use Laravel\Ai\Gateway\StepResult;
 use Laravel\Ai\Messages\UserMessage;
 use Laravel\Ai\PendingStep;
+use RuntimeException;
 
 /**
  * Put the user's job preferences and skills in front of their question.
@@ -17,7 +18,8 @@ use Laravel\Ai\PendingStep;
  * The profile is text the user typed, so it goes in the user's message and not in the instructions,
  * which the model trusts more. Only the fields the advice depends on are sent. The headline and the
  * salary stay out: the headline is free text that can name a person or an employer, and the salary
- * is the most sensitive preference.
+ * is the most sensitive preference. User-typed text has `<` and `>` escaped and profile values are
+ * kept on one line. This stops a user from closing a block or adding a false profile line.
  */
 class AttachUserProfile
 {
@@ -42,7 +44,7 @@ class AttachUserProfile
         }
 
         $messages[$last] = new UserMessage(
-            $this->profile()."\n\n<question>\n{$messages[$last]->content}\n</question>",
+            $this->profile()."\n\n<question>\n{$this->escape($messages[$last]->content)}\n</question>",
             $messages[$last]->attachments,
         );
 
@@ -63,13 +65,13 @@ class AttachUserProfile
                 /** @var UserSkill $pivot */
                 $pivot = $skill->getRelation('pivot');
 
-                return "{$skill->name} ({$pivot->proficiency->label()})";
+                return "{$this->profileValue($skill->name)} ({$pivot->proficiency->label()})";
             });
 
         $fields = [
-            'Target roles' => $profile->target_roles ?? [],
-            'Preferred locations' => $profile->preferred_locations ?? [],
-            'Work arrangements' => $profile?->work_arrangements->map(fn (WorkArrangement $arrangement): string => $arrangement->label())->all() ?? [],
+            'Target roles' => array_map(fn (string $value): string => $this->profileValue($value), $profile->target_roles ?? []),
+            'Preferred locations' => array_map(fn (string $value): string => $this->profileValue($value), $profile->preferred_locations ?? []),
+            'Work arrangements' => $profile?->work_arrangements->map(fn (WorkArrangement $arrangement): string => $this->profileValue($arrangement->label()))->all() ?? [],
             'Skills' => $skills->all(),
         ];
 
@@ -78,5 +80,29 @@ class AttachUserProfile
             ->prepend('<user_profile>')
             ->push('</user_profile>')
             ->implode("\n");
+    }
+
+    /**
+     * Escape user-typed text so it cannot close a message block.
+     */
+    private function escape(string $value): string
+    {
+        return str_replace(['<', '>'], ['&lt;', '&gt;'], $value);
+    }
+
+    /**
+     * Escape a profile value and keep it on one line.
+     *
+     * @throws RuntimeException when the value cannot be put on one line, so it is never sent with its line breaks
+     */
+    private function profileValue(string $value): string
+    {
+        $singleLine = preg_replace('/\s+/u', ' ', mb_scrub($value, 'UTF-8'));
+
+        if ($singleLine === null) {
+            throw new RuntimeException('A profile value could not be put on one line: '.preg_last_error_msg());
+        }
+
+        return $this->escape(trim($singleLine));
     }
 }
