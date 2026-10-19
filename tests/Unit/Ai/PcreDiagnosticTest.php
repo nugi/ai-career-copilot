@@ -1,5 +1,7 @@
 <?php
 
+use App\Ai\PiiRedactor;
+
 test('pcre diagnostic', function () {
     $text = 'Call 021-5551234 today';
     $patterns = [
@@ -14,7 +16,7 @@ test('pcre diagnostic', function () {
     foreach ($patterns as $name => $p) {
         $out[] = $name.': '.var_export(preg_match($p, $text, $m), true).' '.json_encode($m).' err='.preg_last_error_msg();
     }
-    $out[] = 'redactor: '.(new App\Ai\PiiRedactor)->redact($text);
+    $out[] = 'redactor: '.(new PiiRedactor)->redact($text);
 
     expect(implode(' || ', $out))->toBe('show');
 });
