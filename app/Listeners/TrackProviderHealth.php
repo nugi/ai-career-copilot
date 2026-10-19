@@ -3,8 +3,10 @@
 namespace App\Listeners;
 
 use App\Ai\CircuitBreaker;
+use Laravel\Ai\Events\AgentFailed;
 use Laravel\Ai\Events\AgentFailedOver;
 use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Exceptions\FailoverableException;
 
 class TrackProviderHealth
 {
@@ -19,6 +21,20 @@ class TrackProviderHealth
     public function handleFailedOver(AgentFailedOver $event): void
     {
         $this->breaker->recordFailure($event->provider->name());
+    }
+
+    /**
+     * Count the failure of the last provider tried, because the SDK does not dispatch AgentFailedOver for it.
+     *
+     * Only outages count: the exception must be a FailoverableException.
+     */
+    public function handleFailed(AgentFailed $event): void
+    {
+        if (! $event->exception instanceof FailoverableException) {
+            return;
+        }
+
+        $this->breaker->recordFailure($event->prompt->provider()->name());
     }
 
     /**

@@ -2,8 +2,10 @@
 
 use App\Ai\CircuitBreaker;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 beforeEach(function () {
     Http::preventStrayRequests();
@@ -71,6 +73,34 @@ test('one failure after the cooldown opens the circuit again at once', function 
     advisor()->prompt('What should I learn next?');
 
     expect(app(CircuitBreaker::class)->isOpen('openai'))->toBeTrue();
+});
+
+test('a failure of the last provider is counted', function () {
+    Http::fake([
+        'api.openai.com/*' => Http::response(['error' => ['type' => 'server_error', 'message' => 'The server is overloaded.']], 503),
+        'api.anthropic.com/*' => Http::response(['type' => 'error', 'error' => ['type' => 'overloaded_error', 'message' => 'Overloaded']], 529),
+    ]);
+
+    foreach (range(1, 3) as $attempt) {
+        expect(fn () => advisor()->prompt('What should I learn next?'))->toThrow(ProviderOverloadedException::class);
+    }
+
+    expect(Http::recorded(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')))->toHaveCount(3)
+        ->and(app(CircuitBreaker::class)->isOpen('anthropic'))->toBeTrue();
+});
+
+test('a rejected key on the last provider is not counted', function () {
+    Http::fake([
+        'api.openai.com/*' => Http::response(['error' => ['type' => 'server_error', 'message' => 'The server is overloaded.']], 503),
+        'api.anthropic.com/*' => Http::response(['type' => 'error', 'error' => ['type' => 'authentication_error', 'message' => 'invalid x-api-key']], 401),
+    ]);
+
+    foreach (range(1, 3) as $attempt) {
+        expect(fn () => advisor()->prompt('What should I learn next?'))->toThrow(RequestException::class);
+    }
+
+    expect(Http::recorded(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')))->toHaveCount(3)
+        ->and(app(CircuitBreaker::class)->isOpen('anthropic'))->toBeFalse();
 });
 
 test('a success resets the failure count', function () {
