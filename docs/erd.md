@@ -147,7 +147,7 @@ One row per user with job preferences.
 | The user's primary resume, used for fit scoring | partial `unique (user_id) where is_primary` (also allows at most one primary resume per user) |
 | The user's resumes, newest first                | `(user_id, created_at)`                                                                       |
 
-`content` is the redacted text ([ADR 0006](adr/0006-redact-contact-data-before-resume-text-is-stored.md)). `parsed_data` is the structured parse of it: summary, skills, experiences, education, the computed years of experience and the checks run on the model's answer ([ADR 0007](adr/0007-treat-parsed-resume-data-as-unconfirmed.md)). It is `jsonb`, not tables, because it is only read whole, with its resume, and never filtered across users. `prompt_version` is the prompt that produced it. `parsed_at` is set when a parse succeeds; `parse_failed_at` and `parse_errors` (field paths and rule names, no values) when the latest parse failed.
+`content` is the redacted text ([ADR 0006](adr/0006-redact-contact-data-before-resume-text-is-stored.md)). `parsed_data` is the structured parse of it: summary, skills, experiences, education and the checks run on the model's answer; years of experience are computed from the experiences when read ([ADR 0007](adr/0007-treat-parsed-resume-data-as-unconfirmed.md)). It is `jsonb`, not tables, because it is only read whole, with its resume, and never filtered across users. `prompt_version` is the prompt that produced it. `parsed_at` is set when a parse succeeds; `parse_failed_at` and `parse_errors` (field paths and rule names, no values) when the latest parse failed.
 
 ### resume_chunks
 
