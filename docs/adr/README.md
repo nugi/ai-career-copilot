@@ -11,6 +11,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0005](0005-fail-over-on-provider-outages-only.md)                     | Fail over between AI providers on outages only          | Accepted |
 | [0006](0006-redact-contact-data-before-resume-text-is-stored.md)       | Redact contact data before resume text is stored        | Accepted |
 | [0007](0007-treat-parsed-resume-data-as-unconfirmed.md)                | Treat parsed resume data as unconfirmed                 | Accepted |
+| [0008](0008-redact-the-users-name-and-personal-fields.md)              | Redact the user's name and personal fields              | Accepted |
 
 ## Adding a record
 
