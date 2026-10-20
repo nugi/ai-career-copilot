@@ -41,7 +41,11 @@ erDiagram
         string file_path
         text content
         boolean is_primary
+        jsonb parsed_data
+        string prompt_version
         timestamp parsed_at
+        timestamp parse_failed_at
+        jsonb parse_errors
     }
     resume_chunks {
         bigint id PK
@@ -66,6 +70,7 @@ erDiagram
         bigint user_id PK,FK
         bigint skill_id PK,FK
         string proficiency
+        string source
     }
     job_postings {
         bigint id PK
@@ -142,6 +147,8 @@ One row per user with job preferences.
 | The user's primary resume, used for fit scoring | partial `unique (user_id) where is_primary` (also allows at most one primary resume per user) |
 | The user's resumes, newest first                | `(user_id, created_at)`                                                                       |
 
+`content` is the redacted text ([ADR 0006](adr/0006-redact-contact-data-before-resume-text-is-stored.md)). `parsed_data` is the structured parse of it: summary, skills, experiences, education, the computed years of experience and the checks run on the model's answer ([ADR 0007](adr/0007-treat-parsed-resume-data-as-unconfirmed.md)). It is `jsonb`, not tables, because it is only read whole, with its resume, and never filtered across users. `prompt_version` is the prompt that produced it. `parsed_at` is set when a parse succeeds; `parse_failed_at` and `parse_errors` (field paths and rule names, no values) when the latest parse failed.
+
 ### resume_chunks
 
 | Query                                                                  | Index                            |
@@ -167,6 +174,8 @@ The catalogue holds a few thousand rows at most, so listing a skill's aliases ne
 | ---------------------------------------------------------------------------- | --------------------------------- |
 | The user's skills with proficiency (profile, fit scoring, skill gap)         | `primary key (user_id, skill_id)` |
 | Move the links of a skill merged into another, or delete them with the skill | `(skill_id, user_id)`             |
+
+`source` is `profile` for a skill the user typed and `resume` for one the parser found in the primary resume. A resume skill has no proficiency until the user sets one; a CHECK requires a proficiency for profile skills ([ADR 0007](adr/0007-treat-parsed-resume-data-as-unconfirmed.md)).
 
 The product never asks "which users have skill X", but merging, deleting and promoting skills do (promotion counts the users who list an unverified skill). Without this index all three scan the whole table, which grows with every user.
 

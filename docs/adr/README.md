@@ -10,6 +10,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0004](0004-compare-salaries-as-annual-gross-in-the-users-currency.md) | Compare salaries as annual gross in the user's currency | Accepted |
 | [0005](0005-fail-over-on-provider-outages-only.md)                     | Fail over between AI providers on outages only          | Accepted |
 | [0006](0006-redact-contact-data-before-resume-text-is-stored.md)       | Redact contact data before resume text is stored        | Accepted |
+| [0007](0007-treat-parsed-resume-data-as-unconfirmed.md)                | Treat parsed resume data as unconfirmed                 | Accepted |
 
 ## Adding a record
 
