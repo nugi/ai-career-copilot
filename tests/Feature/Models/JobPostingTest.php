@@ -23,6 +23,12 @@ test('postings without an external ID are told apart by their apply URL', functi
         ->toThrow(UniqueConstraintViolationException::class);
 });
 
+test('the factory gives each posting its own apply URL, so seeding never collides on the dedup key', function () {
+    $urls = JobPosting::factory()->count(500)->make()->pluck('apply_url');
+
+    expect($urls->unique())->toHaveCount(500);
+});
+
 test('the same external ID from different sources is two postings', function () {
     JobPosting::factory()->create(['source' => 'board-a', 'external_id' => 'job-42']);
 
