@@ -71,7 +71,7 @@ class ResumeFactory extends Factory
                     'company' => 'Acme Corp',
                     'start' => '2019-01',
                     'end' => '2021-12',
-                    'bullets' => ['Designed a PostgreSQL schema for 2M orders.'],
+                    'bullets' => ['Designed a PostgreSQL schema for 2M orders'],
                 ]],
                 'education' => [[
                     'institution' => 'Universitas Gadjah Mada',
@@ -80,11 +80,11 @@ class ResumeFactory extends Factory
                     'start' => '2014',
                     'end' => '2018',
                 ]],
-                'years_of_experience' => 3.0,
                 'checks' => [
                     'model_years_of_experience' => 3.0,
                     'years_mismatch' => false,
                     'ungrounded_skills' => [],
+                    'ungrounded_bullets' => [],
                 ],
             ],
             'prompt_version' => 'v1',

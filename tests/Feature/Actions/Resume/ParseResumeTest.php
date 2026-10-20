@@ -186,7 +186,8 @@ test('overlapping jobs count once, and a model value that differs flags the pars
     app(ParseResume::class)->handle($resume);
 
     $resume->refresh();
-    expect($resume->parsed_data['years_of_experience'])->toEqual(5.0)
+    expect($resume->yearsOfExperience())->toEqual(5.0)
+        ->and($resume->parsed_data)->not->toHaveKey('years_of_experience')
         ->and($resume->parsed_data['checks']['model_years_of_experience'])->toBe(12)
         ->and($resume->parsed_data['checks']['years_mismatch'])->toBeTrue();
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context): bool => $message === 'ai.resume.parse_flagged'
@@ -239,6 +240,32 @@ test('a resume that is not primary saves its data and does not change the skills
     expect($resume->refresh()->parsed_data['skills'])->toBe(['Laravel', 'PHP', 'PostgreSQL'])
         ->and($user->skills()->get()->pluck('name')->all())->toBe(['Redis'])
         ->and($user->profile()->first()->version)->toBe($version);
+});
+
+test('a bullet that the resume text does not contain word for word is listed as ungrounded and flags the parse', function () {
+    Log::spy();
+    ResumeParser::fake([parsedResume([
+        'experiences' => [[
+            'title' => 'Backend Engineer',
+            'company' => 'Acme Corp',
+            'start' => '2019-01',
+            'end' => '2021-12',
+            'bullets' => ['Designed a PostgreSQL schema for 2M orders', 'Cut the API latency by a third'],
+        ]],
+    ])])->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    $resume = Resume::factory()->extracted()->primary()->for($user)->create();
+
+    app(ParseResume::class)->handle($resume);
+
+    $resume->refresh();
+    expect($resume->parsed_data['checks']['ungrounded_bullets'])->toBe(['experiences.0.bullets.1'])
+        ->and($resume->parse_failed_at)->toBeNull();
+    Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context): bool => $message === 'ai.resume.parse_flagged'
+        && $context['resume_id'] === $resume->id
+        && $context['years_mismatch'] === false
+        && $context['ungrounded_skill_count'] === 0
+        && $context['ungrounded_bullet_count'] === 1);
 });
 
 test('a start date in the future is invalid', function () {

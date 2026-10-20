@@ -50,10 +50,11 @@ class ParseResumeCommand extends Command
             ['Skills', count($parsed['skills'])],
             ['Experiences', count($parsed['experiences'])],
             ['Education entries', count($parsed['education'])],
-            ['Years of experience', $parsed['years_of_experience'] ?? 'none'],
+            ['Years of experience', $resume->yearsOfExperience() ?? 'none'],
             ['Model years of experience', $parsed['checks']['model_years_of_experience'] ?? 'none'],
             ['Years mismatch', $parsed['checks']['years_mismatch'] ? 'yes' : 'no'],
             ['Ungrounded skills', count($parsed['checks']['ungrounded_skills'])],
+            ['Ungrounded bullets', count($parsed['checks']['ungrounded_bullets'])],
         ]);
 
         if ($this->option('show')) {

@@ -17,6 +17,7 @@ test('a valid parse exits with 0 and prints the counts', function () {
             ['Model years of experience', 3],
             ['Years mismatch', 'no'],
             ['Ungrounded skills', 0],
+            ['Ungrounded bullets', 0],
         ])
         ->assertExitCode(0);
 });
