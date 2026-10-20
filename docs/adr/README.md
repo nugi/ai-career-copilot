@@ -12,6 +12,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0006](0006-redact-contact-data-before-resume-text-is-stored.md)       | Redact contact data before resume text is stored        | Accepted |
 | [0007](0007-treat-parsed-resume-data-as-unconfirmed.md)                | Treat parsed resume data as unconfirmed                 | Accepted |
 | [0008](0008-redact-the-users-name-and-personal-fields.md)              | Redact the user's name and personal fields              | Accepted |
+| [0009](0009-redact-personal-data-by-label-and-format-in-any-locale.md) | Redact personal data by label and format in any locale  | Accepted |
 
 ## Adding a record
 
