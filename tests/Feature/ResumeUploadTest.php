@@ -5,6 +5,7 @@ use App\Models\Profile;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -63,6 +64,22 @@ test('uploading a text PDF saves only the redacted text and stores the file priv
     expect($resume->file_path)->toStartWith("resumes/{$user->id}/");
     Storage::assertExists($resume->file_path);
     Queue::assertPushed(ParseUploadedResume::class, fn (ParseUploadedResume $job): bool => $job->resume->is($resume));
+});
+
+test('the request to the AI provider after an upload holds no personal data', function () {
+    Http::fake(['api.openai.com/*' => Http::response(openAiAnswer(json_encode(parsedResume())))]);
+    $user = User::factory()->onboarded()->create(['name' => 'Rina Wijaya']);
+
+    $this->actingAs($user)
+        ->post(route('resumes.store'), ['file' => textResumeUpload()])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('resumes.index'));
+
+    Http::assertSentCount(1);
+    [$request] = Http::recorded()->first();
+    expect($request->body())->toContain('Backend engineer with 6 years')
+        ->toBeRedacted('Rina', 'Wijaya', 'Kenanga', '3273012345670001', 'rina-wijaya-example');
+    expect($user->resumes()->sole()->parsed_at)->not->toBeNull();
 });
 
 test('a later upload is not primary and the first resume stays primary', function () {

@@ -5,6 +5,7 @@ use App\Jobs\ParseUploadedResume;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 test('the job parses the resume and saves the parsed data', function () {
     ResumeParser::fake([parsedResume()])->preventStrayPrompts();
@@ -37,4 +38,16 @@ test('the unique id is the resume id', function () {
     $resume = Resume::factory()->extracted()->for(User::factory()->onboarded())->create();
 
     expect((new ParseUploadedResume($resume))->uniqueId())->toBe((string) $resume->id);
+});
+
+test('a provider outage fails the job and keeps the earlier parse', function () {
+    ResumeParser::fake(fn () => throw ProviderOverloadedException::forProvider('openai'));
+    $resume = Resume::factory()->parsed()->primary()->for(User::factory()->onboarded())->create();
+    $parsedData = $resume->fresh()->parsed_data;
+
+    expect(fn () => ParseUploadedResume::dispatchSync($resume))->toThrow(ProviderOverloadedException::class);
+
+    $resume->refresh();
+    expect($resume->parse_errors)->toBe([['path' => '*', 'rule' => 'ProviderUnavailable']])
+        ->and($resume->parsed_data)->toBe($parsedData);
 });

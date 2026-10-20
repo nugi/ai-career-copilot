@@ -15,7 +15,7 @@ use Throwable;
 /**
  * Parse an uploaded resume in the background, so the upload request does not wait for the AI provider.
  *
- * Only a provider failure makes the job retry. Invalid output does not throw, so ParseResume records it and the job completes.
+ * Only a provider failure makes the job retry. Invalid output and a resume without text do not throw, so ParseResume records them and the job completes.
  */
 #[UniqueFor(600)]
 class ParseUploadedResume implements ShouldBeUnique, ShouldQueue

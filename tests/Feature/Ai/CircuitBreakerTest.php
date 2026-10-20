@@ -7,10 +7,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
-beforeEach(function () {
-    Http::preventStrayRequests();
-});
-
 test('the circuit opens after three failovers and the next question goes straight to Anthropic', function () {
     Log::spy();
     Http::fake([

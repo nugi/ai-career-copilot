@@ -15,10 +15,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
-beforeEach(function () {
-    Http::preventStrayRequests();
-});
-
 test('the instructions are the current prompt file and contain no profile', function () {
     $advisor = advisor();
 
