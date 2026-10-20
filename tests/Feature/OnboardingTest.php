@@ -3,6 +3,7 @@
 use App\Enums\Currency;
 use App\Enums\SalaryPeriod;
 use App\Enums\SkillProficiency;
+use App\Enums\SkillSource;
 use App\Enums\WorkArrangement;
 use App\Models\Profile;
 use App\Models\Skill;
@@ -50,7 +51,7 @@ test('users who have not finished onboarding are sent to it from the dashboard',
 
 test('the onboarding page shows the saved preferences and skills', function () {
     $user = User::factory()->has(Profile::factory()->incomplete()->state(['target_roles' => ['Backend Engineer']]))->create();
-    $user->skills()->attach(Skill::factory()->create(['name' => 'Laravel']), ['proficiency' => SkillProficiency::Expert]);
+    $user->skills()->attach(Skill::factory()->create(['name' => 'Laravel']), ['proficiency' => SkillProficiency::Expert, 'source' => SkillSource::Profile]);
 
     $response = $this->actingAs($user)->get(route('onboarding.edit'));
 
@@ -59,6 +60,18 @@ test('the onboarding page shows the saved preferences and skills', function () {
         ->where('profile.target_roles', ['Backend Engineer'])
         ->where('skills', [['name' => 'Laravel', 'proficiency' => 'expert']])
         ->where('isComplete', false)
+    );
+});
+
+test('the onboarding page shows a resume skill without a proficiency', function () {
+    $user = User::factory()->create();
+    $user->skills()->attach(Skill::factory()->create(['name' => 'Docker']), ['proficiency' => null, 'source' => SkillSource::Resume]);
+
+    $response = $this->actingAs($user)->get(route('onboarding.edit'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('onboarding')
+        ->where('skills', [['name' => 'Docker', 'proficiency' => null]])
     );
 });
 

@@ -61,7 +61,6 @@ class StoreResume
                     'file_size' => $file->getSize(),
                     'content' => $content,
                     'is_primary' => ! $user->resumes()->exists(),
-                    'parsed_at' => now(),
                 ]);
             });
         } catch (Throwable $exception) {

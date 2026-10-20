@@ -1,9 +1,11 @@
 <?php
 
+use App\Jobs\ParseUploadedResume;
 use App\Models\Profile;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -33,6 +35,7 @@ test('users who have not finished onboarding are sent to it from the resumes pag
 ]);
 
 test('uploading a text PDF saves only the redacted text and stores the file privately', function () {
+    Queue::fake([ParseUploadedResume::class]);
     $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user)
@@ -46,7 +49,7 @@ test('uploading a text PDF saves only the redacted text and stores the file priv
         ->and($resume->file_name)->toBe('Rina Wijaya CV.pdf')
         ->and($resume->is_primary)->toBeTrue()
         ->and($resume->mime_type)->toBe('application/pdf')
-        ->and($resume->parsed_at)->not->toBeNull()
+        ->and($resume->parsed_at)->toBeNull()
         ->and($resume->content)->toContain('Backend engineer with 6 years')
         ->and($resume->content)->toContain('[EMAIL]', '[PHONE]', '[URL]', '[ADDRESS]', '[NIK]')
         ->and($resume->content)->not->toContain('rina.wijaya@example.com')
@@ -57,9 +60,11 @@ test('uploading a text PDF saves only the redacted text and stores the file priv
 
     expect($resume->file_path)->toStartWith("resumes/{$user->id}/");
     Storage::assertExists($resume->file_path);
+    Queue::assertPushed(ParseUploadedResume::class, fn (ParseUploadedResume $job): bool => $job->resume->is($resume));
 });
 
 test('a later upload is not primary and the first resume stays primary', function () {
+    Queue::fake([ParseUploadedResume::class]);
     $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user)->post(route('resumes.store'), ['file' => textResumeUpload('First CV.pdf')]);
@@ -71,6 +76,7 @@ test('a later upload is not primary and the first resume stays primary', functio
 test('a scanned PDF with no text layer is rejected and nothing is stored', function () {
     $user = User::factory()->onboarded()->create();
     $scan = new UploadedFile(base_path('tests/Fixtures/resumes/scanned-resume.pdf'), 'Scanned CV.pdf', 'application/pdf', null, true);
+    Queue::fake();
 
     $this->actingAs($user)
         ->from(route('resumes.index'))
@@ -81,6 +87,7 @@ test('a scanned PDF with no text layer is rejected and nothing is stored', funct
     expect(session('errors')->first('file'))->toContain('scanned image');
     expect($user->resumes()->count())->toBe(0);
     Storage::assertDirectoryEmpty('resumes');
+    Queue::assertNothingPushed();
 });
 
 test('a corrupt PDF is rejected with a readable message and nothing is stored', function () {
@@ -138,6 +145,7 @@ test('a missing pdftotext binary is a server error, not an unreadable file', fun
 });
 
 test('a single column resume keeps bullets and dates on their lines', function () {
+    Queue::fake([ParseUploadedResume::class]);
     $user = User::factory()->onboarded()->create();
     $file = new UploadedFile(base_path('tests/Fixtures/resumes/single-column-resume.pdf'), 'Single Column CV.pdf', 'application/pdf', null, true);
 
@@ -156,6 +164,7 @@ test('a single column resume keeps bullets and dates on their lines', function (
 });
 
 test('a two column resume keeps each column together in content stream order', function () {
+    Queue::fake([ParseUploadedResume::class]);
     $user = User::factory()->onboarded()->create();
     $file = new UploadedFile(base_path('tests/Fixtures/resumes/two-column-resume.pdf'), 'Two Column CV.pdf', 'application/pdf', null, true);
 

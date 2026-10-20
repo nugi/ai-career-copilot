@@ -65,7 +65,9 @@ class AttachUserProfile
                 /** @var UserSkill $pivot */
                 $pivot = $skill->getRelation('pivot');
 
-                return "{$this->profileValue($skill->name)} ({$pivot->proficiency->label()})";
+                $level = $pivot->proficiency?->label() ?? 'level not set';
+
+                return "{$this->profileValue($skill->name)} ({$level})";
             });
 
         $fields = [

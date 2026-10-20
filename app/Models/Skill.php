@@ -61,16 +61,24 @@ class Skill extends Model
     }
 
     /**
+     * Find the skill for a name, matching its name first and then its aliases. It never creates a skill.
+     */
+    public static function findByName(string $name): ?self
+    {
+        $normalized = static::normalize($name);
+
+        return static::query()->where('normalized_name', $normalized)->first()
+            ?? SkillAlias::query()->where('alias', $normalized)->first()?->skill;
+    }
+
+    /**
      * Find the skill for a name the user typed, matching its name first and then its aliases.
      * An unknown name becomes a new unverified skill, so a typo never enters the shared catalogue.
      */
     public static function findOrCreateByName(string $name): self
     {
-        $normalized = static::normalize($name);
-
-        return static::query()->where('normalized_name', $normalized)->first()
-            ?? SkillAlias::query()->where('alias', $normalized)->first()->skill
-            ?? static::query()->createOrFirst(['normalized_name' => $normalized], ['name' => $name]);
+        return static::findByName($name)
+            ?? static::query()->createOrFirst(['normalized_name' => static::normalize($name)], ['name' => $name]);
     }
 
     /**
@@ -111,7 +119,7 @@ class Skill extends Model
     {
         return $this->belongsToMany(User::class, 'user_skills')
             ->using(UserSkill::class)
-            ->withPivot('proficiency')
+            ->withPivot('proficiency', 'source')
             ->withTimestamps();
     }
 }

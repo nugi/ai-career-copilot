@@ -97,3 +97,33 @@ function advisor(): CareerAdvisor
 {
     return new CareerAdvisor(User::factory()->onboarded()->create());
 }
+
+/**
+ * A valid output of the resume parser, for a resume whose text is the extracted() factory text. The overrides replace its keys.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function parsedResume(array $overrides = []): array
+{
+    return [
+        'summary' => 'Backend engineer with five years of experience.',
+        'skills' => ['PHP', 'Laravel', 'PostgreSQL'],
+        'years_of_experience' => 3.0,
+        'experiences' => [[
+            'title' => 'Backend Engineer',
+            'company' => 'Acme Corp',
+            'start' => '2019-01',
+            'end' => '2021-12',
+            'bullets' => ['Designed a PostgreSQL schema for 2M orders.'],
+        ]],
+        'education' => [[
+            'institution' => 'Universitas Gadjah Mada',
+            'degree' => 'S1',
+            'field' => 'Teknik Informatika',
+            'start' => '2014',
+            'end' => '2018',
+        ]],
+        ...$overrides,
+    ];
+}

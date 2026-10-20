@@ -50,7 +50,7 @@ type Option = {
 
 type SkillEntry = {
     name: string;
-    proficiency: string;
+    proficiency: string | null;
 };
 
 type OnboardingForm = {
@@ -462,7 +462,9 @@ export default function Onboarding({
                                             </ItemContent>
                                             <ItemActions>
                                                 <Select
-                                                    value={skill.proficiency}
+                                                    value={
+                                                        skill.proficiency ?? ''
+                                                    }
                                                     onValueChange={(value) =>
                                                         setProficiency(
                                                             index,
@@ -474,7 +476,7 @@ export default function Onboarding({
                                                         className="w-36"
                                                         aria-label={`Proficiency in ${skill.name}`}
                                                     >
-                                                        <SelectValue />
+                                                        <SelectValue placeholder="Choose a level" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectGroup>

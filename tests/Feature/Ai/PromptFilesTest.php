@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\File;
 const PUBLISHED_PROMPT_HASHES = [
     'career-advisor/v1.md' => 'b564fbf74884561cf51762627e7002bb228bc483595c560a5f5a046b016fc143',
     'career-advisor/v2.md' => 'f83610ceae85a1c0f31e659ee87b16bac91db1e64b2ae368d7d3839e0696ff81',
+    'resume-parser/v1.md' => 'b808ce53957921398795497ebfcb3836bc512bb60795b4d25d50ee173d5faae7',
 ];
 
 test('published prompts have not changed', function () {
