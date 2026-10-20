@@ -6,6 +6,7 @@ use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Spatie\PdfToText\Exceptions\CouldNotExtractText;
 use Spatie\PdfToText\Pdf;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\ExecutableFinder;
 
 class ExtractResumeText
@@ -13,7 +14,7 @@ class ExtractResumeText
     /**
      * Extract the cleaned text of the PDF at the path.
      *
-     * @throws ValidationException when the PDF cannot be read or is password-protected
+     * @throws ValidationException when the PDF cannot be read, is password-protected, or takes longer than the configured timeout
      * @throws RuntimeException when the pdftotext binary cannot be found
      */
     public function handle(string $path): string
@@ -57,19 +58,25 @@ class ExtractResumeText
      * reading-order mode splits hanging bullets and right-aligned dates from their lines, and
      * the layout mode mixes the lines of two-column resumes.
      *
-     * Only a failed extraction becomes a validation error. The exception message is not passed on,
-     * because it can contain the file path or the text. Other errors, such as a missing binary,
-     * are configuration errors and reach the exception handler.
+     * Only a failed extraction or a timeout becomes a validation error. The exception message is not
+     * passed on, because it can contain the file path or the text. The timeout comes from
+     * services.pdftotext.timeout, so a hostile PDF cannot hold a web worker for long. Other errors,
+     * such as a missing binary, are configuration errors and reach the exception handler.
+     *
+     * @throws ValidationException when the extraction fails or times out
      */
     private function extractText(string $path, string $binary): string
     {
         try {
             return (new Pdf($binary))
                 ->setOptions(['enc UTF-8', 'raw'])
+                ->setTimeout(config('services.pdftotext.timeout'))
                 ->setPdf($path)
                 ->text();
         } catch (CouldNotExtractText) {
             throw ValidationException::withMessages(['file' => __('We can\'t read this file. Upload a PDF that is not password-protected.')]);
+        } catch (ProcessTimedOutException) {
+            throw ValidationException::withMessages(['file' => __('This file took too long to read. Upload a simpler PDF, for example one exported from Word or Google Docs.')]);
         }
     }
 

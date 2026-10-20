@@ -69,7 +69,7 @@ class JobPostingFactory extends Factory
             'employment_type' => fake()->randomElement([EmploymentType::FullTime, EmploymentType::FullTime, EmploymentType::Contract]),
             'seniority' => $seniority,
             ...$this->idrMonthlySalary($seniority),
-            'apply_url' => fake()->url(),
+            'apply_url' => fake()->unique()->url(),
             'posted_at' => $postedAt,
             'expires_at' => fake()->optional(0.7)->dateTimeBetween($postedAt, '+60 days'),
         ];

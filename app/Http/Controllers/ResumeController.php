@@ -6,6 +6,7 @@ use App\Actions\Resume\StoreResume;
 use App\Http\Requests\StoreResumeRequest;
 use App\Jobs\ParseUploadedResume;
 use App\Models\Resume;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,13 +30,26 @@ class ResumeController extends Controller
                 'file_size' => $resume->file_size,
                 'is_primary' => $resume->is_primary,
                 'created_at' => $resume->created_at->toIso8601String(),
-                'content' => $resume->content,
+                'has_content' => $resume->content !== null,
             ])
             ->values();
 
         return Inertia::render('resumes', [
             'resumes' => $resumes,
         ]);
+    }
+
+    /**
+     * Return the redacted text of one of the user's resumes as JSON.
+     *
+     * The resume is found through the user's own relation, so another user's resume gives a 404
+     * and its existence is not disclosed.
+     */
+    public function content(Request $request, int $resume): JsonResponse
+    {
+        $ownedResume = $request->user()->resumes()->findOrFail($resume);
+
+        return response()->json(['content' => $ownedResume->content]);
     }
 
     /**

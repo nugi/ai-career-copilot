@@ -37,6 +37,7 @@ return [
 
     'pdftotext' => [
         'path' => env('PDFTOTEXT_PATH'),
+        'timeout' => (int) env('PDFTOTEXT_TIMEOUT', 10),
     ],
 
 ];

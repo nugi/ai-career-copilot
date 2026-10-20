@@ -17,6 +17,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     Route::get('resumes', [ResumeController::class, 'index'])->name('resumes.index');
     Route::post('resumes', [ResumeController::class, 'store'])->name('resumes.store');
+    Route::get('resumes/{resume}/content', [ResumeController::class, 'content'])->whereNumber('resume')->name('resumes.content');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'throttle:advisor'])->group(function () {
