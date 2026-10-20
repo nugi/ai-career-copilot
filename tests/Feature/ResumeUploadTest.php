@@ -36,7 +36,7 @@ test('users who have not finished onboarding are sent to it from the resumes pag
 
 test('uploading a text PDF saves only the redacted text and stores the file privately', function () {
     Queue::fake([ParseUploadedResume::class]);
-    $user = User::factory()->onboarded()->create();
+    $user = User::factory()->onboarded()->create(['name' => 'Rina Wijaya']);
 
     $this->actingAs($user)
         ->post(route('resumes.store'), ['file' => textResumeUpload()])
@@ -51,12 +51,14 @@ test('uploading a text PDF saves only the redacted text and stores the file priv
         ->and($resume->mime_type)->toBe('application/pdf')
         ->and($resume->parsed_at)->toBeNull()
         ->and($resume->content)->toContain('Backend engineer with 6 years')
-        ->and($resume->content)->toContain('[EMAIL]', '[PHONE]', '[URL]', '[ADDRESS]', '[NIK]')
+        ->and($resume->content)->toContain('[EMAIL]', '[PHONE]', '[URL]', '[ADDRESS]', '[NIK]', '[NAME]')
         ->and($resume->content)->not->toContain('rina.wijaya@example.com')
         ->and($resume->content)->not->toContain('3456-7890')
         ->and($resume->content)->not->toContain('linkedin.com')
         ->and($resume->content)->not->toContain('Kenanga')
-        ->and($resume->content)->not->toContain('3273012345670001');
+        ->and($resume->content)->not->toContain('3273012345670001')
+        ->and($resume->content)->not->toContain('Rina')
+        ->and($resume->content)->not->toContain('Wijaya');
 
     expect($resume->file_path)->toStartWith("resumes/{$user->id}/");
     Storage::assertExists($resume->file_path);

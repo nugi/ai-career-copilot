@@ -7,8 +7,11 @@ use RuntimeException;
 /**
  * Removes personal contact data from resume text before the text is sent to an AI provider.
  *
- * Each match is replaced by one placeholder: [EMAIL], [URL], [NIK], [PHONE] or [ADDRESS].
- * The replacements run in this order. A NIK runs before the phone patterns, because a 16-digit NIK can start with 62 and match the Indonesian phone pattern.
+ * Each match is replaced by one placeholder: [EMAIL], [URL], [NPWP], [NIK], [PHONE], [ADDRESS], [PERSONAL] or [NAME].
+ * The replacements run in this order: email, URL, NPWP, NIK, phones, address, personal fields, and name.
+ * The NPWP runs before the NIK, because a labelled 16-digit NPWP must not become [NIK].
+ * A NIK runs before the phone patterns, because a 16-digit NIK can start with 62 and match the Indonesian phone pattern.
+ * The name runs last, because an email or a link that contains the name is already replaced.
  * All other text, including the line breaks, stays the same.
  *
  * The input must be valid UTF-8. The patterns use the u modifier, so invalid input makes redact() throw a RuntimeException. The caller cleans the text with mb_scrub first.
@@ -25,6 +28,18 @@ class PiiRedactor
      * A bare domain with no path, such as Laravel.com, is not a match.
      */
     private const URL_PATTERN = '~\bhttps?://\S*[^\s.,;:!?)\]]|\b(?:www\.|linkedin\.com/|github\.com/|gitlab\.com/)\S*[^\s.,;:!?)\]]~iu';
+
+    /**
+     * An old-format Indonesian NPWP tax number, such as 12.345.678.9-012.345. A date such as 12.03.2021 is not a match.
+     */
+    private const NPWP_PATTERN = '~(?<!\d)\d{2}\.\d{3}\.\d{3}\.\d[.-]\d{3}\.\d{3}(?!\d)~u';
+
+    /**
+     * A labelled NPWP: the word NPWP, optional spaces, an optional colon, and 15 or 16 digits with optional dots, dashes or spaces between them.
+     * The label stays, and only the number is replaced. Examples: NPWP: 123456789012345, NPWP 12.345.678.9.012.345.
+     * A number of 17 digits or more is not a match.
+     */
+    private const LABELLED_NPWP_PATTERN = '~(?<!\p{L})NPWP[ \t]*:?[ \t]*\K\d(?:[.\- ]?\d){14,15}(?!\d)~iu';
 
     /**
      * An Indonesian NIK: exactly 16 digits, or 16 digits in groups of 4 with spaces or dashes.
@@ -61,28 +76,86 @@ class PiiRedactor
      * The limit counts characters, not bytes, because the pattern uses the u modifier.
      *
      * The abbreviations Jl., Jln. and Gg. match at any case and with any text after them.
-     * The full words Jalan, Gang, Komplek, Perumahan and Perum match only when the next word starts with an uppercase letter or a digit.
+     * The full words Jalan, Gang, Kompleks, Komplek, Perumahan and Perum match only when the next word starts with an uppercase letter or a digit.
      * A phrase such as berjalan kaki, jalan kaki or Gang of Four is not a match. An optional dot and optional spaces may follow the keyword.
      *
      * A line with an RT and an RW number starts a match at RT, for example RT 03/RW 05, RT.003 RW.005 or RT 3 / RW 5. The text before RT stays.
      * A city name alone is not a match.
      */
-    private const ADDRESS_PATTERN = '~(?:(?<![A-Za-z])(?:(?:Perumahan|Perum|Komplek|Jalan|Gang)\b(?=\.?[ \t]*(?-i:[A-Z0-9]))|Jln\b|Jl\b|Gg\b)\.?|\bRT\.?[ \t]*\d{1,3}[ \t]*/?[ \t]*RW\.?[ \t]*\d{1,3})(?:(?!(?=  |[ \t]*(?:\||•|·|\t|\r|\n|\z))|(?<!\d)\d{5}(?!\d))[^\r\n]){0,120}(?:(?<!\d)\d{5}(?!\d))?~iu';
+    private const ADDRESS_PATTERN = '~(?:(?<![A-Za-z])(?:(?:Perumahan|Perum|Kompleks|Komplek|Jalan|Gang)\b(?=\.?[ \t]*(?-i:[A-Z0-9]))|Jln\b|Jl\b|Gg\b)\.?|\bRT\.?[ \t]*\d{1,3}[ \t]*/?[ \t]*RW\.?[ \t]*\d{1,3})(?:(?!(?=  |[ \t]*(?:\||•|·|\t|\r|\n|\z))|(?<!\d)\d{5}(?!\d))[^\r\n]){0,120}(?:(?<!\d)\d{5}(?!\d))?~iu';
+
+    /**
+     * A personal field: a label, a colon, and a value. The label stays, and the value becomes [PERSONAL].
+     *
+     * The label is case-insensitive. The label must not follow a letter. A line break may come before or after the colon.
+     * The value is at most 80 characters, and it ends before a separator: |, •, ·, a tab, two spaces in a row, or a line break.
+     * Examples: Tanggal Lahir: 12 Januari 1995, Agama\n: Islam, Jenis Kelamin：Laki-laki, Agama: Islam | Status: Menikah.
+     * A label with no colon is not a match: Gender equality in tech, Status pekerjaan aktif, and Agama alone.
+     * The longer labels come first, so Status Perkawinan matches before Status.
+     */
+    private const PERSONAL_FIELD_PATTERN = '~(?<!\p{L})(?:Tempat,[ \t]+Tanggal[ \t]+Lahir|Tempat\/Tanggal[ \t]+Lahir|Tempat[ \t]+dan[ \t]+Tanggal[ \t]+Lahir|Date[ \t]+of[ \t]+Birth|Birth[ \t]+Date|Birthdate|Tanggal[ \t]+Lahir|Status[ \t]+Perkawinan|Status[ \t]+Pernikahan|Marital[ \t]+Status|Jenis[ \t]+Kelamin|Golongan[ \t]+Darah|Tinggi[ \t]+Badan|Berat[ \t]+Badan|Religion|Agama|Gender|Sex|Status|TTL|DOB)[ \t]*\R?[ \t]*[:：][ \t]*\R?[ \t]*\K(?:(?!  |[ \t]*(?:\||•|·|\t|\r|\n|\z))[^\r\n]){1,80}~iu';
 
     /**
      * Replace the personal contact data in the text with placeholders.
+     *
+     * The name is the user's full name. It is replaced as a whole, then each part of 3 or more characters is replaced.
+     * A null name, or a name with no letters, leaves the name unchanged.
      */
-    public function redact(string $text): string
+    public function redact(string $text, ?string $name = null): string
     {
         $text = $this->replace(self::EMAIL_PATTERN, '[EMAIL]', $text);
         $text = $this->replace(self::URL_PATTERN, '[URL]', $text);
+        $text = $this->replace(self::NPWP_PATTERN, '[NPWP]', $text);
+        $text = $this->replace(self::LABELLED_NPWP_PATTERN, '[NPWP]', $text);
         $text = $this->replace(self::NIK_PATTERN, '[NIK]', $text);
 
         foreach ([self::MOBILE_PHONE_PATTERN, self::LANDLINE_PHONE_PATTERN, self::INTERNATIONAL_PHONE_PATTERN] as $pattern) {
             $text = $this->replace($pattern, '[PHONE]', $text);
         }
 
-        return $this->replace(self::ADDRESS_PATTERN, '[ADDRESS]', $text);
+        $text = $this->replace(self::ADDRESS_PATTERN, '[ADDRESS]', $text);
+        $text = $this->replace(self::PERSONAL_FIELD_PATTERN, '[PERSONAL]', $text);
+
+        return $this->redactName($text, $name);
+    }
+
+    /**
+     * Replace the full name, then each part of the name that has 3 or more characters.
+     *
+     * The parts are split on whitespace. The full name matches its parts in order, with one or more whitespace characters between them,
+     * so a name split over two lines is also replaced. A part of 2 characters, such as Li, stays, because it matches too much text.
+     * A match is a whole word in any case, and a bracket next to it does not count as a word character, so [PHONE] is not changed by the name Phone.
+     */
+    private function redactName(string $text, ?string $name): string
+    {
+        if ($name === null || preg_match('/\p{L}/u', $name) !== 1) {
+            return $text;
+        }
+
+        $parts = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $quotedParts = array_map(fn (string $part): string => preg_quote($part, '~'), $parts);
+
+        if (count($quotedParts) > 1) {
+            $text = $this->replace($this->wholeWord(implode('\s+', $quotedParts)), '[NAME]', $text);
+        }
+
+        foreach ($parts as $part) {
+            if (mb_strlen($part) < 3) {
+                continue;
+            }
+
+            $text = $this->replace($this->wholeWord(preg_quote($part, '~')), '[NAME]', $text);
+        }
+
+        return $text;
+    }
+
+    /**
+     * Wrap a pattern so that it matches only a whole word. A letter, a digit, or an opening or closing bracket next to the match stops it.
+     */
+    private function wholeWord(string $pattern): string
+    {
+        return '~(?<![\p{L}\p{N}\[])'.$pattern.'(?![\p{L}\p{N}\]])~iu';
     }
 
     /**

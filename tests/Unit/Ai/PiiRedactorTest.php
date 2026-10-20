@@ -40,6 +40,7 @@ test('replaces each kind of personal data with its placeholder', function (strin
     'street with Gg.' => ['Gg. Kenanga 2', '[ADDRESS]'],
     'street with Gang' => ['Gang Mawar 4', '[ADDRESS]'],
     'street with Komplek' => ['Komplek Griya Asri blok B', '[ADDRESS]'],
+    'street with Kompleks' => ['Kompleks Griya Asri Blok C2 No. 5, Bandung 40135', '[ADDRESS]'],
     'street with Perumahan' => ['Perumahan Taman Indah 3', '[ADDRESS]'],
     'street with Perum' => ['Perum Pondok Hijau 7', '[ADDRESS]'],
     'rt and rw with spaces' => ['RT 03/RW 05', '[ADDRESS]'],
@@ -101,6 +102,10 @@ test('text that holds no personal data stays unchanged', function (string $text)
     'four part version number' => 'Version 1.2.3.4',
     'seventeen digit number' => 'ID 12345678901234567',
     'plus with years' => '+5 years of experience',
+    'gender as a word in a sentence' => 'Gender equality in tech',
+    'status as a word in a sentence' => 'Status pekerjaan aktif',
+    'religion label without a colon' => 'Agama',
+    'date with dots' => 'Joined on 12.03.2021 today',
 ]);
 
 test('a resume header keeps the name and every line without personal data', function () {
@@ -120,6 +125,59 @@ TEXT;
 
     expect((new PiiRedactor)->redact($input))->toBe($expected);
 });
+
+test('replaces an NPWP tax number and keeps its label', function (string $input, string $expected) {
+    expect((new PiiRedactor)->redact($input))->toBe($expected);
+})->with([
+    'old format npwp' => ['NPWP 12.345.678.9-012.345', 'NPWP [NPWP]'],
+    'labelled 15 digit npwp' => ['NPWP: 123456789012345', 'NPWP: [NPWP]'],
+    'labelled 16 digit npwp is not a nik' => ['NPWP: 1234567890123456', 'NPWP: [NPWP]'],
+    'labelled npwp with dots and a space' => ['NPWP 12.345.678.9.012.345 today', 'NPWP [NPWP] today'],
+]);
+
+test('replaces the value of a personal field and keeps its label', function (string $input, string $expected) {
+    expect((new PiiRedactor)->redact($input))->toBe($expected);
+})->with([
+    'birth date' => ['Tanggal Lahir: 12 Januari 1995', 'Tanggal Lahir: [PERSONAL]'],
+    'birth place and date' => ['Tempat, Tanggal Lahir: Bandung, 12 Januari 1995', 'Tempat, Tanggal Lahir: [PERSONAL]'],
+    'birth place and date with a slash' => ['Tempat/Tanggal Lahir: Bandung, 12 Januari 1995', 'Tempat/Tanggal Lahir: [PERSONAL]'],
+    'birth place and date with dan' => ['Tempat dan Tanggal Lahir: Bandung', 'Tempat dan Tanggal Lahir: [PERSONAL]'],
+    'ttl' => ['TTL: Bandung, 12-01-1995', 'TTL: [PERSONAL]'],
+    'date of birth' => ['Date of Birth: 12 January 1995', 'Date of Birth: [PERSONAL]'],
+    'birth date in english' => ['Birth Date: 12 January 1995', 'Birth Date: [PERSONAL]'],
+    'birthdate' => ['Birthdate: 12 January 1995', 'Birthdate: [PERSONAL]'],
+    'dob' => ['DOB: 12 January 1995', 'DOB: [PERSONAL]'],
+    'religion' => ['Religion: Islam', 'Religion: [PERSONAL]'],
+    'agama' => ['Agama: Islam', 'Agama: [PERSONAL]'],
+    'marital status' => ['Marital Status: Married', 'Marital Status: [PERSONAL]'],
+    'status perkawinan' => ['Status Perkawinan: Menikah', 'Status Perkawinan: [PERSONAL]'],
+    'status' => ['Status: Menikah', 'Status: [PERSONAL]'],
+    'gender' => ['Gender: Male', 'Gender: [PERSONAL]'],
+    'sex' => ['Sex: Male', 'Sex: [PERSONAL]'],
+    'jenis kelamin' => ['Jenis Kelamin: Laki-laki', 'Jenis Kelamin: [PERSONAL]'],
+    'tinggi badan' => ['Tinggi Badan: 170 cm', 'Tinggi Badan: [PERSONAL]'],
+    'berat badan' => ['Berat Badan: 65 kg', 'Berat Badan: [PERSONAL]'],
+    'golongan darah' => ['Golongan Darah: O', 'Golongan Darah: [PERSONAL]'],
+    'value on the line after the label' => ["Agama\n: Islam", "Agama\n: [PERSONAL]"],
+    'value on the line after the colon' => ["Agama:\nIslam", "Agama:\n[PERSONAL]"],
+    'two fields on one line with a pipe' => ['Agama: Islam | Status: Menikah', 'Agama: [PERSONAL] | Status: [PERSONAL]'],
+    'full-width colon' => ['Agama： Islam', 'Agama： [PERSONAL]'],
+    'value ends before two spaces' => ['Agama: Islam  Backend engineer', 'Agama: [PERSONAL]  Backend engineer'],
+]);
+
+test('replaces the name of the user with a placeholder', function (string $input, ?string $name, string $expected) {
+    expect((new PiiRedactor)->redact($input, $name))->toBe($expected);
+})->with([
+    'full name in upper case' => ['RINA WIJAYA is a backend engineer', 'Rina Wijaya', '[NAME] is a backend engineer'],
+    'full name split over two lines' => ["Rina\nWijaya\nBackend engineer", 'Rina Wijaya', "[NAME]\nBackend engineer"],
+    'single part of the name' => ['Rina leads the team', 'Rina Wijaya', '[NAME] leads the team'],
+    'part of two characters stays' => ['Li and Rina', 'Rina Li', 'Li and [NAME]'],
+    'single name of two characters stays' => ['Li led the Li project', 'Li', 'Li led the Li project'],
+    'longer word that contains a part stays' => ['Wijayakusuma and Rina', 'Rina Wijaya', 'Wijayakusuma and [NAME]'],
+    'name equal to a placeholder word keeps the placeholder' => ['[PHONE] and Phone', 'Phone', '[PHONE] and [NAME]'],
+    'null name changes nothing' => ['Rina Wijaya', null, 'Rina Wijaya'],
+    'name with no letters changes nothing' => ['Rina Wijaya 123', '123', 'Rina Wijaya 123'],
+]);
 
 test('an empty string gives an empty string', function () {
     expect((new PiiRedactor)->redact(''))->toBe('');
