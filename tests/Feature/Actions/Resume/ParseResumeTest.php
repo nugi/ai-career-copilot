@@ -286,10 +286,19 @@ test('a start date in the future is invalid', function () {
         ->and($resume->parse_errors)->toBe([['path' => 'experiences.0.start', 'rule' => 'After']]);
 });
 
-test('a resume without text cannot be parsed', function () {
+test('a resume without text records the failure without calling the provider', function (?string $content) {
     ResumeParser::fake()->preventStrayPrompts();
-    $resume = Resume::factory()->for(User::factory()->create())->create(['content' => null]);
+    $resume = Resume::factory()->for(User::factory()->create())->create(['content' => $content]);
 
-    expect(fn () => app(ParseResume::class)->handle($resume))->toThrow(RuntimeException::class);
+    app(ParseResume::class)->handle($resume);
+
+    $resume->refresh();
+    expect($resume->parse_failed_at)->not->toBeNull()
+        ->and($resume->parse_errors)->toBe([['path' => 'content', 'rule' => 'Required']])
+        ->and($resume->parsed_at)->toBeNull();
     ResumeParser::assertNeverPrompted();
-});
+})->with([
+    'no text' => [null],
+    'an empty string' => [''],
+    'only whitespace' => ["  \n\t  "],
+]);

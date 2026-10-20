@@ -13,14 +13,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Validator as ValidatorContract;
 use Laravel\Ai\Responses\StructuredAgentResponse;
-use RuntimeException;
 
 /**
  * Turn the text of a resume into validated structured data, check it against the text, and save it.
  *
  * The agent can answer with invalid data, so the action makes at most 2 attempts. A failed check does not
  * cause a retry: it is recorded in the saved data. A provider failure is not caught here, because it is not
- * invalid output. The caller handles it.
+ * invalid output. The caller handles it. A resume without text is recorded as a failure without a call to
+ * the provider, because no retry can fix it.
  */
 class ParseResume
 {
@@ -32,16 +32,15 @@ class ParseResume
     ) {}
 
     /**
-     * Parse the resume and save the result, or record the failure when both attempts are invalid.
-     *
-     * @throws RuntimeException when the resume has no text to parse
+     * Parse the resume and save the result, or record the failure when the resume has no text or both attempts are invalid.
      */
     public function handle(Resume $resume): Resume
     {
-        $content = $resume->content;
+        $content = (string) $resume->content;
+        $input = Validator::make(['content' => $content], ['content' => ['required']]);
 
-        if ($content === null || $content === '') {
-            throw new RuntimeException('The resume has no text to parse.');
+        if ($input->fails()) {
+            return $this->recordFailure($resume, $input);
         }
 
         $parser = new ResumeParser;
