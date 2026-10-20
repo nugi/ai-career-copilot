@@ -46,6 +46,15 @@ test('the request to OpenAI asks for a strict JSON schema', function () {
         && $request['text']['format']['strict'] === true);
 });
 
+test('the request to OpenAI asks it not to store the response', function () {
+    Http::fake(['api.openai.com/*' => Http::response(openAiAnswer(json_encode(parsedResume())))]);
+
+    (new ResumeParser)->prompt('Parse this.');
+
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com')
+        && $request['store'] === false);
+});
+
 test('a prompt without a fake fails before it reaches a provider', function () {
     expect(fn () => (new ResumeParser)->prompt('Parse this.'))->toThrow(StrayRequestException::class);
 });
