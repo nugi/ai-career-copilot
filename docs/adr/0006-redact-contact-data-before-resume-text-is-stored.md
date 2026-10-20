@@ -1,6 +1,6 @@
 # 6. Redact contact data before resume text is stored
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0008](0008-redact-the-users-name-and-personal-fields.md) (the user's name and personal fields are now redacted)
 - **Date:** 2026-10-16
 
 ## Context
