@@ -120,17 +120,27 @@ test('a file that is not a PDF is rejected by validation', function () {
     expect($user->resumes()->count())->toBe(0);
 });
 
-test('a PDF over 5 MB is rejected by validation', function () {
+test('a PDF over 2 MB is rejected by validation', function () {
     $user = User::factory()->onboarded()->create();
-    $oversized = UploadedFile::fake()->create('cv.pdf', 5121, 'application/pdf');
+    $oversized = UploadedFile::fake()->create('cv.pdf', 2049, 'application/pdf');
 
     $this->actingAs($user)
         ->from(route('resumes.index'))
         ->post(route('resumes.store'), ['file' => $oversized])
         ->assertRedirect(route('resumes.index'))
-        ->assertSessionHasErrors('file');
+        ->assertSessionHasErrors(['file' => 'Upload a PDF of 2 MB or less.']);
 
     expect($user->resumes()->count())->toBe(0);
+});
+
+test('a PDF of exactly 2 MB passes the size rule', function () {
+    $user = User::factory()->onboarded()->create();
+    $atLimit = UploadedFile::fake()->create('cv.pdf', 2048, 'application/pdf');
+
+    $this->actingAs($user)
+        ->from(route('resumes.index'))
+        ->post(route('resumes.store'), ['file' => $atLimit])
+        ->assertSessionDoesntHaveErrors(['file' => 'Upload a PDF of 2 MB or less.']);
 });
 
 test('a missing pdftotext binary is a server error, not an unreadable file', function () {
@@ -144,6 +154,22 @@ test('a missing pdftotext binary is a server error, not an unreadable file', fun
         ->assertSessionHasNoErrors();
 
     expect($user->resumes()->count())->toBe(0);
+});
+
+test('a PDF that takes longer than the pdftotext timeout is rejected and nothing is stored', function () {
+    $binary = base_path(PHP_OS_FAMILY === 'Windows' ? 'tests/Fixtures/bin/slow-pdftotext.bat' : 'tests/Fixtures/bin/slow-pdftotext');
+    chmod($binary, 0755);
+    config(['services.pdftotext.path' => $binary, 'services.pdftotext.timeout' => 1]);
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user)
+        ->from(route('resumes.index'))
+        ->post(route('resumes.store'), ['file' => textResumeUpload()])
+        ->assertRedirect(route('resumes.index'))
+        ->assertSessionHasErrors(['file' => 'This file took too long to read. Upload a simpler PDF, for example one exported from Word or Google Docs.']);
+
+    expect($user->resumes()->count())->toBe(0);
+    Storage::assertDirectoryEmpty('resumes');
 });
 
 test('a single column resume keeps bullets and dates on their lines', function () {
@@ -184,7 +210,7 @@ test('a two column resume keeps each column together in content stream order', f
 
 test('the resumes page lists only the current user\'s resumes', function () {
     $user = User::factory()->onboarded()->create();
-    $mine = Resume::factory()->for($user)->create();
+    $mine = Resume::factory()->for($user)->create(['content' => 'Backend engineer with 6 years']);
     Resume::factory()->create();
 
     $this->actingAs($user)
@@ -194,5 +220,7 @@ test('the resumes page lists only the current user\'s resumes', function () {
             ->component('resumes')
             ->has('resumes', 1)
             ->where('resumes.0.id', $mine->id)
+            ->where('resumes.0.has_content', true)
+            ->missing('resumes.0.content')
         );
 });

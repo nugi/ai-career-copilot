@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, useHttp } from '@inertiajs/react';
 import { FileText, FileUp, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { DragEvent, FormEvent, MouseEvent } from 'react';
@@ -15,7 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
-import { index as resumesIndex } from '@/routes/resumes';
+import {
+    content as resumeContent,
+    index as resumesIndex,
+} from '@/routes/resumes';
 
 type Resume = {
     id: number;
@@ -24,18 +27,22 @@ type Resume = {
     file_size: number;
     is_primary: boolean;
     created_at: string;
-    content: string | null;
+    has_content: boolean;
 };
 
 type ResumesProps = {
     resumes: Resume[];
 };
 
+type ResumeContentResponse = {
+    content: string;
+};
+
 type ResumeForm = {
     file: File | null;
 };
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
@@ -64,6 +71,32 @@ function isPdf(file: File): boolean {
 
 function ResumeItem({ resume }: { resume: Resume }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [text, setText] = useState<string | null>(null);
+    const [hasLoadFailed, setHasLoadFailed] = useState(false);
+    const { submit, processing } = useHttp();
+
+    const loadText = async (): Promise<void> => {
+        setHasLoadFailed(false);
+
+        try {
+            const response = (await submit(
+                resumeContent(resume.id),
+            )) as ResumeContentResponse;
+
+            setText(response.content);
+        } catch {
+            setHasLoadFailed(true);
+        }
+    };
+
+    const handleOpenChange = (open: boolean): void => {
+        setIsOpen(open);
+
+        // Fetch the text once. A second open keeps the text that is already loaded.
+        if (open && text === null && !processing) {
+            void loadText();
+        }
+    };
 
     return (
         <Card className="gap-4 py-5">
@@ -78,10 +111,10 @@ function ResumeItem({ resume }: { resume: Resume }) {
                 </p>
             </div>
 
-            {resume.content && (
+            {resume.has_content && (
                 <Collapsible
                     open={isOpen}
-                    onOpenChange={setIsOpen}
+                    onOpenChange={handleOpenChange}
                     className="flex flex-col gap-3 px-6"
                 >
                     <div>
@@ -95,12 +128,34 @@ function ResumeItem({ resume }: { resume: Resume }) {
                     </div>
                     <CollapsibleContent className="flex flex-col gap-2">
                         <p className="text-xs text-muted-foreground">
-                            Contact details are replaced with placeholders such
-                            as [EMAIL] and [PHONE].
+                            Personal details are replaced with placeholders such
+                            as [EMAIL], [PHONE] and [NAME].
                         </p>
-                        <pre className="max-h-96 overflow-auto rounded-md bg-muted p-4 font-mono text-xs whitespace-pre-wrap">
-                            {resume.content}
-                        </pre>
+                        {text !== null ? (
+                            <pre className="max-h-96 overflow-auto rounded-md bg-muted p-4 font-mono text-xs whitespace-pre-wrap">
+                                {text}
+                            </pre>
+                        ) : hasLoadFailed ? (
+                            <div className="flex flex-col items-start gap-2">
+                                <p className="text-sm text-destructive">
+                                    We couldn't load the text. Try again.
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={processing}
+                                    onClick={() => void loadText()}
+                                >
+                                    Retry
+                                </Button>
+                            </div>
+                        ) : (
+                            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Spinner />
+                                Loading…
+                            </p>
+                        )}
                     </CollapsibleContent>
                 </Collapsible>
             )}
@@ -142,7 +197,7 @@ export default function Resumes({ resumes }: ResumesProps) {
         }
 
         if (file.size > MAX_FILE_SIZE) {
-            setClientError('This file is larger than 5 MB.');
+            setClientError('This file is larger than 2 MB.');
             form.setData('file', null);
             clearInput();
 
@@ -282,7 +337,7 @@ export default function Resumes({ resumes }: ResumesProps) {
                                         Drag your PDF here, or browse
                                     </span>
                                     <span className="text-sm text-muted-foreground">
-                                        PDF with selectable text, up to 5 MB
+                                        PDF with selectable text, up to 2 MB
                                     </span>
                                 </>
                             )}
