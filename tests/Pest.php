@@ -115,7 +115,7 @@ function parsedResume(array $overrides = []): array
             'company' => 'Acme Corp',
             'start' => '2019-01',
             'end' => '2021-12',
-            'bullets' => ['Designed a PostgreSQL schema for 2M orders.'],
+            'bullets' => ['Designed a PostgreSQL schema for 2M orders'],
         ]],
         'education' => [[
             'institution' => 'Universitas Gadjah Mada',

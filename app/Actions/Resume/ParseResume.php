@@ -26,6 +26,11 @@ class ParseResume
 {
     private const DATE_REGEX = '/'.ResumeParser::DATE_PATTERN.'/';
 
+    public function __construct(
+        private CountExperienceYears $countExperienceYears,
+        private CheckResumeGrounding $checkResumeGrounding,
+    ) {}
+
     /**
      * Parse the resume and save the result, or record the failure when both attempts are invalid.
      *
@@ -153,7 +158,9 @@ class ParseResume
     }
 
     /**
-     * Read a date as a month. A year alone is January when it is a start, and December when it is an end.
+     * Read a date as a month for the validation. A year alone is January when it is a start, and December when it is an end.
+     *
+     * This is a loose reading on purpose. CountExperienceYears counts a year alone as July, so the two readings differ.
      */
     private function monthOf(string $date, bool $isEnd): CarbonImmutable
     {
@@ -221,12 +228,13 @@ class ParseResume
      */
     private function recordSuccess(Resume $resume, string $content, array $output): Resume
     {
-        $computedYears = $this->computedYears($output['experiences']);
+        $computedYears = $this->countExperienceYears->handle($output['experiences']);
         $modelYears = $output['years_of_experience'];
         $yearsMismatch = is_numeric($modelYears) && $computedYears !== null && abs((float) $modelYears - $computedYears) > 1.0;
-        [$grounded, $ungrounded] = $this->groundSkills($content, $output['skills']);
+        [$grounded, $ungrounded] = $this->checkResumeGrounding->skills($content, $output['skills']);
+        $ungroundedBullets = $this->checkResumeGrounding->bullets($content, $output['experiences']);
 
-        $saved = DB::transaction(function () use ($resume, $output, $grounded, $ungrounded, $computedYears, $modelYears, $yearsMismatch): ?Resume {
+        $saved = DB::transaction(function () use ($resume, $output, $grounded, $ungrounded, $ungroundedBullets, $modelYears, $yearsMismatch): ?Resume {
             $user = User::query()->whereKey($resume->user_id)->lockForUpdate()->sole();
             $locked = Resume::query()->whereKey($resume->getKey())->lockForUpdate()->first();
 
@@ -245,11 +253,11 @@ class ParseResume
                     'skills' => $skills->pluck('name')->sort()->values()->all(),
                     'experiences' => $output['experiences'],
                     'education' => $output['education'],
-                    'years_of_experience' => $computedYears,
                     'checks' => [
                         'model_years_of_experience' => $modelYears,
                         'years_mismatch' => $yearsMismatch,
                         'ungrounded_skills' => $ungrounded,
+                        'ungrounded_bullets' => $ungroundedBullets,
                     ],
                 ],
                 'prompt_version' => ResumeParser::PROMPT_VERSION,
@@ -269,108 +277,17 @@ class ParseResume
             return $resume;
         }
 
-        if ($yearsMismatch || $ungrounded !== []) {
+        if ($yearsMismatch || $ungrounded !== [] || $ungroundedBullets !== []) {
             Log::warning('ai.resume.parse_flagged', [
                 'resume_id' => $resume->id,
                 'prompt_version' => ResumeParser::PROMPT_VERSION,
                 'years_mismatch' => $yearsMismatch,
                 'ungrounded_skill_count' => count($ungrounded),
+                'ungrounded_bullet_count' => count($ungroundedBullets),
             ]);
         }
 
         return $saved;
-    }
-
-    /**
-     * Count the months that the experiences cover, so overlapping jobs count once, and express them in years.
-     *
-     * A null end means the current month. Both the start month and the end month count.
-     *
-     * @param  array<mixed>  $experiences
-     */
-    private function computedYears(array $experiences): ?float
-    {
-        if ($experiences === []) {
-            return null;
-        }
-
-        $currentMonth = CarbonImmutable::now()->startOfMonth();
-
-        $intervals = array_map(function (array $experience) use ($currentMonth): array {
-            $start = $this->monthNumber($this->monthOf($experience['start'], false));
-            $end = $experience['end'] === null
-                ? $this->monthNumber($currentMonth)
-                : $this->monthNumber($this->monthOf($experience['end'], true));
-
-            return [$start, $end];
-        }, $experiences);
-
-        usort($intervals, fn (array $first, array $second): int => $first[0] <=> $second[0]);
-
-        $merged = [];
-
-        foreach ($intervals as [$start, $end]) {
-            $last = array_key_last($merged);
-
-            if ($last !== null && $start <= $merged[$last][1] + 1) {
-                $merged[$last][1] = max($merged[$last][1], $end);
-            } else {
-                $merged[] = [$start, $end];
-            }
-        }
-
-        $months = array_sum(array_map(fn (array $interval): int => $interval[1] - $interval[0] + 1, $merged));
-
-        return round($months / 12, 1);
-    }
-
-    /**
-     * Give each month one number, so that months can be compared and counted.
-     */
-    private function monthNumber(CarbonImmutable $month): int
-    {
-        return $month->year * 12 + $month->month;
-    }
-
-    /**
-     * Split the skill names of the output into those the resume text names and those it does not.
-     *
-     * A name is grounded when the name or the canonical name or an alias of its skill appears in the text as a whole word.
-     *
-     * @param  list<string>  $names
-     * @return array{0: list<string>, 1: list<string>}
-     */
-    private function groundSkills(string $content, array $names): array
-    {
-        $grounded = [];
-        $ungrounded = [];
-
-        foreach ($names as $name) {
-            $terms = [$name];
-            $skill = Skill::findByName($name);
-
-            if ($skill !== null) {
-                $terms[] = $skill->name;
-                array_push($terms, ...$skill->aliases->pluck('alias')->all());
-            }
-
-            if (array_any($terms, fn (string $term): bool => $this->appearsIn($content, $term))) {
-                $grounded[] = $name;
-            } else {
-                $ungrounded[] = $name;
-            }
-        }
-
-        return [$grounded, array_values(array_unique($ungrounded))];
-    }
-
-    /**
-     * Determine whether a term appears in the text as a whole word, ignoring case. Letters and digits must not touch it.
-     */
-    private function appearsIn(string $content, string $term): bool
-    {
-        return $term !== ''
-            && preg_match('/(?<![\p{L}\p{N}])'.preg_quote($term, '/').'(?![\p{L}\p{N}])/iu', $content) === 1;
     }
 
     /**
