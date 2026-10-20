@@ -8,10 +8,6 @@ use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Prompts\AgentPrompt;
 
-beforeEach(function () {
-    Http::preventStrayRequests();
-});
-
 test('guests are redirected to the login page', function () {
     $this->post(route('advisor.ask'), ['question' => 'What should I learn next?'])
         ->assertRedirect(route('login'));

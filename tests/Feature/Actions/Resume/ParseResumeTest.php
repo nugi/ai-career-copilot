@@ -9,7 +9,9 @@ use App\Models\Skill;
 use App\Models\SkillAlias;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Prompts\AgentPrompt;
 
 beforeEach(function () {
@@ -284,6 +286,55 @@ test('a start date in the future is invalid', function () {
 
     expect($resume->refresh()->parsed_at)->toBeNull()
         ->and($resume->parse_errors)->toBe([['path' => 'experiences.0.start', 'rule' => 'After']]);
+});
+
+test('an outage on every provider is thrown and leaves the resume unchanged', function () {
+    ResumeParser::fake(fn () => throw ProviderOverloadedException::forProvider('openai'));
+    $resume = Resume::factory()->parsed()->primary()->for(User::factory()->onboarded())->create();
+    $parsedData = $resume->fresh()->parsed_data;
+
+    expect(fn () => app(ParseResume::class)->handle($resume))->toThrow(ProviderOverloadedException::class);
+
+    $resume->refresh();
+    expect($resume->parsed_data)->toBe($parsedData)
+        ->and($resume->parse_failed_at)->toBeNull()
+        ->and($resume->parse_errors)->toBeNull();
+    ResumeParser::assertPromptedTimes(2);
+});
+
+test('an outage on the retry is thrown and records no validation failure', function () {
+    $outputs = [parsedResume(['experiences' => experienceEndingBeforeItStarts()])];
+    ResumeParser::fake(function () use (&$outputs): array {
+        return array_shift($outputs) ?? throw ProviderOverloadedException::forProvider('openai');
+    });
+    $resume = Resume::factory()->extracted()->primary()->for(User::factory()->onboarded())->create();
+
+    expect(fn () => app(ParseResume::class)->handle($resume))->toThrow(ProviderOverloadedException::class);
+
+    $resume->refresh();
+    expect($resume->parsed_data)->toBeNull()
+        ->and($resume->parse_failed_at)->toBeNull()
+        ->and($resume->parse_errors)->toBeNull();
+    ResumeParser::assertPromptedTimes(3);
+});
+
+test('malformed JSON from the provider is retried and then recorded as a failure', function () {
+    Http::fake(['api.openai.com/*' => Http::response(openAiAnswer('{"summary": "Backend engineer'))]);
+    $resume = Resume::factory()->extracted()->primary()->for(User::factory()->onboarded())->create();
+
+    app(ParseResume::class)->handle($resume);
+
+    $resume->refresh();
+    expect($resume->parsed_at)->toBeNull()
+        ->and($resume->parse_failed_at)->not->toBeNull()
+        ->and($resume->parse_errors)->toBe([
+            ['path' => 'summary', 'rule' => 'Present'],
+            ['path' => 'skills', 'rule' => 'Present'],
+            ['path' => 'years_of_experience', 'rule' => 'Present'],
+            ['path' => 'experiences', 'rule' => 'Present'],
+            ['path' => 'education', 'rule' => 'Present'],
+        ]);
+    Http::assertSentCount(2);
 });
 
 test('a resume without text records the failure without calling the provider', function (?string $content) {

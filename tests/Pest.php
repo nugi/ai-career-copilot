@@ -31,8 +31,28 @@ pest()->extend(TestCase::class)
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
+/**
+ * Assert that a text holds no email address, no phone number and none of the given personal values.
+ *
+ * The checks do not use PiiRedactor, so they still fail when a redaction pattern breaks. A phone number is a run of digit groups
+ * joined by single spaces, dots, dashes or parentheses, with an optional + in front, that has 9 or more digits.
+ * The personal values, such as a name or a street, match in any case.
+ */
+expect()->extend('toBeRedacted', function (string ...$personalValues) {
+    $text = $this->toBeString()->value;
+
+    preg_match_all('~[^\s@]+@[^\s@]+\.[^\s@]+~u', $text, $emails);
+    preg_match_all('~\+?\(?\d+\)?(?:[ .\-]\(?\d+\)?)*~u', $text, $digitRuns);
+    $phones = array_values(array_filter($digitRuns[0], fn (string $run): bool => preg_match_all('~\d~', $run) >= 9));
+
+    expect($emails[0])->toBe([], 'The text holds an email address.');
+    expect($phones)->toBe([], 'The text holds a phone number.');
+
+    foreach ($personalValues as $value) {
+        expect(mb_stripos($text, $value))->toBeFalse("The text holds the personal value [{$value}].");
+    }
+
+    return $this;
 });
 
 /*
@@ -45,11 +65,6 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-function something()
-{
-    // ..
-}
 
 /**
  * A Responses API body from OpenAI that answers with the given text.

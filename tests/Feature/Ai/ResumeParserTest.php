@@ -2,11 +2,8 @@
 
 use App\Ai\Agents\ResumeParser;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\StrayRequestException;
 use Illuminate\Support\Facades\Http;
-
-beforeEach(function () {
-    Http::preventStrayRequests();
-});
 
 test('the instructions are the current prompt file', function () {
     $parser = new ResumeParser;
@@ -47,4 +44,8 @@ test('the request to OpenAI asks for a strict JSON schema', function () {
     expect($response->toArray())->toEqual(parsedResume());
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com')
         && $request['text']['format']['strict'] === true);
+});
+
+test('a prompt without a fake fails before it reaches a provider', function () {
+    expect(fn () => (new ResumeParser)->prompt('Parse this.'))->toThrow(StrayRequestException::class);
 });
