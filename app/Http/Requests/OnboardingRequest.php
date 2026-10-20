@@ -53,6 +53,7 @@ class OnboardingRequest extends FormRequest
             'target_roles.*.distinct' => 'This role is already in your list.',
             'preferred_locations.*.distinct' => 'This location is already in your list.',
             'skills.*.name.distinct' => 'This skill is already in your list.',
+            'skills.*.proficiency.required' => 'Choose a level for each skill.',
         ];
     }
 

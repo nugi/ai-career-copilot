@@ -21,13 +21,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $file_size
  * @property string|null $content
  * @property bool $is_primary
- * @property CarbonImmutable|null $parsed_at
+ * @property CarbonImmutable|null $parsed_at When the structured parse succeeded.
+ * @property array<array-key, mixed>|null $parsed_data
+ * @property string|null $prompt_version
+ * @property CarbonImmutable|null $parse_failed_at
+ * @property array<array-key, mixed>|null $parse_errors
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  * @property-read Collection<int, ResumeChunk> $chunks
  */
-#[Fillable(['label', 'file_path', 'file_name', 'mime_type', 'file_size', 'content', 'is_primary', 'parsed_at'])]
+#[Fillable(['label', 'file_path', 'file_name', 'mime_type', 'file_size', 'content', 'is_primary', 'parsed_at', 'parsed_data', 'prompt_version', 'parse_failed_at', 'parse_errors'])]
 class Resume extends Model
 {
     /** @use HasFactory<ResumeFactory> */
@@ -44,6 +48,9 @@ class Resume extends Model
             'file_size' => 'integer',
             'is_primary' => 'boolean',
             'parsed_at' => 'datetime',
+            'parsed_data' => 'array',
+            'parse_failed_at' => 'datetime',
+            'parse_errors' => 'array',
         ];
     }
 

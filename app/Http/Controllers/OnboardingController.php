@@ -36,7 +36,7 @@ class OnboardingController extends Controller
             ],
             'skills' => $user->skills->sortBy('name')->values()->map(fn ($skill) => [
                 'name' => $skill->name,
-                'proficiency' => $skill->pivot->proficiency->value,
+                'proficiency' => $skill->pivot->proficiency?->value,
             ]),
             'isComplete' => $profile?->isComplete() ?? false,
             'skillSuggestions' => Skill::query()->where('is_verified', true)->orderBy('name')->pluck('name'),

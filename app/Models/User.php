@@ -91,7 +91,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     {
         return $this->belongsToMany(Skill::class, 'user_skills')
             ->using(UserSkill::class)
-            ->withPivot('proficiency')
+            ->withPivot('proficiency', 'source')
             ->withTimestamps();
     }
 

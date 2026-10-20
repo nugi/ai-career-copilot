@@ -1,6 +1,9 @@
 <?php
 
 use App\Actions\Profile\SaveProfile;
+use App\Enums\SkillProficiency;
+use App\Enums\SkillSource;
+use App\Models\Skill;
 use App\Models\User;
 
 /**
@@ -71,6 +74,17 @@ test('a save made with a stale copy of the user still gets a new version', funct
 
     expect($profile->version)->toBe(3)
         ->and($profile->fresh()->version)->toBe(3);
+});
+
+test('a save turns a resume skill into a profile skill with a proficiency', function () {
+    $user = User::factory()->create();
+    $user->skills()->attach(Skill::factory()->create(['name' => 'Docker']), ['proficiency' => null, 'source' => SkillSource::Resume]);
+
+    app(SaveProfile::class)->handle($user, profilePreferences(), [['name' => 'Docker', 'proficiency' => 'beginner']]);
+
+    expect($user->skills()->sole()->pivot)
+        ->source->toBe(SkillSource::Profile)
+        ->proficiency->toBe(SkillProficiency::Beginner);
 });
 
 test('later saves keep the original completion time', function () use ($laravel) {

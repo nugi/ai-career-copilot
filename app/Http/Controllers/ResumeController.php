@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Resume\StoreResume;
 use App\Http\Requests\StoreResumeRequest;
+use App\Jobs\ParseUploadedResume;
 use App\Models\Resume;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +43,9 @@ class ResumeController extends Controller
      */
     public function store(StoreResumeRequest $request, StoreResume $storeResume): RedirectResponse
     {
-        $storeResume->handle($request->user(), $request->file('file'));
+        $resume = $storeResume->handle($request->user(), $request->file('file'));
+
+        ParseUploadedResume::dispatch($resume);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Resume uploaded.')]);
 

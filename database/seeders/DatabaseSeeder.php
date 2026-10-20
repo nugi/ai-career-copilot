@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\SkillProficiency;
+use App\Enums\SkillSource;
 use App\Models\JobPosting;
 use App\Models\Profile;
 use App\Models\Resume;
@@ -33,7 +34,7 @@ class DatabaseSeeder extends Seeder
             'preferred_locations' => ['Jakarta', 'Bandung'],
         ]);
 
-        Resume::factory()->for($user)->primary()->parsed()->create(['label' => 'Backend CV']);
+        Resume::factory()->for($user)->primary()->extracted()->create(['label' => 'Backend CV']);
 
         $proficiencies = [
             'PHP' => SkillProficiency::Expert,
@@ -47,7 +48,7 @@ class DatabaseSeeder extends Seeder
         Skill::query()
             ->whereIn('normalized_name', array_map(Skill::normalize(...), array_keys($proficiencies)))
             ->get()
-            ->each(fn (Skill $skill) => $user->skills()->attach($skill, ['proficiency' => $proficiencies[$skill->name]]));
+            ->each(fn (Skill $skill) => $user->skills()->attach($skill, ['proficiency' => $proficiencies[$skill->name], 'source' => SkillSource::Profile]));
 
         JobPosting::factory()->count(30)->withSkills()->create();
         JobPosting::factory()->count(15)->remote()->withSkills()->create();

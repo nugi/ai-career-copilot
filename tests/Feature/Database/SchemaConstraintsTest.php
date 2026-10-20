@@ -7,6 +7,7 @@ use App\Enums\ResumeSection;
 use App\Enums\SalaryPeriod;
 use App\Enums\SeniorityLevel;
 use App\Enums\SkillProficiency;
+use App\Enums\SkillSource;
 use App\Enums\WorkArrangement;
 use App\Models\AiUsage;
 use App\Models\JobPosting;
@@ -34,7 +35,7 @@ function rowIn(string $table): array
         'user_skills' => (function (): array {
             $user = User::factory()->create();
             $skill = Skill::factory()->create();
-            $user->skills()->attach($skill, ['proficiency' => SkillProficiency::Beginner]);
+            $user->skills()->attach($skill, ['proficiency' => SkillProficiency::Beginner, 'source' => SkillSource::Profile]);
 
             return ['user_id' => $user->id, 'skill_id' => $skill->id];
         })(),
@@ -60,6 +61,7 @@ test('the database accepts every case of an enum column and nothing else', funct
     'profiles.salary_period' => ['profiles', 'salary_period', SalaryPeriod::class],
     'resume_chunks.section' => ['resume_chunks', 'section', ResumeSection::class],
     'user_skills.proficiency' => ['user_skills', 'proficiency', SkillProficiency::class],
+    'user_skills.source' => ['user_skills', 'source', SkillSource::class],
     'ai_usages.feature' => ['ai_usages', 'feature', AiFeature::class],
 ]);
 
@@ -105,4 +107,13 @@ test('the database rejects a profile version below 1', function () {
 
     expect(fn () => DB::table('profiles')->where($row)->update(['version' => 0]))
         ->toThrow(QueryException::class, 'profiles_version_check');
+});
+
+test('the database accepts a resume skill without a proficiency and rejects a profile skill without one', function () {
+    $user = User::factory()->create();
+
+    $user->skills()->attach(Skill::factory()->create(), ['proficiency' => null, 'source' => SkillSource::Resume]);
+
+    expect(fn () => $user->skills()->attach(Skill::factory()->create(), ['proficiency' => null, 'source' => SkillSource::Profile]))
+        ->toThrow(QueryException::class, 'user_skills_proficiency_required_check');
 });

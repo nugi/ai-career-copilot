@@ -43,9 +43,9 @@ class ResumeFactory extends Factory
     }
 
     /**
-     * A resume whose text has been extracted.
+     * A resume whose text has been extracted from the PDF. The structured parse has not run, so parsed_at stays null.
      */
-    public function parsed(): static
+    public function extracted(): static
     {
         return $this->state(fn (array $attributes): array => [
             'content' => implode("\n\n", [
@@ -54,6 +54,40 @@ class ResumeFactory extends Factory
                 'Skills: PHP, Laravel, PostgreSQL, Redis, Docker, AWS.',
                 'Education: S1 Teknik Informatika, Universitas Gadjah Mada.',
             ]),
+        ]);
+    }
+
+    /**
+     * A resume whose text has been extracted and whose structured parse has succeeded.
+     */
+    public function parsed(): static
+    {
+        return $this->extracted()->state(fn (array $attributes): array => [
+            'parsed_data' => [
+                'summary' => null,
+                'skills' => ['Docker', 'Laravel', 'PHP', 'PostgreSQL', 'Redis'],
+                'experiences' => [[
+                    'title' => 'Backend Engineer',
+                    'company' => 'Acme Corp',
+                    'start' => '2019-01',
+                    'end' => '2021-12',
+                    'bullets' => ['Designed a PostgreSQL schema for 2M orders.'],
+                ]],
+                'education' => [[
+                    'institution' => 'Universitas Gadjah Mada',
+                    'degree' => 'S1',
+                    'field' => 'Teknik Informatika',
+                    'start' => '2014',
+                    'end' => '2018',
+                ]],
+                'years_of_experience' => 3.0,
+                'checks' => [
+                    'model_years_of_experience' => 3.0,
+                    'years_mismatch' => false,
+                    'ungrounded_skills' => [],
+                ],
+            ],
+            'prompt_version' => 'v1',
             'parsed_at' => now(),
         ]);
     }

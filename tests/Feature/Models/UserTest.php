@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\SkillProficiency;
+use App\Enums\SkillSource;
 use App\Models\AiUsage;
 use App\Models\Profile;
 use App\Models\Resume;
@@ -42,7 +43,7 @@ test('different users can each have a primary resume', function () {
 
 test('a user lists their skills with a proficiency', function () {
     $user = User::factory()->create();
-    $user->skills()->attach(Skill::factory()->create(), ['proficiency' => SkillProficiency::Advanced]);
+    $user->skills()->attach(Skill::factory()->create(), ['proficiency' => SkillProficiency::Advanced, 'source' => SkillSource::Profile]);
 
     expect($user->skills()->sole()->pivot->proficiency)->toBe(SkillProficiency::Advanced);
 });
@@ -51,7 +52,7 @@ test('deleting a user removes their data but keeps their AI usage for cost repor
     $user = User::factory()->create();
     $profile = Profile::factory()->for($user)->create();
     $resume = Resume::factory()->for($user)->create();
-    $user->skills()->attach(Skill::factory()->create(), ['proficiency' => SkillProficiency::Beginner]);
+    $user->skills()->attach(Skill::factory()->create(), ['proficiency' => SkillProficiency::Beginner, 'source' => SkillSource::Profile]);
     $usage = AiUsage::factory()->for($user)->create();
 
     $user->delete();
