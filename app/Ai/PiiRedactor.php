@@ -2,17 +2,25 @@
 
 namespace App\Ai;
 
+use App\Ai\Redaction\FieldLabels;
+use App\Ai\Redaction\IdentifierPatterns;
+use App\Ai\Redaction\LabelledValuePattern;
 use RuntimeException;
 
 /**
  * Removes personal contact data from resume text before the text is sent to an AI provider.
  *
- * Each match is replaced by one placeholder: [EMAIL], [URL], [NPWP], [NIK], [PHONE], [ADDRESS], [PERSONAL] or [NAME].
- * The replacements run in this order: email, URL, NPWP, NIK, phones, address, personal fields, and name.
+ * Each match is replaced by one placeholder: [EMAIL], [URL], [NPWP], [NIK], [ID], [PHONE], [ADDRESS], [PERSONAL] or [NAME].
+ * The replacements run in this order: email, URL, NPWP, labelled identifiers, NIK, other identifier formats, phones, Aadhaar, address, personal fields, and name.
  * The NPWP runs before the NIK, because a labelled 16-digit NPWP must not become [NIK].
+ * The labelled identifiers run before the NIK, so NIK: 3273012345670001 becomes NIK: [ID].
  * A NIK runs before the phone patterns, because a 16-digit NIK can start with 62 and match the Indonesian phone pattern.
  * The name runs last, because an email or a link that contains the name is already replaced.
+ * A placeholder that an earlier step wrote stays the same, so Phone: [PHONE] does not change.
  * All other text, including the line breaks, stays the same.
+ *
+ * The label lists are in FieldLabels, so a new language needs only new labels.
+ * The labelled patterns are built by LabelledValuePattern, and the identifier formats are in IdentifierPatterns.
  *
  * The input must be valid UTF-8. The patterns use the u modifier, so invalid input makes redact() throw a RuntimeException. The caller cleans the text with mb_scrub first.
  */
@@ -28,24 +36,6 @@ class PiiRedactor
      * A bare domain with no path, such as Laravel.com, is not a match.
      */
     private const URL_PATTERN = '~\bhttps?://\S*[^\s.,;:!?)\]]|\b(?:www\.|linkedin\.com/|github\.com/|gitlab\.com/)\S*[^\s.,;:!?)\]]~iu';
-
-    /**
-     * An old-format Indonesian NPWP tax number, such as 12.345.678.9-012.345. A date such as 12.03.2021 is not a match.
-     */
-    private const NPWP_PATTERN = '~(?<!\d)\d{2}\.\d{3}\.\d{3}\.\d[.-]\d{3}\.\d{3}(?!\d)~u';
-
-    /**
-     * A labelled NPWP: the word NPWP, optional spaces, an optional colon, and 15 or 16 digits with optional dots, dashes or spaces between them.
-     * The label stays, and only the number is replaced. Examples: NPWP: 123456789012345, NPWP 12.345.678.9.012.345.
-     * A number of 17 digits or more is not a match.
-     */
-    private const LABELLED_NPWP_PATTERN = '~(?<!\p{L})NPWP[ \t]*:?[ \t]*\K\d(?:[.\- ]?\d){14,15}(?!\d)~iu';
-
-    /**
-     * An Indonesian NIK: exactly 16 digits, or 16 digits in groups of 4 with spaces or dashes.
-     * A run of 17 or more digits is not a match.
-     */
-    private const NIK_PATTERN = '~(?<!\d)\d{16}(?!\d)|(?<!\d)\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{4}(?!\d)~u';
 
     /**
      * An Indonesian mobile number with the prefix (+62), +62, 62 or 0, followed by the digit 8.
@@ -68,6 +58,13 @@ class PiiRedactor
     private const INTERNATIONAL_PHONE_PATTERN = '~\+(?=(?:[ .()-]*\d){9})\d{1,3}(?:[ .()-]*\d){7,12}(?!\d)~u';
 
     /**
+     * A North American number without a country code: a 3-digit area code in parentheses or with a dash or dot, then 3 digits and 4 digits.
+     * Examples: (415) 555-0132, (415) 555 0132, 415-555-0132, 415.555.0132.
+     * Not a match: 2021.06.15, because the groups have the wrong length.
+     */
+    private const NORTH_AMERICA_PHONE_PATTERN = '~(?<!\d)(?:\(\d{3}\)[ ]?|\d{3}[-.])\d{3}[-. ]\d{4}(?!\d)~u';
+
+    /**
      * A street address. A match starts at a street keyword, or at the RT of an RT and RW pair, and ends at the first of these:
      * a 5-digit postal code (the postal code is part of the match), a separator (not part of the match), or the end of the text.
      *
@@ -85,17 +82,6 @@ class PiiRedactor
     private const ADDRESS_PATTERN = '~(?:(?<![A-Za-z])(?:(?:Perumahan|Perum|Kompleks|Komplek|Jalan|Gang)\b(?=\.?[ \t]*(?-i:[A-Z0-9]))|Jln\b|Jl\b|Gg\b)\.?|\bRT\.?[ \t]*\d{1,3}[ \t]*/?[ \t]*RW\.?[ \t]*\d{1,3})(?:(?!(?=  |[ \t]*(?:\||•|·|\t|\r|\n|\z))|(?<!\d)\d{5}(?!\d))[^\r\n]){0,120}(?:(?<!\d)\d{5}(?!\d))?~iu';
 
     /**
-     * A personal field: a label, a colon, and a value. The label stays, and the value becomes [PERSONAL].
-     *
-     * The label is case-insensitive. The label must not follow a letter. A line break may come before or after the colon.
-     * The value is at most 80 characters, and it ends before a separator: |, •, ·, a tab, two spaces in a row, or a line break.
-     * Examples: Tanggal Lahir: 12 Januari 1995, Agama\n: Islam, Jenis Kelamin：Laki-laki, Agama: Islam | Status: Menikah.
-     * A label with no colon is not a match: Gender equality in tech, Status pekerjaan aktif, and Agama alone.
-     * The longer labels come first, so Status Perkawinan matches before Status.
-     */
-    private const PERSONAL_FIELD_PATTERN = '~(?<!\p{L})(?:Tempat,[ \t]+Tanggal[ \t]+Lahir|Tempat\/Tanggal[ \t]+Lahir|Tempat[ \t]+dan[ \t]+Tanggal[ \t]+Lahir|Date[ \t]+of[ \t]+Birth|Birth[ \t]+Date|Birthdate|Tanggal[ \t]+Lahir|Status[ \t]+Perkawinan|Status[ \t]+Pernikahan|Marital[ \t]+Status|Jenis[ \t]+Kelamin|Golongan[ \t]+Darah|Tinggi[ \t]+Badan|Berat[ \t]+Badan|Religion|Agama|Gender|Sex|Status|TTL|DOB)[ \t]*\R?[ \t]*[:：][ \t]*\R?[ \t]*\K(?:(?!  |[ \t]*(?:\||•|·|\t|\r|\n|\z))[^\r\n]){1,80}~iu';
-
-    /**
      * Replace the personal contact data in the text with placeholders.
      *
      * The name is the user's full name. It is replaced as a whole, then each part of 3 or more characters is replaced.
@@ -105,16 +91,43 @@ class PiiRedactor
     {
         $text = $this->replace(self::EMAIL_PATTERN, '[EMAIL]', $text);
         $text = $this->replace(self::URL_PATTERN, '[URL]', $text);
-        $text = $this->replace(self::NPWP_PATTERN, '[NPWP]', $text);
-        $text = $this->replace(self::LABELLED_NPWP_PATTERN, '[NPWP]', $text);
-        $text = $this->replace(self::NIK_PATTERN, '[NIK]', $text);
 
-        foreach ([self::MOBILE_PHONE_PATTERN, self::LANDLINE_PHONE_PATTERN, self::INTERNATIONAL_PHONE_PATTERN] as $pattern) {
+        $text = $this->replace(IdentifierPatterns::NPWP_PATTERN, '[NPWP]', $text);
+        $text = $this->replace(IdentifierPatterns::LABELLED_NPWP_PATTERN, '[NPWP]', $text);
+        $text = $this->replace(LabelledValuePattern::for(FieldLabels::IDENTIFIER, 40, minimumDigitRun: 4), '[ID]', $text);
+        $text = $this->replace(IdentifierPatterns::NIK_PATTERN, '[NIK]', $text);
+
+        $identifierPatterns = [
+            IdentifierPatterns::US_SSN_PATTERN,
+            IdentifierPatterns::UK_NATIONAL_INSURANCE_PATTERN,
+            IdentifierPatterns::SINGAPORE_NRIC_PATTERN,
+            IdentifierPatterns::MALAYSIA_MYKAD_PATTERN,
+            IdentifierPatterns::BRAZIL_CPF_PATTERN,
+        ];
+
+        foreach ($identifierPatterns as $pattern) {
+            $text = $this->replace($pattern, '[ID]', $text);
+        }
+
+        $text = $this->replace(LabelledValuePattern::for(FieldLabels::PHONE, 40, minimumDigitRun: 7), '[PHONE]', $text);
+
+        $phonePatterns = [
+            self::MOBILE_PHONE_PATTERN,
+            self::LANDLINE_PHONE_PATTERN,
+            self::INTERNATIONAL_PHONE_PATTERN,
+            self::NORTH_AMERICA_PHONE_PATTERN,
+        ];
+
+        foreach ($phonePatterns as $pattern) {
             $text = $this->replace($pattern, '[PHONE]', $text);
         }
 
+        // The Aadhaar format also matches the Indonesian mobile number 0812 3456 7890, so it runs after the phone patterns.
+        $text = $this->replace(IdentifierPatterns::INDIA_AADHAAR_PATTERN, '[ID]', $text);
+
+        $text = $this->replace(LabelledValuePattern::for(FieldLabels::ADDRESS, 160), '[ADDRESS]', $text);
         $text = $this->replace(self::ADDRESS_PATTERN, '[ADDRESS]', $text);
-        $text = $this->replace(self::PERSONAL_FIELD_PATTERN, '[PERSONAL]', $text);
+        $text = $this->replace(LabelledValuePattern::for(FieldLabels::PERSONAL, 80), '[PERSONAL]', $text);
 
         return $this->redactName($text, $name);
     }

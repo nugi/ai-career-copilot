@@ -78,7 +78,11 @@ test('invalid UTF-8 input throws a RuntimeException', function () {
 });
 
 test('a NIK that starts with 62 is replaced as a NIK and not as a phone number', function () {
-    expect((new PiiRedactor)->redact('NIK: 6201234567890123'))->toBe('NIK: [NIK]');
+    expect((new PiiRedactor)->redact('KTP 6201234567890123'))->toBe('KTP [NIK]');
+});
+
+test('a labelled NIK is replaced as an identifier', function () {
+    expect((new PiiRedactor)->redact('NIK: 6201234567890123'))->toBe('NIK: [ID]');
 });
 
 test('text that holds no personal data stays unchanged', function (string $text) {
@@ -106,6 +110,83 @@ test('text that holds no personal data stays unchanged', function (string $text)
     'status as a word in a sentence' => 'Status pekerjaan aktif',
     'religion label without a colon' => 'Agama',
     'date with dots' => 'Joined on 12.03.2021 today',
+    'age of empires' => 'Age of Empires',
+    'passport as a word in a sentence' => 'Passport to success',
+    'address as a word in a sentence' => 'Address the root cause',
+    'telefonica as a company name' => 'Telefonica was a client',
+    'born as a word in a sentence' => 'Born to code',
+    'race as a word in a sentence' => 'The race to market',
+    'version date with dashes' => 'Version 2021-06-15',
+    'revenue with a percentage and a year' => 'Revenue grew 12.5% in 2021',
+    'sprint date with dots' => 'Sprint 2021.06.15',
+    'metric with a label-like word' => 'Increased NPS from 32 to 58',
+    'tel as part of a place name' => '5 years at Tel Aviv University',
+    'mobile as a skills heading with versions' => 'Mobile: iOS 17, Android 14, React Native 0.74',
+    'cell as a heading of a sentence with counts' => 'Cell: 5 engineers across 3 time zones',
+    'race as a competition result' => 'Race: 2nd place, ICPC regional 2019',
+    'health as a domain heading' => 'Health: led the HealthTech platform rebuild in 2022',
+    'phone label without a digit' => 'Phone: on request',
+    'phone placeholder from an earlier step' => 'Phone: [PHONE]',
+    'address placeholder from an earlier step' => 'Address: [ADDRESS]',
+]);
+
+test('replaces a labelled value in each language and keeps its label', function (string $input, string $expected) {
+    expect((new PiiRedactor)->redact($input))->toBe($expected);
+})->with([
+    'german birth date' => ['Geburtsdatum: 01.02.1990', 'Geburtsdatum: [PERSONAL]'],
+    'german marital status' => ['Familienstand: verheiratet', 'Familienstand: [PERSONAL]'],
+    'french birth date with a space before the colon' => ['Date de naissance : 01/02/1990', 'Date de naissance : [PERSONAL]'],
+    'french nationality' => ['Nationalité : française', 'Nationalité : [PERSONAL]'],
+    'spanish birth date' => ['Fecha de nacimiento: 1 de febrero de 1990', 'Fecha de nacimiento: [PERSONAL]'],
+    'spanish marital status' => ['Estado civil: casado', 'Estado civil: [PERSONAL]'],
+    'portuguese birth date' => ['Data de nascimento: 01/02/1990', 'Data de nascimento: [PERSONAL]'],
+    'portuguese religion' => ['Religião: Católica', 'Religião: [PERSONAL]'],
+    'italian birth date' => ['Data di nascita: 01/02/1990', 'Data di nascita: [PERSONAL]'],
+    'italian sex' => ['Sesso: maschile', 'Sesso: [PERSONAL]'],
+    'dutch birth date' => ['Geboortedatum: 01-02-1990', 'Geboortedatum: [PERSONAL]'],
+    'dutch civil status' => ['Burgerlijke staat: gehuwd', 'Burgerlijke staat: [PERSONAL]'],
+    'japanese birth date without a colon' => ['生年月日 1990年1月1日', '生年月日 [PERSONAL]'],
+    'japanese sex with a full-width colon' => ['性別：男', '性別：[PERSONAL]'],
+    'chinese birth date with a full-width colon' => ['出生日期：1990年1月1日', '出生日期：[PERSONAL]'],
+    'chinese ethnicity with a full-width colon' => ['民族：汉', '民族：[PERSONAL]'],
+    'korean birth date' => ['생년월일: 1990.01.01', '생년월일: [PERSONAL]'],
+    'korean sex' => ['성별: 남', '성별: [PERSONAL]'],
+    'english nationality' => ['Nationality: Indonesian', 'Nationality: [PERSONAL]'],
+    'english ethnicity' => ['Ethnicity: Javanese', 'Ethnicity: [PERSONAL]'],
+    'english age' => ['Age: 34', 'Age: [PERSONAL]'],
+]);
+
+test('replaces a national ID, tax or insurance number in any country', function (string $input, string $expected) {
+    expect((new PiiRedactor)->redact($input))->toBe($expected);
+})->with([
+    'labelled passport number' => ['Passport No: C1234567', 'Passport No: [ID]'],
+    'labelled us social security number' => ['SSN: 123-45-6789', 'SSN: [ID]'],
+    'unlabelled us social security number' => ['123-45-6789', '[ID]'],
+    'uk national insurance number' => ['AB 12 34 56 C', '[ID]'],
+    'singapore nric' => ['S1234567D', '[ID]'],
+    'malaysian mykad' => ['900101-14-5678', '[ID]'],
+    'brazilian cpf' => ['123.456.789-09', '[ID]'],
+    'indian aadhaar' => ['1234 5678 9012', '[ID]'],
+    'labelled japanese my number' => ['マイナンバー：1234 5678 9012', 'マイナンバー：[ID]'],
+]);
+
+test('replaces a phone number in a format of another country and keeps its label', function (string $input, string $expected) {
+    expect((new PiiRedactor)->redact($input))->toBe($expected);
+})->with([
+    'labelled german phone' => ['Telefon: 030 1234567', 'Telefon: [PHONE]'],
+    'labelled french phone with a space before the colon' => ['Téléphone : 01 23 45 67 89', 'Téléphone : [PHONE]'],
+    'labelled spanish mobile' => ['Móvil: 612 34 56 78', 'Móvil: [PHONE]'],
+    'labelled japanese phone with a full-width colon' => ['電話：03-1234-5678', '電話：[PHONE]'],
+    'north american phone with parentheses' => ['(415) 555-0132', '[PHONE]'],
+    'north american phone with dots' => ['415.555.0132', '[PHONE]'],
+]);
+
+test('replaces a labelled address in any language and keeps its label', function (string $input, string $expected) {
+    expect((new PiiRedactor)->redact($input))->toBe($expected);
+})->with([
+    'german address' => ['Adresse: Hauptstraße 5, 10115 Berlin', 'Adresse: [ADDRESS]'],
+    'spanish address' => ['Dirección: Calle Mayor 10, Madrid', 'Dirección: [ADDRESS]'],
+    'japanese address with a full-width colon' => ['住所：東京都新宿区1-2-3', '住所：[ADDRESS]'],
 ]);
 
 test('a resume header keeps the name and every line without personal data', function () {
