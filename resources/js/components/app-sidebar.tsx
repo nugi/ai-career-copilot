@@ -4,6 +4,7 @@ import {
     FileText,
     FolderGit2,
     LayoutGrid,
+    MessageSquare,
     SlidersHorizontal,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -20,6 +21,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { chat as advisorChat } from '@/routes/advisor';
 import { edit as editOnboarding } from '@/routes/onboarding';
 import { index as resumesIndex } from '@/routes/resumes';
 import type { NavItem } from '@/types';
@@ -39,6 +41,11 @@ const mainNavItems: NavItem[] = [
         title: 'Resumes',
         href: resumesIndex(),
         icon: FileText,
+    },
+    {
+        title: 'Career advisor',
+        href: advisorChat(),
+        icon: MessageSquare,
     },
 ];
 

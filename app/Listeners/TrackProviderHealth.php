@@ -6,6 +6,7 @@ use App\Ai\CircuitBreaker;
 use Laravel\Ai\Events\AgentFailed;
 use Laravel\Ai\Events\AgentFailedOver;
 use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\AgentStreamed;
 use Laravel\Ai\Exceptions\FailoverableException;
 
 class TrackProviderHealth
@@ -43,5 +44,13 @@ class TrackProviderHealth
     public function handlePrompted(AgentPrompted $event): void
     {
         $this->breaker->recordSuccess($event->response->meta->provider);
+    }
+
+    /**
+     * Close the circuit for a streamed prompt too, because the SDK dispatches AgentStreamed and listeners of the parent class do not get it.
+     */
+    public function handleStreamed(AgentStreamed $event): void
+    {
+        $this->handlePrompted($event);
     }
 }
