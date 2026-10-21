@@ -15,6 +15,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0009](0009-redact-personal-data-by-label-and-format-in-any-locale.md) | Redact personal data by label and format in any locale  | Accepted |
 | [0010](0010-keep-name-parts-in-company-names.md)                       | Keep name parts in company names                        | Accepted |
 | [0011](0011-run-ai-work-on-separate-queues-and-stream-chat.md)         | Run AI work on separate queues and stream chat answers  | Accepted |
+| [0012](0012-route-ai-tasks-to-model-tiers-and-record-every-call.md)    | Route AI tasks to model tiers and record every call     | Accepted |
 
 ## Adding a record
 

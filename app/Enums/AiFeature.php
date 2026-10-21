@@ -9,4 +9,5 @@ enum AiFeature: string
     case ResumeSuggestion = 'resume_suggestion';
     case Chat = 'chat';
     case Embedding = 'embedding';
+    case ResumeParsing = 'resume_parsing';
 }

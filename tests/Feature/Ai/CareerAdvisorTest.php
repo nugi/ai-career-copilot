@@ -155,13 +155,13 @@ test('each provider is asked with its pinned model', function () {
 
     $instructions = file_get_contents(resource_path('prompts/career-advisor/v2.md'));
 
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['model'] === 'gpt-6-luna');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['model'] === 'gpt-6.1-sol');
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')
-        && $request['model'] === 'claude-haiku-5-5'
+        && $request['model'] === 'claude-sonnet-5-5'
         && $request['system'] === $instructions);
 });
 
-test('thinking is turned off for both providers', function () {
+test('each provider is asked with the reasoning option of its model', function () {
     Http::fake([
         'api.openai.com/*' => Http::response(['error' => ['type' => 'server_error', 'message' => 'The server is overloaded.']], 503),
         'api.anthropic.com/*' => Http::response(anthropicAnswer('Start with one project.')),
@@ -169,8 +169,8 @@ test('thinking is turned off for both providers', function () {
 
     advisor()->prompt('What should I learn next?');
 
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['reasoning']['effort'] === 'none');
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com') && $request['thinking']['type'] === 'disabled');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['reasoning']['effort'] === 'low');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com') && $request['thinking']['type'] === 'between_tools');
 });
 
 test('a connection failure to OpenAI fails over to Anthropic', function () {

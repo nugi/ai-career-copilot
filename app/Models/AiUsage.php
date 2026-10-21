@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\AiFeature;
+use App\Enums\AiUsageStatus;
+use App\Enums\ModelTier;
 use Carbon\CarbonImmutable;
 use Database\Factories\AiUsageFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,9 +15,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property int|null $user_id
+ * @property string|null $invocation_id
  * @property AiFeature $feature
+ * @property string $agent
+ * @property ModelTier|null $tier
+ * @property string|null $prompt_version
  * @property string $provider
  * @property string $model
+ * @property AiUsageStatus $status
  * @property int $input_tokens
  * @property int $output_tokens
  * @property string $cost_usd
@@ -23,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable $created_at
  * @property-read User|null $user
  */
-#[Fillable(['user_id', 'feature', 'provider', 'model', 'input_tokens', 'output_tokens', 'cost_usd', 'latency_ms'])]
+#[Fillable(['user_id', 'invocation_id', 'feature', 'agent', 'tier', 'prompt_version', 'provider', 'model', 'status', 'input_tokens', 'output_tokens', 'cost_usd', 'latency_ms'])]
 class AiUsage extends Model
 {
     /** @use HasFactory<AiUsageFactory> */
@@ -43,6 +50,8 @@ class AiUsage extends Model
     {
         return [
             'feature' => AiFeature::class,
+            'tier' => ModelTier::class,
+            'status' => AiUsageStatus::class,
             'input_tokens' => 'integer',
             'output_tokens' => 'integer',
             'cost_usd' => 'decimal:6',

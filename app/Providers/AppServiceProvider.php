@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Ai\AiUsageRecorder;
 use App\Jobs\ParseUploadedResume;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -20,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(AiUsageRecorder::class);
     }
 
     /**

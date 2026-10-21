@@ -44,7 +44,7 @@ class ParseResume
             return $this->recordFailure($resume, $this->failureErrors($input));
         }
 
-        $parser = new ResumeParser;
+        $parser = new ResumeParser($resume->user);
         $output = $this->ask($parser, $parser->message($content));
         $validator = $this->validate($output);
 

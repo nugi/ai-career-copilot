@@ -106,12 +106,18 @@ erDiagram
     ai_usages {
         bigint id PK
         bigint user_id FK
+        uuid invocation_id
         string feature
+        string agent
+        string tier
+        string prompt_version
+        string status
         string provider
         string model
         int input_tokens
         int output_tokens
         decimal cost_usd
+        int latency_ms
         timestamp created_at
     }
 ```
@@ -222,3 +228,4 @@ Append-only log of every AI call, with no `updated_at`.
 | -------------------------------------------------------- | ----------------------- |
 | The user's spend this month, for budgets and rate limits | `(user_id, created_at)` |
 | Cost per feature and model per day                       | `(created_at)`          |
+| Cost per tier, agent and model for the last 7 days       | `(created_at)`          |
