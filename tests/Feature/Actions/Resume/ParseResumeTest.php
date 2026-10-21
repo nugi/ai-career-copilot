@@ -318,7 +318,7 @@ test('an outage on the retry is thrown and records no validation failure', funct
     ResumeParser::assertPromptedTimes(3);
 });
 
-test('malformed JSON from the provider is retried and then recorded as a failure', function () {
+test('malformed JSON from the provider is retried and then recorded as malformed output', function () {
     Http::fake(['api.openai.com/*' => Http::response(openAiAnswer('{"summary": "Backend engineer'))]);
     $resume = Resume::factory()->extracted()->primary()->for(User::factory()->onboarded())->create();
 
@@ -327,13 +327,7 @@ test('malformed JSON from the provider is retried and then recorded as a failure
     $resume->refresh();
     expect($resume->parsed_at)->toBeNull()
         ->and($resume->parse_failed_at)->not->toBeNull()
-        ->and($resume->parse_errors)->toBe([
-            ['path' => 'summary', 'rule' => 'Present'],
-            ['path' => 'skills', 'rule' => 'Present'],
-            ['path' => 'years_of_experience', 'rule' => 'Present'],
-            ['path' => 'experiences', 'rule' => 'Present'],
-            ['path' => 'education', 'rule' => 'Present'],
-        ]);
+        ->and($resume->parse_errors)->toBe([['path' => '*', 'rule' => 'MalformedOutput']]);
     Http::assertSentCount(2);
 });
 

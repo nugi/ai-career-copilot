@@ -21,6 +21,7 @@ use Laravel\Ai\Responses\StructuredAgentResponse;
  * cause a retry: it is recorded in the saved data. A provider failure is not caught here, because it is not
  * invalid output. The caller handles it. A resume without text is recorded as a failure without a call to
  * the provider, because no retry can fix it.
+ * An empty output, which is what the SDK returns for malformed JSON, is recorded as MalformedOutput, not as missing fields.
  */
 class ParseResume
 {
@@ -40,7 +41,7 @@ class ParseResume
         $input = Validator::make(['content' => $content], ['content' => ['required']]);
 
         if ($input->fails()) {
-            return $this->recordFailure($resume, $input);
+            return $this->recordFailure($resume, $this->failureErrors($input));
         }
 
         $parser = new ResumeParser;
@@ -53,7 +54,11 @@ class ParseResume
         }
 
         if ($validator->fails()) {
-            return $this->recordFailure($resume, $validator);
+            $errors = $output === []
+                ? [['path' => '*', 'rule' => 'MalformedOutput']]
+                : $this->failureErrors($validator);
+
+            return $this->recordFailure($resume, $errors);
         }
 
         return $this->recordSuccess($resume, $content, $validator->validated());
@@ -190,15 +195,17 @@ class ParseResume
     }
 
     /**
-     * Save the failure: the paths and the rule names of the errors of the last attempt. The parsed data stays as it was.
+     * List the paths and rule names of the validation errors, keeping their original order.
+     *
+     * @return list<array{path: string, rule: string}>
      */
-    private function recordFailure(Resume $resume, ValidatorContract $validator): Resume
+    private function failureErrors(ValidatorContract $validator): array
     {
         $errors = [];
 
         foreach ($validator->failed() as $path => $rules) {
             foreach (array_keys($rules) as $rule) {
-                $errors[] = ['path' => $path, 'rule' => $rule];
+                $errors[] = ['path' => (string) $path, 'rule' => (string) $rule];
             }
         }
 
@@ -206,6 +213,16 @@ class ParseResume
             $errors[] = ['path' => $path, 'rule' => 'After'];
         }
 
+        return $errors;
+    }
+
+    /**
+     * Save the failure: the paths and the rule names of the errors of the last attempt. The parsed data stays as it was.
+     *
+     * @param  list<array{path: string, rule: string}>  $errors
+     */
+    private function recordFailure(Resume $resume, array $errors): Resume
+    {
         $resume->update([
             'parse_failed_at' => now(),
             'parse_errors' => $errors,
