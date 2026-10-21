@@ -4,6 +4,7 @@ import {
     Folder,
     LayoutGrid,
     Menu,
+    MessageSquare,
     Search,
     SlidersHorizontal,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { chat as advisorChat } from '@/routes/advisor';
 import { edit as editOnboarding } from '@/routes/onboarding';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
@@ -57,6 +59,11 @@ const mainNavItems: NavItem[] = [
         title: 'Job preferences',
         href: editOnboarding(),
         icon: SlidersHorizontal,
+    },
+    {
+        title: 'Career advisor',
+        href: advisorChat(),
+        icon: MessageSquare,
     },
 ];
 

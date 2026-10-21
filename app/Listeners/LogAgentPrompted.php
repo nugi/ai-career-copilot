@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Ai\Contracts\HasPromptVersion;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\AgentStreamed;
 
 class LogAgentPrompted
 {
@@ -24,5 +25,13 @@ class LogAgentPrompted
             'input_tokens' => $event->response->usage->inputTokens,
             'output_tokens' => $event->response->usage->outputTokens,
         ]);
+    }
+
+    /**
+     * Log a streamed prompt too, because the SDK dispatches AgentStreamed and listeners of the parent class do not get it.
+     */
+    public function handleStreamed(AgentStreamed $event): void
+    {
+        $this->handle($event);
     }
 }
