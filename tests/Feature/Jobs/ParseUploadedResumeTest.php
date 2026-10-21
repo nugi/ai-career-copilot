@@ -1,6 +1,7 @@
 <?php
 
 use App\Ai\Agents\ResumeParser;
+use App\Enums\SkillSource;
 use App\Jobs\ParseUploadedResume;
 use App\Models\Resume;
 use App\Models\User;
@@ -34,10 +35,122 @@ test('the job records a provider failure on the resume and logs it without the e
     ])->once();
 });
 
-test('the unique id is the resume id', function () {
+test('the unique id is the user id and the content hash', function () {
     $resume = Resume::factory()->extracted()->for(User::factory()->onboarded())->create();
 
+    expect((new ParseUploadedResume($resume))->uniqueId())
+        ->toBe("{$resume->user_id}:{$resume->content_hash}");
+});
+
+test('the unique id is the resume id when the resume has no content', function () {
+    $resume = Resume::factory()->for(User::factory()->onboarded())->create();
+
     expect((new ParseUploadedResume($resume))->uniqueId())->toBe((string) $resume->id);
+});
+
+test('a duplicate resume with a usable parse is copied without a provider call', function () {
+    ResumeParser::fake()->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    $duplicate = Resume::factory()->parsed()->for($user)->create();
+    $resume = Resume::factory()->extracted()->for($user)->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    $resume->refresh();
+    expect($resume->parsed_data)->toBe($duplicate->refresh()->parsed_data)
+        ->and($resume->prompt_version)->toBe(ResumeParser::PROMPT_VERSION)
+        ->and($resume->parsed_at)->not->toBeNull()
+        ->and($resume->parse_failed_at)->toBeNull();
+    ResumeParser::assertNeverPrompted();
+});
+
+test('a duplicate with a parse from an old prompt version is not copied', function () {
+    ResumeParser::fake([parsedResume()])->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    Resume::factory()->parsed()->for($user)->create(['prompt_version' => 'v0']);
+    $resume = Resume::factory()->extracted()->for($user)->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    expect($resume->refresh()->parsed_data['skills'])->toBe(['Laravel', 'PHP', 'PostgreSQL']);
+    ResumeParser::assertPromptedTimes(1);
+});
+
+test('a successful parse is copied to a pending duplicate', function () {
+    ResumeParser::fake([parsedResume()])->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    $resume = Resume::factory()->extracted()->for($user)->create();
+    $duplicate = Resume::factory()->extracted()->for($user)->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    $duplicate->refresh();
+    expect($duplicate->parsed_data)->toBe($resume->refresh()->parsed_data)
+        ->and($duplicate->parsed_at)->not->toBeNull()
+        ->and($duplicate->parse_failed_at)->toBeNull();
+    ResumeParser::assertPromptedTimes(1);
+});
+
+test('a failed parse is copied to a pending duplicate', function () {
+    $invalid = parsedResume(['experiences' => [[
+        'title' => 'Backend Engineer',
+        'company' => 'Acme Corp',
+        'start' => '2021-06',
+        'end' => '2020-12',
+        'bullets' => [],
+    ]]]);
+    ResumeParser::fake([$invalid, $invalid])->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    $resume = Resume::factory()->extracted()->for($user)->create();
+    $duplicate = Resume::factory()->extracted()->for($user)->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    $resume->refresh();
+    $duplicate->refresh();
+    expect($resume->parse_failed_at)->not->toBeNull()
+        ->and($duplicate->parse_failed_at)->not->toBeNull()
+        ->and($duplicate->parse_errors)->toBe($resume->parse_errors)
+        ->and($duplicate->parsed_at)->toBeNull();
+    ResumeParser::assertPromptedTimes(2);
+});
+
+test('a provider failure marks a pending duplicate as failed', function () {
+    $user = User::factory()->onboarded()->create();
+    $resume = Resume::factory()->extracted()->for($user)->create();
+    $duplicate = Resume::factory()->extracted()->for($user)->create();
+
+    (new ParseUploadedResume($resume))->failed(new RuntimeException('The request body with the resume text.'));
+
+    $duplicate->refresh();
+    expect($duplicate->parse_failed_at)->not->toBeNull()
+        ->and($duplicate->parse_errors)->toBe([['path' => '*', 'rule' => 'ProviderUnavailable']])
+        ->and($duplicate->parsed_at)->toBeNull();
+});
+
+test('a resume of another user with the same content is neither copied nor changed', function () {
+    ResumeParser::fake([parsedResume()])->preventStrayPrompts();
+    $other = Resume::factory()->parsed()->for(User::factory()->onboarded())->create();
+    $otherParsedData = $other->refresh()->parsed_data;
+    $resume = Resume::factory()->extracted()->for(User::factory()->onboarded())->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    expect($other->refresh()->parsed_data)->toBe($otherParsedData)
+        ->and($resume->refresh()->parsed_data['skills'])->toBe(['Laravel', 'PHP', 'PostgreSQL']);
+    ResumeParser::assertPromptedTimes(1);
+});
+
+test('a copied parse on a primary resume syncs the resume skills of the user', function () {
+    ResumeParser::fake()->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    Resume::factory()->parsed()->for($user)->create();
+    $resume = Resume::factory()->extracted()->primary()->for($user)->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    expect($user->skills()->wherePivot('source', SkillSource::Resume)->pluck('name')->sort()->values()->all())
+        ->toBe(['Docker', 'Laravel', 'PHP', 'PostgreSQL', 'Redis']);
 });
 
 test('a provider outage fails the job and keeps the earlier parse', function () {

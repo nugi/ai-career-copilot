@@ -250,44 +250,20 @@ class ParseResume
         [$grounded, $ungrounded] = $this->checkResumeGrounding->skills($content, $output['skills']);
         $ungroundedBullets = $this->checkResumeGrounding->bullets($content, $output['experiences']);
 
-        $saved = DB::transaction(function () use ($resume, $output, $grounded, $ungrounded, $ungroundedBullets, $modelYears, $yearsMismatch): ?Resume {
-            $user = User::query()->whereKey($resume->user_id)->lockForUpdate()->sole();
-            $locked = Resume::query()->whereKey($resume->getKey())->lockForUpdate()->first();
+        $parsedData = [
+            'summary' => $output['summary'],
+            'skills' => $grounded,
+            'experiences' => $output['experiences'],
+            'education' => $output['education'],
+            'checks' => [
+                'model_years_of_experience' => $modelYears,
+                'years_mismatch' => $yearsMismatch,
+                'ungrounded_skills' => $ungrounded,
+                'ungrounded_bullets' => $ungroundedBullets,
+            ],
+        ];
 
-            if ($locked === null) {
-                return null;
-            }
-
-            $skills = collect($grounded)
-                ->map(fn (string $name): Skill => Skill::findOrCreateByName($name))
-                ->unique('id')
-                ->values();
-
-            $locked->update([
-                'parsed_data' => [
-                    'summary' => $output['summary'],
-                    'skills' => $skills->pluck('name')->sort()->values()->all(),
-                    'experiences' => $output['experiences'],
-                    'education' => $output['education'],
-                    'checks' => [
-                        'model_years_of_experience' => $modelYears,
-                        'years_mismatch' => $yearsMismatch,
-                        'ungrounded_skills' => $ungrounded,
-                        'ungrounded_bullets' => $ungroundedBullets,
-                    ],
-                ],
-                'prompt_version' => ResumeParser::PROMPT_VERSION,
-                'parsed_at' => now(),
-                'parse_failed_at' => null,
-                'parse_errors' => null,
-            ]);
-
-            if ($locked->is_primary) {
-                $this->syncResumeSkills($user, $skills->map(fn (Skill $skill): int => $skill->id)->values()->all());
-            }
-
-            return $locked;
-        });
+        $saved = $this->saveParse($resume, $parsedData, ResumeParser::PROMPT_VERSION);
 
         if ($saved === null) {
             return $resume;
@@ -304,6 +280,77 @@ class ParseResume
         }
 
         return $saved;
+    }
+
+    /**
+     * Save the parsed data of a duplicate resume on a resume that holds the same text. There is no provider call.
+     *
+     * A primary target also gets the resume skills of the copied parse, and no parse_flagged log is written.
+     */
+    public function copyParse(Resume $source, Resume $target): Resume
+    {
+        $parsedData = $source->parsed_data;
+
+        if ($parsedData === null || $source->prompt_version === null) {
+            return $target;
+        }
+
+        return $this->saveParse($target, $parsedData, $source->prompt_version) ?? $target;
+    }
+
+    /**
+     * Save the failure of a duplicate resume on a resume that holds the same text. There is no provider call.
+     */
+    public function copyFailure(Resume $source, Resume $target): Resume
+    {
+        $target->update([
+            'parse_failed_at' => now(),
+            'parse_errors' => $source->parse_errors,
+        ]);
+
+        return $target;
+    }
+
+    /**
+     * Save the parsed data on the resume in one transaction, and sync the resume skills of a primary resume.
+     *
+     * The skills are matched to the skill catalogue again, so a copied parse keeps the canonical skill names.
+     *
+     * @param  array<mixed>  $parsedData
+     * @return Resume|null Null when the resume was deleted while the parse ran.
+     */
+    private function saveParse(Resume $resume, array $parsedData, string $promptVersion): ?Resume
+    {
+        return DB::transaction(function () use ($resume, $parsedData, $promptVersion): ?Resume {
+            $user = User::query()->whereKey($resume->user_id)->lockForUpdate()->sole();
+            $locked = Resume::query()->whereKey($resume->getKey())->lockForUpdate()->first();
+
+            if ($locked === null) {
+                return null;
+            }
+
+            $skills = collect($parsedData['skills'] ?? [])
+                ->map(fn (string $name): Skill => Skill::findOrCreateByName($name))
+                ->unique('id')
+                ->values();
+
+            $locked->update([
+                'parsed_data' => [
+                    ...$parsedData,
+                    'skills' => $skills->pluck('name')->sort()->values()->all(),
+                ],
+                'prompt_version' => $promptVersion,
+                'parsed_at' => now(),
+                'parse_failed_at' => null,
+                'parse_errors' => null,
+            ]);
+
+            if ($locked->is_primary) {
+                $this->syncResumeSkills($user, $skills->map(fn (Skill $skill): int => $skill->id)->values()->all());
+            }
+
+            return $locked;
+        });
     }
 
     /**

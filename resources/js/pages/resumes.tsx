@@ -1,6 +1,6 @@
-import { Head, useForm, useHttp } from '@inertiajs/react';
+import { Head, useForm, useHttp, usePoll } from '@inertiajs/react';
 import { FileText, FileUp, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DragEvent, FormEvent, MouseEvent } from 'react';
 import ResumeController from '@/actions/App/Http/Controllers/ResumeController';
 import Heading from '@/components/heading';
@@ -26,6 +26,7 @@ type Resume = {
     file_name: string;
     file_size: number;
     is_primary: boolean;
+    parse_status: 'pending' | 'parsed' | 'failed';
     created_at: string;
     has_content: boolean;
 };
@@ -69,6 +70,23 @@ function isPdf(file: File): boolean {
     );
 }
 
+function ParseStatusBadge({ status }: { status: Resume['parse_status'] }) {
+    if (status === 'parsed') {
+        return <Badge variant="outline">Parsed</Badge>;
+    }
+
+    if (status === 'failed') {
+        return <Badge variant="destructive">Parse failed</Badge>;
+    }
+
+    return (
+        <Badge variant="secondary">
+            <Spinner />
+            Parsing…
+        </Badge>
+    );
+}
+
 function ResumeItem({ resume }: { resume: Resume }) {
     const [isOpen, setIsOpen] = useState(false);
     const [text, setText] = useState<string | null>(null);
@@ -104,6 +122,7 @@ function ResumeItem({ resume }: { resume: Resume }) {
                 <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-medium">{resume.label}</h3>
                     {resume.is_primary && <Badge>Primary</Badge>}
+                    <ParseStatusBadge status={resume.parse_status} />
                 </div>
                 <p className="text-sm text-muted-foreground">
                     {resume.file_name} · {formatSize(resume.file_size)} ·{' '}
@@ -172,6 +191,23 @@ export default function Resumes({ resumes }: ResumesProps) {
     const percentage = form.progress?.percentage ?? 0;
     const isReading = form.processing && percentage >= 100;
     const errorMessage = clientError ?? form.errors.file;
+
+    const hasPendingParse = resumes.some(
+        (resume) => resume.parse_status === 'pending',
+    );
+    const { start, stop } = usePoll(
+        3000,
+        { only: ['resumes'] },
+        { autoStart: false },
+    );
+
+    useEffect(() => {
+        if (hasPendingParse) {
+            start();
+        } else {
+            stop();
+        }
+    }, [hasPendingParse, start, stop]);
 
     const clearInput = () => {
         if (fileInput.current) {

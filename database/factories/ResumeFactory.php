@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Ai\Agents\ResumeParser;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -87,8 +88,19 @@ class ResumeFactory extends Factory
                     'ungrounded_bullets' => [],
                 ],
             ],
-            'prompt_version' => 'v1',
+            'prompt_version' => ResumeParser::PROMPT_VERSION,
             'parsed_at' => now(),
+        ]);
+    }
+
+    /**
+     * A resume whose structured parse failed, for example because the AI provider was unavailable.
+     */
+    public function parseFailed(): static
+    {
+        return $this->extracted()->state(fn (array $attributes): array => [
+            'parse_failed_at' => now(),
+            'parse_errors' => [['path' => '*', 'rule' => 'ProviderUnavailable']],
         ]);
     }
 }

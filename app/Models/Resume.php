@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Actions\Resume\CountExperienceYears;
+use App\Enums\ResumeParseStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\ResumeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $mime_type
  * @property int $file_size
  * @property string|null $content
+ * @property string|null $content_hash
  * @property bool $is_primary
  * @property CarbonImmutable|null $parsed_at When the structured parse succeeded.
  * @property array<array-key, mixed>|null $parsed_data
@@ -37,6 +40,22 @@ class Resume extends Model
 {
     /** @use HasFactory<ResumeFactory> */
     use HasFactory;
+
+    /**
+     * Keep the content hash in step with the text, whatever writes it.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Resume $resume): void {
+            if (! $resume->isDirty('content')) {
+                return;
+            }
+
+            $resume->content_hash = $resume->content === null
+                ? null
+                : hash('sha256', $resume->content);
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -69,6 +88,41 @@ class Resume extends Model
     public function chunks(): HasMany
     {
         return $this->hasMany(ResumeChunk::class)->orderBy('position');
+    }
+
+    /**
+     * The state of the structured parse: failed, then parsed, then pending.
+     */
+    public function parseStatus(): ResumeParseStatus
+    {
+        if ($this->parse_failed_at !== null) {
+            return ResumeParseStatus::Failed;
+        }
+
+        if ($this->parsed_at !== null) {
+            return ResumeParseStatus::Parsed;
+        }
+
+        return ResumeParseStatus::Pending;
+    }
+
+    /**
+     * The other resumes of the same user that hold the same text, so their parse can be reused.
+     *
+     * A resume without a content hash has no duplicates, so the query matches no rows.
+     *
+     * @return Builder<Resume>
+     */
+    public function duplicates(): Builder
+    {
+        if ($this->content_hash === null) {
+            return static::query()->whereRaw('1 = 0');
+        }
+
+        return static::query()
+            ->where('user_id', $this->user_id)
+            ->where('content_hash', $this->content_hash)
+            ->whereKeyNot($this->getKey());
     }
 
     /**
