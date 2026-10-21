@@ -29,6 +29,7 @@ class ResumeController extends Controller
                 'file_name' => $resume->file_name,
                 'file_size' => $resume->file_size,
                 'is_primary' => $resume->is_primary,
+                'parse_status' => $resume->parseStatus()->value,
                 'created_at' => $resume->created_at->toIso8601String(),
                 'has_content' => $resume->content !== null,
             ])

@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\ResumeParser;
 use App\Jobs\ParseUploadedResume;
 use App\Models\Profile;
 use App\Models\Resume;
@@ -80,6 +81,20 @@ test('the request to the AI provider after an upload holds no personal data', fu
     expect($request->body())->toContain('Backend engineer with 6 years')
         ->toBeRedacted('Rina', 'Wijaya', 'Kenanga', '3273012345670001', 'rina-wijaya-example');
     expect($user->resumes()->sole()->parsed_at)->not->toBeNull();
+});
+
+test('an upload with the parse queued makes no provider call', function () {
+    ResumeParser::fake()->preventStrayPrompts();
+    Queue::fake([ParseUploadedResume::class]);
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user)
+        ->post(route('resumes.store'), ['file' => textResumeUpload()])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('resumes.index'));
+
+    Queue::assertPushed(ParseUploadedResume::class);
+    ResumeParser::assertNeverPrompted();
 });
 
 test('a later upload is not primary and the first resume stays primary', function () {
