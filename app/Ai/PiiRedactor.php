@@ -84,7 +84,7 @@ class PiiRedactor
     /**
      * Replace the personal contact data in the text with placeholders.
      *
-     * The name is the user's full name. It is replaced as a whole, then each part of 3 or more characters is replaced.
+     * The name is the user's full name. It is replaced as a whole, then each part of 3 or more characters outside a company name is replaced.
      * A null name, or a name with no letters, leaves the name unchanged.
      */
     public function redact(string $text, ?string $name = null): string
@@ -138,6 +138,7 @@ class PiiRedactor
      * The parts are split on whitespace. The full name matches its parts in order, with one or more whitespace characters between them,
      * so a name split over two lines is also replaced. A part of 2 characters, such as Li, stays, because it matches too much text.
      * A match is a whole word in any case, and a bracket next to it does not count as a word character, so [PHONE] is not changed by the name Phone.
+     * A single part inside a company name stays unchanged, but the full name is still replaced.
      */
     private function redactName(string $text, ?string $name): string
     {
@@ -157,10 +158,36 @@ class PiiRedactor
                 continue;
             }
 
-            $text = $this->replace($this->wholeWord(preg_quote($part, '~')), '[NAME]', $text);
+            $text = $this->replaceOutsideCompanyNames($this->wholeWord(preg_quote($part, '~')), $text);
         }
 
         return $text;
+    }
+
+    /**
+     * Replace every match of the pattern with [NAME], except inside a company name, such as PT Sari Roti.
+     *
+     * A company name is a prefix from FieldLabels::COMPANY_PREFIXES in its exact case, an optional dot, and 1 to 4 words on the same line
+     * that start with an uppercase letter. The text is split around the company names, and only the pieces between them are changed.
+     * A company name ends before a character that is not a letter or a digit, so a piece never starts in the middle of a word.
+     */
+    private function replaceOutsideCompanyNames(string $pattern, string $text): string
+    {
+        $prefixes = array_map(fn (string $prefix): string => preg_quote($prefix, '~'), FieldLabels::COMPANY_PREFIXES);
+        $companyPattern = '~((?<![\p{L}\p{N}])(?:'.implode('|', $prefixes).')(?![\p{L}\p{N}])\.?(?:[ \t]+\p{Lu}[\p{L}\p{N}&\x{27}-]*){1,4})~u';
+        $pieces = preg_split($companyPattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        if ($pieces === false) {
+            throw new RuntimeException('PII redaction failed: '.preg_last_error_msg());
+        }
+
+        foreach ($pieces as $index => $piece) {
+            if ($index % 2 === 0) {
+                $pieces[$index] = $this->replace($pattern, '[NAME]', $piece);
+            }
+        }
+
+        return implode('', $pieces);
     }
 
     /**

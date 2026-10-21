@@ -140,4 +140,17 @@ final class FieldLabels
         // Korean
         '주소',
     ];
+
+    /**
+     * Prefixes that start a company name. A single part of the user's name in the words after a prefix is not redacted,
+     * because many company names contain words that are also given names, such as PT Sari Roti.
+     *
+     * A prefix matches in the exact case only, so the word pt in other text is not a prefix.
+     *
+     * @var list<string>
+     */
+    public const COMPANY_PREFIXES = [
+        // Indonesian
+        'PT', 'CV', 'UD', 'PD',
+    ];
 }

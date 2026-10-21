@@ -266,6 +266,22 @@ test('replaces the name of the user with a placeholder', function (string $input
     'name with no letters changes nothing' => ['Rina Wijaya 123', '123', 'Rina Wijaya 123'],
 ]);
 
+test('keeps a part of the name that is in a company name', function (string $input, string $name, string $expected) {
+    expect((new PiiRedactor)->redact($input, $name))->toBe($expected);
+})->with([
+    'part after the prefix' => ['Engineer at PT Nugraha Digital', 'Ahmad Nugraha', 'Engineer at PT Nugraha Digital'],
+    'part after the prefix and a dot' => ['PT. Sari Roti, Jakarta', 'Dewi Sari', 'PT. Sari Roti, Jakarta'],
+    'part later in the company name' => ['CV Mulia Sari Jaya', 'Sari Putri', 'CV Mulia Sari Jaya'],
+    'company name in upper case' => ['PT NUGRAHA DIGITAL', 'Ahmad Nugraha', 'PT NUGRAHA DIGITAL'],
+    'full name after the prefix is replaced' => ['PT Ahmad Nugraha Digital', 'Ahmad Nugraha', 'PT [NAME] Digital'],
+    'part outside the company name is replaced' => ['Nugraha joined PT Nugraha Digital', 'Ahmad Nugraha', '[NAME] joined PT Nugraha Digital'],
+    'part after the fourth word is replaced' => ['PT Satu Dua Tiga Empat Nugraha', 'Ahmad Nugraha', 'PT Satu Dua Tiga Empat [NAME]'],
+    'part after a lower-case word is replaced' => ['PT Mulia and Nugraha', 'Ahmad Nugraha', 'PT Mulia and [NAME]'],
+    'part on the line after the prefix is replaced' => ["PT\nNugraha Digital", 'Ahmad Nugraha', "PT\n[NAME] Digital"],
+    'prefix inside a longer word is not a prefix' => ['PTPN Nugraha', 'Ahmad Nugraha', 'PTPN [NAME]'],
+    'prefix in lower case is not a prefix' => ['pt Nugraha', 'Ahmad Nugraha', 'pt [NAME]'],
+]);
+
 test('an empty string gives an empty string', function () {
     expect((new PiiRedactor)->redact(''))->toBe('');
 });

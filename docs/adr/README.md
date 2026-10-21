@@ -13,6 +13,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0007](0007-treat-parsed-resume-data-as-unconfirmed.md)                | Treat parsed resume data as unconfirmed                 | Accepted |
 | [0008](0008-redact-the-users-name-and-personal-fields.md)              | Redact the user's name and personal fields              | Accepted |
 | [0009](0009-redact-personal-data-by-label-and-format-in-any-locale.md) | Redact personal data by label and format in any locale  | Accepted |
+| [0010](0010-keep-name-parts-in-company-names.md)                       | Keep name parts in company names                        | Accepted |
 
 ## Adding a record
 
