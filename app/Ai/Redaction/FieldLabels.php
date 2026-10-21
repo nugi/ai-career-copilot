@@ -22,7 +22,9 @@ final class FieldLabels
         'Height', 'Weight', 'Blood Type', 'Disability',
         // Indonesian and Malay
         'Tempat, Tanggal Lahir', 'Tempat/Tanggal Lahir', 'Tempat dan Tanggal Lahir', 'Tanggal Lahir',
-        'Tempat Lahir', 'TTL', 'Tarikh Lahir', 'Umur', 'Usia', 'Agama', 'Status', 'Status Perkawinan',
+        'Tempat Lahir', 'Tgl. Lahir', 'Tgl Lahir', 'Tempat/Tgl. Lahir', 'Tempat/Tgl Lahir',
+        'Tempat, Tgl. Lahir', 'Tempat, Tgl Lahir', 'Tmp/Tgl. Lahir', 'Tmp/Tgl Lahir', 'Tmp. Lahir', 'Tmp Lahir',
+        'TTL', 'Tarikh Lahir', 'Umur', 'Usia', 'Agama', 'Status', 'Status Perkawinan',
         'Status Pernikahan', 'Status Perkahwinan', 'Jenis Kelamin', 'Jantina', 'Kewarganegaraan',
         'Warganegara', 'Bangsa', 'Suku', 'Tinggi Badan', 'Berat Badan', 'Golongan Darah',
         // German
@@ -137,5 +139,18 @@ final class FieldLabels
         '地址', '住址',
         // Korean
         '주소',
+    ];
+
+    /**
+     * Prefixes that start a company name. A single part of the user's name in the words after a prefix is not redacted,
+     * because many company names contain words that are also given names, such as PT Sari Roti.
+     *
+     * A prefix matches in the exact case only, so the word pt in other text is not a prefix.
+     *
+     * @var list<string>
+     */
+    public const COMPANY_PREFIXES = [
+        // Indonesian
+        'PT', 'CV', 'UD', 'PD',
     ];
 }

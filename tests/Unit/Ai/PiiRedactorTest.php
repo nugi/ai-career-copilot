@@ -223,6 +223,12 @@ test('replaces the value of a personal field and keeps its label', function (str
     'birth place and date' => ['Tempat, Tanggal Lahir: Bandung, 12 Januari 1995', 'Tempat, Tanggal Lahir: [PERSONAL]'],
     'birth place and date with a slash' => ['Tempat/Tanggal Lahir: Bandung, 12 Januari 1995', 'Tempat/Tanggal Lahir: [PERSONAL]'],
     'birth place and date with dan' => ['Tempat dan Tanggal Lahir: Bandung', 'Tempat dan Tanggal Lahir: [PERSONAL]'],
+    'abbreviated birth date' => ['Tgl. Lahir: 12-05-1995', 'Tgl. Lahir: [PERSONAL]'],
+    'abbreviated birth date without a dot' => ['Tgl Lahir: 12-05-1995', 'Tgl Lahir: [PERSONAL]'],
+    'birth place and abbreviated date' => ['Tempat/Tgl Lahir: Bandung, 12-05-1995', 'Tempat/Tgl Lahir: [PERSONAL]'],
+    'birth place and abbreviated date with a dot' => ['Tempat/Tgl. Lahir: Bandung, 12-05-1995', 'Tempat/Tgl. Lahir: [PERSONAL]'],
+    'abbreviated birth place and date' => ['Tmp/Tgl Lahir: Bandung, 12-05-1995', 'Tmp/Tgl Lahir: [PERSONAL]'],
+    'abbreviated birth place' => ['Tmp. Lahir: Bandung', 'Tmp. Lahir: [PERSONAL]'],
     'ttl' => ['TTL: Bandung, 12-01-1995', 'TTL: [PERSONAL]'],
     'date of birth' => ['Date of Birth: 12 January 1995', 'Date of Birth: [PERSONAL]'],
     'birth date in english' => ['Birth Date: 12 January 1995', 'Birth Date: [PERSONAL]'],
@@ -258,6 +264,22 @@ test('replaces the name of the user with a placeholder', function (string $input
     'name equal to a placeholder word keeps the placeholder' => ['[PHONE] and Phone', 'Phone', '[PHONE] and [NAME]'],
     'null name changes nothing' => ['Rina Wijaya', null, 'Rina Wijaya'],
     'name with no letters changes nothing' => ['Rina Wijaya 123', '123', 'Rina Wijaya 123'],
+]);
+
+test('keeps a part of the name that is in a company name', function (string $input, string $name, string $expected) {
+    expect((new PiiRedactor)->redact($input, $name))->toBe($expected);
+})->with([
+    'part after the prefix' => ['Engineer at PT Nugraha Digital', 'Ahmad Nugraha', 'Engineer at PT Nugraha Digital'],
+    'part after the prefix and a dot' => ['PT. Sari Roti, Jakarta', 'Dewi Sari', 'PT. Sari Roti, Jakarta'],
+    'part later in the company name' => ['CV Mulia Sari Jaya', 'Sari Putri', 'CV Mulia Sari Jaya'],
+    'company name in upper case' => ['PT NUGRAHA DIGITAL', 'Ahmad Nugraha', 'PT NUGRAHA DIGITAL'],
+    'full name after the prefix is replaced' => ['PT Ahmad Nugraha Digital', 'Ahmad Nugraha', 'PT [NAME] Digital'],
+    'part outside the company name is replaced' => ['Nugraha joined PT Nugraha Digital', 'Ahmad Nugraha', '[NAME] joined PT Nugraha Digital'],
+    'part after the fourth word is replaced' => ['PT Satu Dua Tiga Empat Nugraha', 'Ahmad Nugraha', 'PT Satu Dua Tiga Empat [NAME]'],
+    'part after a lower-case word is replaced' => ['PT Mulia and Nugraha', 'Ahmad Nugraha', 'PT Mulia and [NAME]'],
+    'part on the line after the prefix is replaced' => ["PT\nNugraha Digital", 'Ahmad Nugraha', "PT\n[NAME] Digital"],
+    'prefix inside a longer word is not a prefix' => ['PTPN Nugraha', 'Ahmad Nugraha', 'PTPN [NAME]'],
+    'prefix in lower case is not a prefix' => ['pt Nugraha', 'Ahmad Nugraha', 'pt [NAME]'],
 ]);
 
 test('an empty string gives an empty string', function () {

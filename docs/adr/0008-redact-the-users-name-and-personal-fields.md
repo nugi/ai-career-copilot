@@ -1,6 +1,6 @@
 # 8. Redact the user's name and personal fields
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0010](0010-keep-name-parts-in-company-names.md) (name parts in company names are kept)
 - **Date:** 2026-10-20
 - **Amends:** [0006](0006-redact-contact-data-before-resume-text-is-stored.md) (names were not redacted)
 
