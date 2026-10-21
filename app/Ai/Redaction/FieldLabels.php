@@ -22,7 +22,9 @@ final class FieldLabels
         'Height', 'Weight', 'Blood Type', 'Disability',
         // Indonesian and Malay
         'Tempat, Tanggal Lahir', 'Tempat/Tanggal Lahir', 'Tempat dan Tanggal Lahir', 'Tanggal Lahir',
-        'Tempat Lahir', 'TTL', 'Tarikh Lahir', 'Umur', 'Usia', 'Agama', 'Status', 'Status Perkawinan',
+        'Tempat Lahir', 'Tgl. Lahir', 'Tgl Lahir', 'Tempat/Tgl. Lahir', 'Tempat/Tgl Lahir',
+        'Tempat, Tgl. Lahir', 'Tempat, Tgl Lahir', 'Tmp/Tgl. Lahir', 'Tmp/Tgl Lahir', 'Tmp. Lahir', 'Tmp Lahir',
+        'TTL', 'Tarikh Lahir', 'Umur', 'Usia', 'Agama', 'Status', 'Status Perkawinan',
         'Status Pernikahan', 'Status Perkahwinan', 'Jenis Kelamin', 'Jantina', 'Kewarganegaraan',
         'Warganegara', 'Bangsa', 'Suku', 'Tinggi Badan', 'Berat Badan', 'Golongan Darah',
         // German
