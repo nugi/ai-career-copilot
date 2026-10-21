@@ -4,7 +4,11 @@ namespace App\Ai\Agents;
 
 use App\Ai\CircuitBreaker;
 use App\Ai\Contracts\HasPromptVersion;
+use App\Ai\Contracts\TracksUsage;
+use App\Ai\ModelRouter;
 use App\Ai\Prompts\Instructions;
+use App\Enums\AiFeature;
+use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Ai\Attributes\Strict;
@@ -23,7 +27,7 @@ use Stringable;
  */
 #[Timeout(90)]
 #[Strict]
-class ResumeParser implements Agent, HasPromptVersion, HasProviderOptions, HasStructuredOutput
+class ResumeParser implements Agent, HasPromptVersion, HasProviderOptions, HasStructuredOutput, TracksUsage
 {
     use Promptable;
 
@@ -33,6 +37,11 @@ class ResumeParser implements Agent, HasPromptVersion, HasProviderOptions, HasSt
      * A year, or a year and a month, such as 2021 or 2021-06.
      */
     public const DATE_PATTERN = '^\d{4}(-(0[1-9]|1[0-2]))?$';
+
+    /**
+     * The user whose resume is parsed, when there is one. It is only used for the usage row.
+     */
+    public function __construct(public ?User $user = null) {}
 
     /**
      * Get the instructions that the agent should follow.
@@ -51,35 +60,44 @@ class ResumeParser implements Agent, HasPromptVersion, HasProviderOptions, HasSt
     }
 
     /**
+     * Get the task that the agent does, which decides its model tier and its usage feature.
+     */
+    public function task(): AiFeature
+    {
+        return AiFeature::ResumeParsing;
+    }
+
+    /**
+     * Get the user whose resume is parsed, when there is one.
+     */
+    public function usageUser(): ?User
+    {
+        return $this->user;
+    }
+
+    /**
      * Get the providers in failover order, mapped to their models.
      *
-     * The models are pinned, so an SDK update cannot change the model that a prompt version runs on.
+     * The models come from config/ai-routing.php for the agent's task, so a prompt version cannot change model on an SDK update.
      * A provider whose circuit is open moves to the end of the list.
      *
      * @return array<string, string>
      */
     public function provider(): array
     {
-        return app(CircuitBreaker::class)->order([
-            Lab::OpenAI->value => 'gpt-6-luna',
-            Lab::Anthropic->value => 'claude-haiku-5-5',
-        ]);
+        return app(CircuitBreaker::class)->order(app(ModelRouter::class)->models($this->task()));
     }
 
     /**
      * Get the provider-specific generation options.
      *
-     * Parsing does not need extended reasoning, and both models bill it as output tokens.
+     * They come from config/ai-routing.php for the model that the task's tier uses, because each model accepts its own options.
      *
      * @return array<string, mixed>
      */
     public function providerOptions(Lab|string $provider): array
     {
-        return match ($provider) {
-            Lab::OpenAI => ['reasoning' => ['effort' => 'none']],
-            Lab::Anthropic => ['thinking' => ['type' => 'disabled']],
-            default => [],
-        };
+        return app(ModelRouter::class)->providerOptions($this->task(), $provider);
     }
 
     /**

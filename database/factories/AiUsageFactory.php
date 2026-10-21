@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use App\Enums\AiFeature;
+use App\Enums\AiUsageStatus;
+use App\Enums\ModelTier;
 use App\Models\AiUsage;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -25,8 +27,13 @@ class AiUsageFactory extends Factory
         return [
             'user_id' => User::factory(),
             'feature' => fake()->randomElement([AiFeature::FitScoring, AiFeature::SkillGapPlan, AiFeature::ResumeSuggestion, AiFeature::Chat]),
+            'invocation_id' => fake()->uuid(),
+            'agent' => 'CareerAdvisor',
+            'tier' => ModelTier::Strong,
+            'prompt_version' => 'v2',
             'provider' => 'anthropic',
             'model' => 'claude-sonnet-5-5',
+            'status' => AiUsageStatus::Succeeded,
             'input_tokens' => $inputTokens,
             'output_tokens' => $outputTokens,
             'cost_usd' => round(($inputTokens * 3 + $outputTokens * 15) / 1_000_000, 6),

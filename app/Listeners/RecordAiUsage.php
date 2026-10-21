@@ -1,0 +1,92 @@
+<?php
+
+namespace App\Listeners;
+
+use App\Ai\AiUsageRecorder;
+use App\Enums\AiUsageStatus;
+use Laravel\Ai\Events\AgentFailed;
+use Laravel\Ai\Events\AgentFailedOver;
+use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\AgentStreamed;
+use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\StreamingAgent;
+
+class RecordAiUsage
+{
+    /**
+     * Create the event listener.
+     */
+    public function __construct(private AiUsageRecorder $recorder) {}
+
+    /**
+     * Start the timer of an attempt before the first provider is called.
+     */
+    public function handlePrompting(PromptingAgent $event): void
+    {
+        $this->recorder->start($event->invocationId);
+    }
+
+    /**
+     * Start the timer of a streamed attempt too, because the SDK dispatches StreamingAgent and listeners of the parent class do not get it.
+     */
+    public function handleStreaming(StreamingAgent $event): void
+    {
+        $this->handlePrompting($event);
+    }
+
+    /**
+     * Record the attempt that answered, with the provider, the model and the tokens that it billed.
+     */
+    public function handlePrompted(AgentPrompted $event): void
+    {
+        $this->recorder->record(
+            $event->prompt->agent,
+            $event->invocationId,
+            (string) $event->response->meta->provider,
+            (string) $event->response->meta->model,
+            $event->response->usage->inputTokens,
+            $event->response->usage->outputTokens,
+            AiUsageStatus::Succeeded,
+        );
+    }
+
+    /**
+     * Record a streamed answer too, because the SDK dispatches AgentStreamed and listeners of the parent class do not get it.
+     */
+    public function handleStreamed(AgentStreamed $event): void
+    {
+        $this->handlePrompted($event);
+    }
+
+    /**
+     * Record the provider that failed and passed the prompt to the next one. It billed no tokens.
+     */
+    public function handleFailedOver(AgentFailedOver $event): void
+    {
+        $this->recorder->record(
+            $event->agent,
+            $event->invocationId,
+            $event->provider->name(),
+            $event->model,
+            0,
+            0,
+            AiUsageStatus::FailedOver,
+        );
+    }
+
+    /**
+     * Record the last provider tried, because the SDK does not dispatch AgentFailedOver for it.
+     */
+    public function handleFailed(AgentFailed $event): void
+    {
+        $this->recorder->record(
+            $event->prompt->agent,
+            $event->invocationId,
+            $event->prompt->provider->name(),
+            $event->prompt->model,
+            0,
+            0,
+            AiUsageStatus::Failed,
+        );
+    }
+}
