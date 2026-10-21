@@ -23,7 +23,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::get('resumes/{resume}/content', [ResumeController::class, 'content'])->whereNumber('resume')->name('resumes.content');
 });
 
-Route::middleware(['auth', 'verified', 'onboarded', 'throttle:advisor'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarded', 'throttle:advisor', 'ai.budget'])->group(function () {
     Route::post('advisor', AdvisorController::class)->name('advisor.ask');
     Route::post('advisor/stream', [AdvisorChatController::class, 'stream'])->name('advisor.stream');
 });

@@ -73,4 +73,17 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Daily Budget
+    |--------------------------------------------------------------------------
+    |
+    | The most a user may spend on advisor calls each UTC day, in USD. Null
+    | turns the check off. Resume parsing does not count against the check,
+    | but its cost is in the daily spend.
+    |
+    */
+
+    'daily_budget_usd' => env('AI_DAILY_BUDGET_USD') === null ? null : (float) env('AI_DAILY_BUDGET_USD'),
+
 ];

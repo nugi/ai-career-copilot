@@ -23,6 +23,11 @@ type ValidationErrorResponse = {
     errors?: Record<string, string[] | undefined>;
 };
 
+type TooManyRequestsResponse = {
+    message?: string;
+    code?: string;
+};
+
 type StateSetters = {
     setAnswer: Dispatch<SetStateAction<string>>;
     setStatus: Dispatch<SetStateAction<AdvisorStreamStatus>>;
@@ -68,7 +73,16 @@ async function reportFailure(
             body.errors?.question?.[0] ?? UNAVAILABLE_MESSAGE,
         );
     } else if (response.status === 429) {
-        setters.setError(RATE_LIMITED_MESSAGE);
+        const body = (await response
+            .json()
+            .catch(() => ({}))) as TooManyRequestsResponse;
+
+        setters.setError(
+            body.code === 'ai_budget_exceeded' &&
+                typeof body.message === 'string'
+                ? body.message
+                : RATE_LIMITED_MESSAGE,
+        );
     } else {
         setters.setError(UNAVAILABLE_MESSAGE);
     }
