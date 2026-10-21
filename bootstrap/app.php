@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAiBudget;
 use App\Http\Middleware\EnsureProfileIsComplete;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->alias([
+            'ai.budget' => EnsureAiBudget::class,
             'onboarded' => EnsureProfileIsComplete::class,
         ]);
 
