@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI Queue Routing
+    |--------------------------------------------------------------------------
+    |
+    | The batch connection runs long AI jobs (resume parsing). Its retry_after
+    | must be longer than the longest job timeout. When the value is null, the
+    | job uses the default connection.
+    |
+    */
+
+    'ai' => [
+        'batch_connection' => env('QUEUE_AI_BATCH_CONNECTION'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------
     |
@@ -70,6 +85,15 @@ return [
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        'redis-batch' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'ai-batch',
+            'retry_after' => (int) env('REDIS_BATCH_QUEUE_RETRY_AFTER', 420),
             'block_for' => null,
             'after_commit' => false,
         ],
