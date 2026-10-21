@@ -116,10 +116,10 @@ class Resume extends Model
     public function duplicates(): Builder
     {
         if ($this->content_hash === null) {
-            return static::query()->whereRaw('1 = 0');
+            return Resume::query()->whereKey([]);
         }
 
-        return static::query()
+        return Resume::query()
             ->where('user_id', $this->user_id)
             ->where('content_hash', $this->content_hash)
             ->whereKeyNot($this->getKey());

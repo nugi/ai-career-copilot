@@ -263,7 +263,7 @@ class ParseResume
             ],
         ];
 
-        $saved = $this->saveParse($resume, $parsedData, ResumeParser::PROMPT_VERSION);
+        $saved = $this->saveParse($resume, $parsedData, $grounded, ResumeParser::PROMPT_VERSION);
 
         if ($saved === null) {
             return $resume;
@@ -295,7 +295,11 @@ class ParseResume
             return $target;
         }
 
-        return $this->saveParse($target, $parsedData, $source->prompt_version) ?? $target;
+        $skillNames = is_array($parsedData['skills'] ?? null)
+            ? array_values(array_filter($parsedData['skills'], is_string(...)))
+            : [];
+
+        return $this->saveParse($target, $parsedData, $skillNames, $source->prompt_version) ?? $target;
     }
 
     /**
@@ -317,11 +321,12 @@ class ParseResume
      * The skills are matched to the skill catalogue again, so a copied parse keeps the canonical skill names.
      *
      * @param  array<mixed>  $parsedData
+     * @param  list<string>  $skillNames  The skills to match to the catalogue and to save on the resume.
      * @return Resume|null Null when the resume was deleted while the parse ran.
      */
-    private function saveParse(Resume $resume, array $parsedData, string $promptVersion): ?Resume
+    private function saveParse(Resume $resume, array $parsedData, array $skillNames, string $promptVersion): ?Resume
     {
-        return DB::transaction(function () use ($resume, $parsedData, $promptVersion): ?Resume {
+        return DB::transaction(function () use ($resume, $parsedData, $skillNames, $promptVersion): ?Resume {
             $user = User::query()->whereKey($resume->user_id)->lockForUpdate()->sole();
             $locked = Resume::query()->whereKey($resume->getKey())->lockForUpdate()->first();
 
@@ -329,7 +334,7 @@ class ParseResume
                 return null;
             }
 
-            $skills = collect($parsedData['skills'] ?? [])
+            $skills = collect($skillNames)
                 ->map(fn (string $name): Skill => Skill::findOrCreateByName($name))
                 ->unique('id')
                 ->values();
