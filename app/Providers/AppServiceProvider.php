@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Jobs\ParseUploadedResume;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -27,7 +29,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureQueues();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * Route long running AI jobs to the batch queue connection.
+     */
+    protected function configureQueues(): void
+    {
+        Queue::route(ParseUploadedResume::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
     }
 
     /**

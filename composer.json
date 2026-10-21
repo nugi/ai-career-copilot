@@ -15,6 +15,7 @@
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
+        "laravel/horizon": "^5.50",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "spatie/pdf-to-text": "^1.55"
@@ -65,7 +66,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#fca5a5\" \"php artisan serve\" \"php artisan queue:listen redis --queue=ai-high,default --tries=1 --timeout=0\" \"php artisan queue:listen redis-batch --queue=ai-batch --tries=1 --timeout=0\" \"npm run dev\" --names='server,queue,batch,vite'"
         ],
         "lint": [
             "pint --parallel"
