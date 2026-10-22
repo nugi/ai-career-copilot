@@ -155,9 +155,9 @@ test('each provider is asked with its pinned model', function () {
 
     $instructions = file_get_contents(resource_path('prompts/career-advisor/v2.md'));
 
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['model'] === 'gpt-6.1-sol');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['model'] === 'gpt-6-luna');
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')
-        && $request['model'] === 'claude-sonnet-5-5'
+        && $request['model'] === 'claude-haiku-5-5'
         && $request['system'] === $instructions);
 });
 
@@ -169,8 +169,8 @@ test('each provider is asked with the reasoning option of its model', function (
 
     advisor()->prompt('What should I learn next?');
 
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['reasoning']['effort'] === 'low');
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com') && $request['thinking']['type'] === 'between_tools');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com') && $request['reasoning']['effort'] === 'none');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com') && $request['thinking']['type'] === 'disabled');
 });
 
 test('a connection failure to OpenAI fails over to Anthropic', function () {

@@ -10,13 +10,14 @@ return [
     | Each AI task (an App\Enums\AiFeature case) runs on one tier. A tier is a
     | named set of models, one for each provider. An agent reads the tier of
     | its task here instead of pinning a model of its own, so a task moves to
-    | a cheaper or a stronger model in one place.
+    | a cheaper or a stronger model in one place. The strong tier is kept for
+    | evaluation runs. No task uses it by default.
     |
     */
 
     'tasks' => [
         'resume_parsing' => 'cheap',
-        'chat' => 'strong',
+        'chat' => 'cheap',
     ],
 
     /*
