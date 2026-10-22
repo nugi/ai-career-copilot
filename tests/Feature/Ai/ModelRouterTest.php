@@ -8,10 +8,10 @@ use Laravel\Ai\Enums\Lab;
 test('each task uses the models of its tier, in failover order', function () {
     $router = app(ModelRouter::class);
 
-    expect($router->tier(AiFeature::Chat))->toBe(ModelTier::Strong)
+    expect($router->tier(AiFeature::Chat))->toBe(ModelTier::Cheap)
         ->and($router->models(AiFeature::Chat))->toBe([
-            'openai' => 'gpt-6.1-sol',
-            'anthropic' => 'claude-sonnet-5-5',
+            'openai' => 'gpt-6-luna',
+            'anthropic' => 'claude-haiku-5-5',
         ])
         ->and($router->tier(AiFeature::ResumeParsing))->toBe(ModelTier::Cheap)
         ->and($router->models(AiFeature::ResumeParsing))->toBe([
@@ -23,10 +23,24 @@ test('each task uses the models of its tier, in failover order', function () {
 test('each model gets the generation options that it accepts', function () {
     $router = app(ModelRouter::class);
 
-    expect($router->providerOptions(AiFeature::Chat, Lab::OpenAI))->toBe(['reasoning' => ['effort' => 'low']])
-        ->and($router->providerOptions(AiFeature::Chat, Lab::Anthropic))->toBe(['thinking' => ['type' => 'between_tools']])
+    expect($router->providerOptions(AiFeature::Chat, Lab::OpenAI))->toBe(['reasoning' => ['effort' => 'none']])
+        ->and($router->providerOptions(AiFeature::Chat, Lab::Anthropic))->toBe(['thinking' => ['type' => 'disabled']])
         ->and($router->providerOptions(AiFeature::ResumeParsing, Lab::OpenAI))->toBe(['reasoning' => ['effort' => 'none']])
         ->and($router->providerOptions(AiFeature::ResumeParsing, Lab::Anthropic))->toBe(['thinking' => ['type' => 'disabled']]);
+});
+
+test('a task moved to the strong tier uses the strong models and their options', function () {
+    config(['ai-routing.tasks.chat' => 'strong']);
+
+    $router = app(ModelRouter::class);
+
+    expect($router->tier(AiFeature::Chat))->toBe(ModelTier::Strong)
+        ->and($router->models(AiFeature::Chat))->toBe([
+            'openai' => 'gpt-6.1-sol',
+            'anthropic' => 'claude-sonnet-5-5',
+        ])
+        ->and($router->providerOptions(AiFeature::Chat, Lab::OpenAI))->toBe(['reasoning' => ['effort' => 'low']])
+        ->and($router->providerOptions(AiFeature::Chat, Lab::Anthropic))->toBe(['thinking' => ['type' => 'between_tools']]);
 });
 
 test('a provider outside the tier has no options', function () {

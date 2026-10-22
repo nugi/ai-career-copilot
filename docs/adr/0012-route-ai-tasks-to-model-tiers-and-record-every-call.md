@@ -1,6 +1,6 @@
 # 12. Route AI tasks to model tiers and record every call
 
-- **Status:** Accepted
+- **Status:** Accepted. The chat tier is changed by [ADR 0013](0013-run-chat-on-the-cheap-tier-until-evaluations-show-a-gain.md).
 - **Date:** 2026-10-21
 
 ## Context

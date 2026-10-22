@@ -24,12 +24,12 @@ test('an advisor answer writes one succeeded usage row', function () {
 
     expect($usage->user_id)->toBe($user->id)
         ->and($usage->feature)->toBe(AiFeature::Chat)
-        ->and($usage->tier)->toBe(ModelTier::Strong)
+        ->and($usage->tier)->toBe(ModelTier::Cheap)
         ->and($usage->agent)->toBe('CareerAdvisor')
         ->and($usage->prompt_version)->toBe(CareerAdvisor::PROMPT_VERSION)
         ->and($usage->status)->toBe(AiUsageStatus::Succeeded)
         ->and($usage->provider)->toBe('openai')
-        ->and($usage->model)->toBe('gpt-6.1-sol')
+        ->and($usage->model)->toBe('gpt-6-luna')
         ->and($usage->invocation_id)->not->toBeNull()
         ->and($usage->input_tokens)->toBe(0)
         ->and($usage->output_tokens)->toBe(0)
@@ -46,7 +46,7 @@ test('a streamed advisor answer writes one succeeded usage row', function () {
     expect($usage->feature)->toBe(AiFeature::Chat)
         ->and($usage->status)->toBe(AiUsageStatus::Succeeded)
         ->and($usage->provider)->toBe('openai')
-        ->and($usage->model)->toBe('gpt-6.1-sol');
+        ->and($usage->model)->toBe('gpt-6-luna');
 });
 
 test('a resume parse writes one usage row with the resume user and the cheap tier', function () {
@@ -79,7 +79,7 @@ test('a failover writes a failed_over row and a succeeded row for the same invoc
     expect($usages)->toHaveCount(2)
         ->and($usages[0]->status)->toBe(AiUsageStatus::FailedOver)
         ->and($usages[0]->provider)->toBe('openai')
-        ->and($usages[0]->model)->toBe('gpt-6.1-sol')
+        ->and($usages[0]->model)->toBe('gpt-6-luna')
         ->and($usages[0]->input_tokens)->toBe(0)
         ->and($usages[0]->output_tokens)->toBe(0)
         ->and($usages[1]->status)->toBe(AiUsageStatus::Succeeded)
@@ -120,15 +120,15 @@ test('a usage row that cannot be written does not fail the AI call', function ()
 
 test('the recorded cost of a call is the cost of its model and tokens', function () {
     Http::fake([
-        'api.openai.com/*' => Http::response(array_replace(openAiAnswer('Build one API project.'), ['model' => 'gpt-6.1-sol'])),
+        'api.openai.com/*' => Http::response(openAiAnswer('Build one API project.')),
     ]);
 
     advisor()->prompt('What should I learn next?');
 
     $usage = AiUsage::query()->sole();
 
-    expect($usage->model)->toBe('gpt-6.1-sol')
+    expect($usage->model)->toBe('gpt-6-luna')
         ->and($usage->input_tokens)->toBe(10)
         ->and($usage->output_tokens)->toBe(5)
-        ->and($usage->cost_usd)->toBe(app(ModelRouter::class)->cost('gpt-6.1-sol', 10, 5));
+        ->and($usage->cost_usd)->toBe(app(ModelRouter::class)->cost('gpt-6-luna', 10, 5));
 });
