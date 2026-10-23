@@ -82,9 +82,28 @@ test('a failover writes a failed_over row and a succeeded row for the same invoc
         ->and($usages[0]->model)->toBe('gpt-6-luna')
         ->and($usages[0]->input_tokens)->toBe(0)
         ->and($usages[0]->output_tokens)->toBe(0)
+        ->and($usages[0]->tokens_estimated)->toBeFalse()
         ->and($usages[1]->status)->toBe(AiUsageStatus::Succeeded)
         ->and($usages[1]->provider)->toBe('anthropic')
+        ->and($usages[1]->tokens_estimated)->toBeFalse()
         ->and($usages[1]->invocation_id)->toBe($usages[0]->invocation_id);
+});
+
+test('a dropped connection writes a failed_over row with estimated tokens', function () {
+    Http::fake([
+        'api.openai.com/*' => Http::failedConnection(),
+        'api.anthropic.com/*' => Http::response(anthropicAnswer('Start with one project.')),
+    ]);
+
+    advisor()->prompt('What should I learn next?');
+
+    $usages = AiUsage::query()->orderBy('id')->get();
+
+    expect($usages)->toHaveCount(2)
+        ->and($usages[0]->status)->toBe(AiUsageStatus::FailedOver)
+        ->and($usages[0]->tokens_estimated)->toBeTrue()
+        ->and($usages[1]->status)->toBe(AiUsageStatus::Succeeded)
+        ->and($usages[1]->tokens_estimated)->toBeFalse();
 });
 
 test('an outage on every provider writes a failed_over row and a failed row and still throws', function () {

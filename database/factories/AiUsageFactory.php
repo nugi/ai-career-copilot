@@ -36,6 +36,7 @@ class AiUsageFactory extends Factory
             'status' => AiUsageStatus::Succeeded,
             'input_tokens' => $inputTokens,
             'output_tokens' => $outputTokens,
+            'tokens_estimated' => false,
             'cost_usd' => round(($inputTokens * 3 + $outputTokens * 15) / 1_000_000, 6),
             'latency_ms' => fake()->numberBetween(400, 6_000),
         ];

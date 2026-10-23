@@ -25,12 +25,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property AiUsageStatus $status
  * @property int $input_tokens
  * @property int $output_tokens
+ * @property bool $tokens_estimated
  * @property string $cost_usd
  * @property int|null $latency_ms
  * @property CarbonImmutable $created_at
  * @property-read User|null $user
  */
-#[Fillable(['user_id', 'invocation_id', 'feature', 'agent', 'tier', 'prompt_version', 'provider', 'model', 'status', 'input_tokens', 'output_tokens', 'cost_usd', 'latency_ms'])]
+#[Fillable(['user_id', 'invocation_id', 'feature', 'agent', 'tier', 'prompt_version', 'provider', 'model', 'status', 'input_tokens', 'output_tokens', 'tokens_estimated', 'cost_usd', 'latency_ms'])]
 class AiUsage extends Model
 {
     /** @use HasFactory<AiUsageFactory> */
@@ -54,6 +55,7 @@ class AiUsage extends Model
             'status' => AiUsageStatus::class,
             'input_tokens' => 'integer',
             'output_tokens' => 'integer',
+            'tokens_estimated' => 'boolean',
             'cost_usd' => 'decimal:6',
             'latency_ms' => 'integer',
         ];

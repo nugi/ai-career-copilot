@@ -4,12 +4,17 @@ namespace App\Listeners;
 
 use App\Ai\AiUsageRecorder;
 use App\Enums\AiUsageStatus;
+use Illuminate\Http\Client\RequestException;
 use Laravel\Ai\Events\AgentFailed;
 use Laravel\Ai\Events\AgentFailedOver;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\AgentStreamed;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\StreamingAgent;
+use Laravel\Ai\Exceptions\InsufficientCreditsException;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Exceptions\RateLimitedException;
+use Throwable;
 
 class RecordAiUsage
 {
@@ -59,7 +64,7 @@ class RecordAiUsage
     }
 
     /**
-     * Record the provider that failed and passed the prompt to the next one. It billed no tokens.
+     * Record the provider that failed and passed the prompt to the next one. An error response means it billed no tokens, while any other failure leaves the token count unknown.
      */
     public function handleFailedOver(AgentFailedOver $event): void
     {
@@ -71,6 +76,7 @@ class RecordAiUsage
             0,
             0,
             AiUsageStatus::FailedOver,
+            $this->tokensAreUnknown($event->exception),
         );
     }
 
@@ -87,6 +93,18 @@ class RecordAiUsage
             0,
             0,
             AiUsageStatus::Failed,
+            $this->tokensAreUnknown($event->exception),
         );
+    }
+
+    /**
+     * Tell whether the token count of a failure is unknown. An error response means that the provider generated nothing, and any other failure (a dropped connection, a timeout, a broken stream) can come after the provider billed tokens.
+     */
+    private function tokensAreUnknown(Throwable $exception): bool
+    {
+        return ! ($exception instanceof ProviderOverloadedException
+            || $exception instanceof RateLimitedException
+            || $exception instanceof InsufficientCreditsException
+            || $exception instanceof RequestException);
     }
 }
