@@ -8,6 +8,7 @@ use App\Enums\JobRegion;
 use App\Enums\SalaryPeriod;
 use App\Enums\SeniorityLevel;
 use App\Enums\WorkArrangement;
+use App\JobSources\Normalization\DuplicateKey;
 use App\Models\JobPosting;
 use App\Models\Skill;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -68,6 +69,17 @@ class JobPostingFactory extends Factory
             'country_code' => 'ID',
             'country_codes' => ['ID'],
             'region' => null,
+            'normalized_company' => fn (array $attributes): string => DuplicateKey::company($attributes['company_name']),
+            'normalized_title' => fn (array $attributes): string => DuplicateKey::title($attributes['title']),
+            'location_key' => function (array $attributes): string {
+                $countries = $attributes['country_codes'];
+                sort($countries);
+
+                return $countries !== [] ? implode('-', $countries) : ($attributes['region']->value ?? 'unknown');
+            },
+            'duplicate_key' => fn (array $attributes): string => DuplicateKey::hash(
+                $attributes['normalized_company'], $attributes['normalized_title'], $attributes['location_key'],
+            ),
             'work_arrangement' => fake()->randomElement([WorkArrangement::Onsite, WorkArrangement::Hybrid]),
             'employment_type' => fake()->randomElement([EmploymentType::FullTime, EmploymentType::FullTime, EmploymentType::Contract]),
             'seniority' => $seniority,

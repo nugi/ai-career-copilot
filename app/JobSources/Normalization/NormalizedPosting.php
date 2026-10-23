@@ -59,7 +59,8 @@ final readonly class NormalizedPosting
      *     employment_type: ?string, seniority: ?string, salary_min: ?int, salary_max: ?int,
      *     salary_currency: ?string, salary_period: ?string, annual_salary_min: ?int,
      *     annual_salary_max: ?int, salary_normalization_version: ?int, apply_url: string,
-     *     posted_at: CarbonImmutable, expires_at: CarbonImmutable
+     *     posted_at: CarbonImmutable, expires_at: CarbonImmutable,
+     *     normalized_company: string, normalized_title: string, location_key: string, duplicate_key: string
      * }
      */
     public function toAttributes(): array
@@ -88,6 +89,10 @@ final readonly class NormalizedPosting
             'apply_url' => $this->applyUrl,
             'posted_at' => $this->postedAt,
             'expires_at' => $this->expiresAt,
+            'normalized_company' => $this->normalizedCompany,
+            'normalized_title' => $this->normalizedTitle,
+            'location_key' => $this->locationKey,
+            'duplicate_key' => $this->duplicateKey,
         ];
     }
 }

@@ -10,9 +10,12 @@ use App\Enums\WorkArrangement;
 use Carbon\CarbonImmutable;
 use Database\Factories\JobPostingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -23,6 +26,12 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property string|null $external_id
  * @property string $title
  * @property string $company_name
+ * @property string|null $normalized_company
+ * @property string|null $normalized_title
+ * @property string|null $location_key
+ * @property string|null $duplicate_key
+ * @property int|null $duplicate_of_id
+ * @property-read JobPosting|null $duplicateOf
  * @property string $description
  * @property string|null $location
  * @property string|null $country_code ISO 3166-1 alpha-2; null for remote roles open worldwide.
@@ -52,6 +61,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'work_arrangement', 'employment_type', 'seniority', 'salary_min', 'salary_max', 'salary_currency',
     'salary_period', 'annual_salary_min', 'annual_salary_max', 'salary_normalization_version',
     'city', 'country_codes', 'region', 'apply_url', 'posted_at', 'expires_at',
+    'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'duplicate_of_id',
 ])]
 class JobPosting extends Model
 {
@@ -76,10 +86,30 @@ class JobPosting extends Model
             'annual_salary_max' => 'integer',
             'salary_normalization_version' => 'integer',
             'country_codes' => 'array',
+            'duplicate_of_id' => 'integer',
             'region' => JobRegion::class,
             'posted_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Lists, matching and embeddings read only canonical postings (ADR 0018).
+     *
+     * @param  Builder<JobPosting>  $query
+     */
+    #[Scope]
+    protected function canonical(Builder $query): void
+    {
+        $query->whereNull('duplicate_of_id');
+    }
+
+    /**
+     * @return BelongsTo<JobPosting, $this>
+     */
+    public function duplicateOf(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'duplicate_of_id');
     }
 
     /**
