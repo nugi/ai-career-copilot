@@ -3,7 +3,9 @@
 use App\JobSources\Contracts\JobSource;
 use App\JobSources\FakeJobSource;
 use App\JobSources\FetchReport;
+use App\JobSources\HimalayasJobSource;
 use App\JobSources\JobPostingData;
+use Illuminate\Support\Facades\Http;
 
 test('a job source yields valid postings under its own key', function (Closure $sourceFactory) {
     /** @var JobSource $source */
@@ -34,4 +36,15 @@ test('a job source yields valid postings under its own key', function (Closure $
 })->with([
     // Every job source class must be added to this dataset.
     'fake' => fn () => new FakeJobSource,
+    'himalayas' => function (): HimalayasJobSource {
+        Http::fake([
+            'himalayas.app/*' => Http::sequence()
+                ->pushFile(base_path('tests/Fixtures/job-sources/himalayas/page.json'))
+                ->pushFile(base_path('tests/Fixtures/job-sources/himalayas/last-page.json')),
+        ]);
+
+        config(['services.himalayas.key' => 'test-key']);
+
+        return new HimalayasJobSource;
+    },
 ]);
