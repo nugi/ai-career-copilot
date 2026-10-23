@@ -19,6 +19,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0013](0013-run-chat-on-the-cheap-tier-until-evaluations-show-a-gain.md) | Run chat on the cheap tier until evaluations show a gain | Accepted |
 | [0014](0014-cap-the-daily-ai-spend-of-all-users.md)                      | Cap the daily AI spend of all users                      | Accepted |
 | [0015](0015-take-jobs-only-from-sources-whose-terms-allow-it.md)         | Take jobs only from sources whose terms allow it         | Accepted |
+| [0016](0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md)  | Fetch job sources with bounded retries and dated expiry  | Accepted |
 
 ## Adding a record
 

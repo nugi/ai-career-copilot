@@ -42,3 +42,5 @@ Recruiters and users ask for the largest boards, such as LinkedIn. LinkedIn has 
 ## Notes
 
 **2026-10-23: pasted postings.** The fallback in decision 6 accepts the text of a posting that the user pastes. If the user pastes a URL, the app stores it only as a link the user can open. The server never fetches it, because a server request to a site that forbids automated access is scraping, even when a user starts it.
+
+**2026-10-23: invalid postings.** Decision 3 still holds for what the DTO accepts. [ADR 0016](0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md) adds what a source does with bad data: it skips a posting that cannot be used and drops a single bad field instead of the whole posting.
