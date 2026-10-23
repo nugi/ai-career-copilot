@@ -192,6 +192,7 @@ test('invalid preferences are rejected with a message and nothing is saved', fun
     'unknown way of working' => [['work_arrangements' => ['office']], 'work_arrangements.0', 'The selected work_arrangements.0 is invalid.'],
     'salary without currency' => [['salary_currency' => ''], 'salary_currency', 'Choose the currency of your minimum salary.'],
     'salary without period' => [['salary_period' => ''], 'salary_period', 'Choose whether your minimum salary is per month or per year.'],
+    'hourly salary floor' => [['salary_period' => 'hourly'], 'salary_period', 'The selected salary period is invalid.'],
     'unsupported currency' => [['salary_currency' => 'EUR'], 'salary_currency', 'The selected salary currency is invalid.'],
     'salary that is not a number' => [['min_salary' => '20 juta'], 'min_salary', 'The min salary field must be an integer.'],
     'no skills' => [['skills' => []], 'skills', 'Add at least one skill.'],

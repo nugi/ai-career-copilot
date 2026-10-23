@@ -30,7 +30,7 @@ class OnboardingRequest extends FormRequest
             'work_arrangements.*' => ['required', Rule::enum(WorkArrangement::class), 'distinct'],
             'min_salary' => ['nullable', 'integer', 'min:1', 'max:100000000000'],
             'salary_currency' => ['nullable', 'required_with:min_salary', Rule::enum(Currency::class)],
-            'salary_period' => ['nullable', 'required_with:min_salary', Rule::enum(SalaryPeriod::class)],
+            'salary_period' => ['nullable', 'required_with:min_salary', Rule::enum(SalaryPeriod::class)->only(SalaryPeriod::profileCases())],
             'skills' => ['required', 'array', 'max:50'],
             'skills.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
             'skills.*.proficiency' => ['required', Rule::enum(SkillProficiency::class)],
