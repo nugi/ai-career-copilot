@@ -1,0 +1,51 @@
+{
+    "apiVersion": "2.2.19",
+    "documentationUrl": "https://jobi.cy/apidocs",
+    "friendlyNotice": "Thanks for using Jobicy API! Please ensure Jobicy is clearly credited with a direct link to the source, and all application buttons redirect to the original job URL provided in this feed. That’s all! You might be building something amazing, we wish you the best of luck!",
+    "jobCount": 2,
+    "lastUpdate": "2026-10-23T04:00:11+00:00",
+    "nextCursor": "ZXhhbXBsZS1jdXJzb3ItMQ",
+    "hasMore": true,
+    "appliedFilters": {
+        "count": 50,
+        "tag": "backend engineer"
+    },
+    "statusCode": 200,
+    "success": true,
+    "jobs": [
+        {
+            "id": 900101,
+            "url": "https://jobicy.com/jobs/900101-senior-backend-engineer-payments",
+            "jobSlug": "900101-senior-backend-engineer-payments",
+            "jobTitle": "Senior Backend Engineer, Payments",
+            "companyName": "Northwind Systems",
+            "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/example-logo.png",
+            "jobIndustry": ["Software Engineering"],
+            "jobType": ["Full-Time"],
+            "jobGeo": "Finland",
+            "jobLevel": "Senior",
+            "jobExcerpt": "Example excerpt for Senior Backend Engineer, Payments.",
+            "jobDescription": "<p>Example description for <strong>Senior Backend Engineer, Payments</strong> at Northwind Systems.</p><ul><li>Build &amp; run services</li><li>Work with the team</li></ul>",
+            "pubDate": "2026-10-23T04:00:11+00:00",
+            "salaryMin": 45000,
+            "salaryMax": 60000,
+            "salaryCurrency": "EUR",
+            "salaryPeriod": "yearly"
+        },
+        {
+            "id": 900102,
+            "url": "https://jobicy.com/jobs/900102-support-specialist",
+            "jobSlug": "900102-support-specialist",
+            "jobTitle": "Support Specialist",
+            "companyName": "Baltic Data",
+            "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/example-logo.png",
+            "jobIndustry": ["Customer Support & Success"],
+            "jobType": ["Contract"],
+            "jobGeo": "Anywhere",
+            "jobLevel": "Any",
+            "jobExcerpt": "Example excerpt for Support Specialist.",
+            "jobDescription": "<p>Example description for <strong>Support Specialist</strong> at Baltic Data.</p><ul><li>Build &amp; run services</li><li>Work with the team</li></ul>",
+            "pubDate": "2026-10-23T03:55:24+00:00"
+        }
+    ]
+}

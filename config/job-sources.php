@@ -1,6 +1,7 @@
 <?php
 
 use App\JobSources\HimalayasJobSource;
+use App\JobSources\JobicyJobSource;
 
 return [
 
@@ -17,6 +18,7 @@ return [
 
     'sources' => [
         HimalayasJobSource::class,
+        JobicyJobSource::class,
     ],
 
     /*
@@ -92,6 +94,34 @@ return [
             'seniority' => 0.5,
             'employmentType' => 0.5,
             'location' => 0.3,
+            'descriptionHtml' => 0.9,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Jobicy
+    |--------------------------------------------------------------------------
+    |
+    | The feed lists remote jobs from the last 7 days, 50 a page here (up to
+    | 200), with a cursor that expires after 24 hours. Start an automated pass
+    | at most once an hour. pages_per_query caps the pages read for each role,
+    | under the shared run deadline.
+    |
+    | expected_fields holds the smallest share of the sampled postings that
+    | must have each field. jobs:check-source warns on a first low share and
+    | reports a problem when the same field is low on the next run.
+    |
+    */
+
+    'jobicy' => [
+        'base_url' => 'https://jobicy.com',
+        'pages_per_query' => (int) env('JOBICY_PAGES_PER_QUERY', 1),
+        'expected_fields' => [
+            'salaryMin' => 0.15,
+            'seniority' => 0.8,
+            'employmentType' => 0.8,
+            'location' => 0.8,
             'descriptionHtml' => 0.9,
         ],
     ],
