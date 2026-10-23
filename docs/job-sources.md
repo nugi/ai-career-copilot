@@ -15,10 +15,11 @@ Terms change. Read them again before you add a source, change how postings are s
 | Key       | `himalayas`                                                                                                 |
 | Endpoint  | `GET https://himalayas.app/jobs/api` ([docs](https://himalayas.app/docs/remote-jobs-api))                   |
 | Jobs      | Remote only. `locationRestrictions` lists the countries a candidate must live in; empty means worldwide.    |
-| Auth      | None required. An optional free key, sent as `Authorization: Bearer …`, raises the limits.                  |
+| Auth      | Optional free key in `HIMALAYAS_API_KEY`, sent as `Authorization: Bearer …`; it raises the limits.          |
 | Limits    | Keyed: 60 requests a minute and 10,000 a UTC day. Unkeyed requests share one public allowance.              |
 | Freshness | Data refreshes every 24 hours, so one pass a day is enough.                                                 |
 | Pages     | Up to 20 jobs a page. Pass `nextCursor` back as `cursor`; no `nextCursor` means the last page.              |
+| Run size  | The feed holds about 123,000 jobs, most recently updated first. A run reads `max_pages` pages (default 5).  |
 | Terms     | [API terms](https://himalayas.app/terms), clause 113, read on 2026-10-23 (marked current as of 2026-10-22). |
 
 Obligations:
@@ -29,22 +30,23 @@ Obligations:
 4. Remove jobs once they expire (`expiryDate`).
 5. Keep the API key on the server. Never put it in browser code, URLs, source control or logs.
 
-| `JobPostingData`  | Himalayas field                                                 |
-| ----------------- | --------------------------------------------------------------- |
-| `externalId`      | `guid`                                                          |
-| `title`           | `title`                                                         |
-| `companyName`     | `companyName`                                                   |
-| `applyUrl`        | `applicationLink`                                               |
-| `descriptionHtml` | `description` (sanitized HTML)                                  |
-| `postedAt`        | `pubDate` (Unix seconds; the last update time)                  |
-| `expiresAt`       | `expiryDate`                                                    |
-| `location`        | `locationRestrictions`, joined                                  |
-| `remoteType`      | always `remote`                                                 |
-| `employmentType`  | `employmentType` (for example `Full Time`)                      |
-| `salaryMin`       | `minSalary`                                                     |
-| `salaryMax`       | `maxSalary`                                                     |
-| `salaryCurrency`  | `currency` (ISO 4217)                                           |
-| `salaryPeriod`    | `salaryPeriod` (hourly, weekly, fortnightly, monthly or annual) |
+| `JobPostingData`  | Himalayas field                                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `externalId`      | `guid`                                                                                                                                     |
+| `title`           | `title`                                                                                                                                    |
+| `companyName`     | `companyName`                                                                                                                              |
+| `applyUrl`        | `applicationLink`                                                                                                                          |
+| `descriptionHtml` | `description` (sanitized HTML)                                                                                                             |
+| `postedAt`        | `pubDate` (Unix seconds; the last update time)                                                                                             |
+| `expiresAt`       | `expiryDate`, or `pubDate` + 30 days when it is missing                                                                                    |
+| `location`        | `locationRestrictions`, joined                                                                                                             |
+| `remoteType`      | always `remote`                                                                                                                            |
+| `employmentType`  | `employmentType` (for example `Full Time`)                                                                                                 |
+| `seniority`       | `seniority` (a list), joined                                                                                                               |
+| `salaryMin`       | `minSalary`                                                                                                                                |
+| `salaryMax`       | `maxSalary`                                                                                                                                |
+| `salaryCurrency`  | `currency` (ISO 4217)                                                                                                                      |
+| `salaryPeriod`    | `salaryPeriod` (hourly, weekly, fortnightly, monthly or annual); null when there is no salary, because Himalayas sends `annual` by default |
 
 ### Jobicy
 
@@ -73,9 +75,11 @@ Obligations:
 | `applyUrl`        | `url`                                         |
 | `descriptionHtml` | `jobDescription`                              |
 | `postedAt`        | `pubDate`                                     |
+| `expiresAt`       | `pubDate` + 7 days (the feed covers 7 days)   |
 | `location`        | `jobGeo`                                      |
 | `remoteType`      | always `remote`                               |
 | `employmentType`  | `jobType` (an array), joined                  |
+| `seniority`       | `jobLevel`                                    |
 | `salaryMin`       | `salaryMin`                                   |
 | `salaryMax`       | `salaryMax`                                   |
 | `salaryCurrency`  | `salaryCurrency`                              |
@@ -95,4 +99,8 @@ Obligations:
 - Stay inside the source's rate limits, and respect `Retry-After` on 429.
 - Keep the source's apply link as `applyUrl`, so the Apply action meets the attribution rules.
 - Never put postings in a public feed, sitemap or `JobPosting` structured data.
+- Call the source through `SourceHttpClient`, which applies the retry and 429 rules of [ADR 0016](adr/0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md).
+- Build each posting with `PostingBuilder`: skip a posting that cannot be used, and drop a bad optional field instead of the posting.
+- Set `expiresAt` on every posting. Ingestion expires postings by this date, never because a run did not see them.
+- Read a bounded number of pages per run.
 - Pass the shared contract test in `tests/Feature/JobSources/JobSourceContractTest.php`.

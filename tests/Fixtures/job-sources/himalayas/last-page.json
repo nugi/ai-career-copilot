@@ -1,0 +1,31 @@
+{
+    "comments": "Example comments.",
+    "updatedAt": 1792731845,
+    "offset": 0,
+    "limit": 20,
+    "totalCount": 3,
+    "jobs": [
+        {
+            "title": "Data Engineer",
+            "excerpt": "Helio Labs is hiring a Data Engineer to work remotely.",
+            "companyName": "Helio Labs",
+            "companySlug": "helio-labs",
+            "companyLogo": "https://cdn-images.himalayas.app/example-helio-labs",
+            "employmentType": "Contractor",
+            "minSalary": 10,
+            "maxSalary": 12,
+            "salaryPeriod": "hourly",
+            "seniority": ["Mid-level"],
+            "currency": "USD",
+            "locationRestrictions": ["United States"],
+            "timezoneRestrictions": [-10, -9, -8, -7, -6, -5, 14],
+            "categories": ["Software-Engineer"],
+            "parentCategories": ["Software Engineering"],
+            "description": "<p><strong>Data Engineer</strong></p><p>Helio Labs builds software for small businesses. You will own services in production.</p><ul><li>Five years of experience</li></ul>",
+            "pubDate": 1792731364,
+            "expiryDate": 1797915364,
+            "applicationLink": "https://himalayas.app/companies/helio-labs/jobs/data-engineer-1002",
+            "guid": "https://himalayas.app/companies/helio-labs/jobs/data-engineer-1002"
+        }
+    ]
+}

@@ -40,4 +40,8 @@ return [
         'timeout' => (int) env('PDFTOTEXT_TIMEOUT', 10),
     ],
 
+    'himalayas' => [
+        'key' => env('HIMALAYAS_API_KEY'),
+    ],
+
 ];

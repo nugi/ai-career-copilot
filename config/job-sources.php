@@ -1,5 +1,7 @@
 <?php
 
+use App\JobSources\HimalayasJobSource;
+
 return [
 
     /*
@@ -13,7 +15,25 @@ return [
     |
     */
 
-    'sources' => [],
+    'sources' => [
+        HimalayasJobSource::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Himalayas
+    |--------------------------------------------------------------------------
+    |
+    | The browse feed holds about 123,000 jobs at 20 a page, so a full read is
+    | about 6,000 requests. max_pages caps one run, so a run reads only the
+    | newest pages of the feed.
+    |
+    */
+
+    'himalayas' => [
+        'base_url' => 'https://himalayas.app',
+        'max_pages' => (int) env('HIMALAYAS_MAX_PAGES', 5),
+    ],
 
     /*
     |--------------------------------------------------------------------------
