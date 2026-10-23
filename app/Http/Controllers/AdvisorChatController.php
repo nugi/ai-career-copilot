@@ -6,8 +6,8 @@ use App\Ai\Agents\CareerAdvisor;
 use App\Http\Requests\AskAdvisorRequest;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Ai\Exceptions\FailoverableException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class AdvisorChatController extends Controller
 {
@@ -22,8 +22,8 @@ class AdvisorChatController extends Controller
     /**
      * Stream the career advisor's answer to the user's question as server-sent events.
      *
-     * When every provider fails, the SDK throws after the headers are sent, so the stream reports
-     * the outage as an error event instead of a broken body.
+     * Any failure after the headers are sent becomes one error event instead of a broken body, and
+     * the exception is still reported.
      */
     public function stream(AskAdvisorRequest $request): StreamedResponse
     {
@@ -36,7 +36,7 @@ class AdvisorChatController extends Controller
                 foreach ($events as $event) {
                     yield "data: {$event}\n\n";
                 }
-            } catch (FailoverableException $exception) {
+            } catch (Throwable $exception) {
                 report($exception);
 
                 yield 'data: '.json_encode([
