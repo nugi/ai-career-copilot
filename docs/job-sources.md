@@ -10,16 +10,16 @@ Terms change. Read them again before you add a source, change how postings are s
 
 ### Himalayas
 
-|                      |                                                                                                             |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Key                  | `himalayas`                                                                                                 |
-| Endpoint             | `GET https://himalayas.app/jobs/api` ([docs](https://himalayas.app/docs/remote-jobs-api))                   |
-| Jobs                 | Remote only. `locationRestrictions` lists the countries a candidate must live in; empty means worldwide.   |
-| Auth                 | None required. An optional free key, sent as `Authorization: Bearer …`, raises the limits.                 |
-| Limits               | Keyed: 60 requests a minute and 10,000 a UTC day. Unkeyed requests share one public allowance.              |
-| Freshness            | Data refreshes every 24 hours, so one pass a day is enough.                                                 |
-| Pages                | Up to 20 jobs a page. Pass `nextCursor` back as `cursor`; no `nextCursor` means the last page.              |
-| Terms                | [API terms](https://himalayas.app/terms), clause 113, read on 2026-10-23 (marked current as of 2026-10-22). |
+|           |                                                                                                             |
+| --------- | ----------------------------------------------------------------------------------------------------------- |
+| Key       | `himalayas`                                                                                                 |
+| Endpoint  | `GET https://himalayas.app/jobs/api` ([docs](https://himalayas.app/docs/remote-jobs-api))                   |
+| Jobs      | Remote only. `locationRestrictions` lists the countries a candidate must live in; empty means worldwide.    |
+| Auth      | None required. An optional free key, sent as `Authorization: Bearer …`, raises the limits.                  |
+| Limits    | Keyed: 60 requests a minute and 10,000 a UTC day. Unkeyed requests share one public allowance.              |
+| Freshness | Data refreshes every 24 hours, so one pass a day is enough.                                                 |
+| Pages     | Up to 20 jobs a page. Pass `nextCursor` back as `cursor`; no `nextCursor` means the last page.              |
+| Terms     | [API terms](https://himalayas.app/terms), clause 113, read on 2026-10-23 (marked current as of 2026-10-22). |
 
 Obligations:
 
@@ -29,34 +29,34 @@ Obligations:
 4. Remove jobs once they expire (`expiryDate`).
 5. Keep the API key on the server. Never put it in browser code, URLs, source control or logs.
 
-| `JobPostingData`  | Himalayas field                                   |
-| ----------------- | ------------------------------------------------- |
-| `externalId`      | `guid`                                            |
-| `title`           | `title`                                           |
-| `companyName`     | `companyName`                                     |
-| `applyUrl`        | `applicationLink`                                 |
-| `descriptionHtml` | `description` (sanitized HTML)                    |
-| `postedAt`        | `pubDate` (Unix seconds; the last update time)    |
-| `expiresAt`       | `expiryDate`                                      |
-| `location`        | `locationRestrictions`, joined                    |
-| `remoteType`      | always `remote`                                   |
-| `employmentType`  | `employmentType` (for example `Full Time`)        |
-| `salaryMin`       | `minSalary`                                       |
-| `salaryMax`       | `maxSalary`                                       |
-| `salaryCurrency`  | `currency` (ISO 4217)                             |
+| `JobPostingData`  | Himalayas field                                                 |
+| ----------------- | --------------------------------------------------------------- |
+| `externalId`      | `guid`                                                          |
+| `title`           | `title`                                                         |
+| `companyName`     | `companyName`                                                   |
+| `applyUrl`        | `applicationLink`                                               |
+| `descriptionHtml` | `description` (sanitized HTML)                                  |
+| `postedAt`        | `pubDate` (Unix seconds; the last update time)                  |
+| `expiresAt`       | `expiryDate`                                                    |
+| `location`        | `locationRestrictions`, joined                                  |
+| `remoteType`      | always `remote`                                                 |
+| `employmentType`  | `employmentType` (for example `Full Time`)                      |
+| `salaryMin`       | `minSalary`                                                     |
+| `salaryMax`       | `maxSalary`                                                     |
+| `salaryCurrency`  | `currency` (ISO 4217)                                           |
 | `salaryPeriod`    | `salaryPeriod` (hourly, weekly, fortnightly, monthly or annual) |
 
 ### Jobicy
 
-|           |                                                                                                       |
-| --------- | ----------------------------------------------------------------------------------------------------- |
-| Key       | `jobicy`                                                                                              |
-| Endpoint  | `GET https://jobicy.com/api/jobs` ([docs](https://jobicy.com/jobs-rss-feed))                          |
-| Jobs      | Remote only, from the last 7 days, newest first. `jobGeo` holds the region a candidate must live in. |
-| Auth      | None. The optional paid Commercial key returns ATS links at $0.01 a job; the app does not use it.    |
-| Limits    | Start an automated pass at most once an hour. On 429, retry later.                                    |
-| Pages     | Up to 200 jobs a page (`count`). Pass `nextCursor` back as `cursor`. A cursor expires after 24 hours. |
-| Terms     | Usage terms on the [docs page](https://jobicy.com/jobs-rss-feed), read on 2026-10-23.                |
+|          |                                                                                                       |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| Key      | `jobicy`                                                                                              |
+| Endpoint | `GET https://jobicy.com/api/jobs` ([docs](https://jobicy.com/jobs-rss-feed))                          |
+| Jobs     | Remote only, from the last 7 days, newest first. `jobGeo` holds the region a candidate must live in.  |
+| Auth     | None. The optional paid Commercial key returns ATS links at $0.01 a job; the app does not use it.     |
+| Limits   | Start an automated pass at most once an hour. On 429, retry later.                                    |
+| Pages    | Up to 200 jobs a page (`count`). Pass `nextCursor` back as `cursor`. A cursor expires after 24 hours. |
+| Terms    | Usage terms on the [docs page](https://jobicy.com/jobs-rss-feed), read on 2026-10-23.                 |
 
 Obligations:
 
@@ -83,11 +83,11 @@ Obligations:
 
 ## Rejected
 
-| Source            | Reason                                                                                                                                                                                         |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Remotive          | Its [API terms](https://github.com/remotive-io/remote-jobs-api) forbid showing its jobs to collect sign-ups or email addresses, and the app shows jobs only to signed-in users. It also asks for at most 4 requests a day and delays jobs by 24 hours. |
-| LinkedIn, Indeed  | No public jobs API for this use, and their terms forbid scraping. See ADR 0015.                                                                                                               |
-| Arbeitnow         | Mostly on-site jobs in Europe. The app compares salaries only for Indonesian and remote jobs ([ADR 0004](adr/0004-compare-salaries-as-annual-gross-in-the-users-currency.md)).                  |
+| Source           | Reason                                                                                                                                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Remotive         | Its [API terms](https://github.com/remotive-io/remote-jobs-api) forbid showing its jobs to collect sign-ups or email addresses, and the app shows jobs only to signed-in users. It also asks for at most 4 requests a day and delays jobs by 24 hours. |
+| LinkedIn, Indeed | No public jobs API for this use, and their terms forbid scraping. See ADR 0015.                                                                                                                                                                        |
+| Arbeitnow        | Mostly on-site jobs in Europe. The app compares salaries only for Indonesian and remote jobs ([ADR 0004](adr/0004-compare-salaries-as-annual-gross-in-the-users-currency.md)).                                                                         |
 
 ## What every source must do
 
