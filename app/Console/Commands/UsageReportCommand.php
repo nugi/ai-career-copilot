@@ -38,6 +38,7 @@ class UsageReportCommand extends Command
                 model,
                 count(*) as calls,
                 count(*) filter (where status in ('failed_over', 'failed')) as failed,
+                count(*) filter (where tokens_estimated) as estimated,
                 coalesce(sum(input_tokens), 0) as input_tokens,
                 coalesce(sum(output_tokens), 0) as output_tokens,
                 coalesce(sum(cost_usd), 0) as cost_usd,
@@ -57,7 +58,7 @@ class UsageReportCommand extends Command
         }
 
         $this->table(
-            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg latency (ms)'],
+            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg latency (ms)'],
             $rows->map(fn (stdClass $row): array => [
                 $row->tier ?? '-',
                 $row->agent,
@@ -65,6 +66,7 @@ class UsageReportCommand extends Command
                 $row->model,
                 (int) $row->calls,
                 (int) $row->failed,
+                (int) $row->estimated,
                 (int) $row->input_tokens,
                 (int) $row->output_tokens,
                 number_format((float) $row->cost_usd, 4),

@@ -26,6 +26,7 @@ test('the report groups the last days by tier, agent, provider and model and add
         'status' => AiUsageStatus::FailedOver,
         'input_tokens' => 200,
         'output_tokens' => 100,
+        'tokens_estimated' => true,
         'cost_usd' => 0.01,
         'latency_ms' => 500,
         'created_at' => now()->subDay(),
@@ -42,10 +43,10 @@ test('the report groups the last days by tier, agent, provider and model and add
 
     $this->artisan('usage:report')
         ->expectsTable(
-            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg latency (ms)'],
+            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg latency (ms)'],
             [
-                ['cheap', 'ResumeParser', 'openai', 'gpt-6-luna', 1, 1, 200, 100, '0.0100', 500],
-                ['strong', 'CareerAdvisor', 'openai', 'gpt-6.1-sol', 1, 0, 1_000, 500, '0.1000', 1_000],
+                ['cheap', 'ResumeParser', 'openai', 'gpt-6-luna', 1, 1, 1, 200, 100, '0.0100', 500],
+                ['strong', 'CareerAdvisor', 'openai', 'gpt-6.1-sol', 1, 0, 0, 1_000, 500, '0.1000', 1_000],
             ],
         )
         ->expectsTable(
