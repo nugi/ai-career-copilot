@@ -15,4 +15,16 @@ return [
 
     'sources' => [],
 
+    /*
+    |--------------------------------------------------------------------------
+    | User Agent
+    |--------------------------------------------------------------------------
+    |
+    | Sources see this User-Agent, so it names the app and a contact URL. Change
+    | it only to a value that still tells a source who is calling.
+    |
+    */
+
+    'user_agent' => env('JOB_SOURCES_USER_AGENT', 'AICareerCopilot/1.0 (+https://github.com/nugi/ai-career-copilot)'),
+
 ];
