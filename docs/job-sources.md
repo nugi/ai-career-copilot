@@ -10,17 +10,17 @@ Terms change. Read them again before you add a source, change how postings are s
 
 ### Himalayas
 
-|           |                                                                                                             |
-| --------- | ----------------------------------------------------------------------------------------------------------- |
-| Key       | `himalayas`                                                                                                 |
-| Endpoint  | `GET https://himalayas.app/jobs/api/search?q=…&sort=recent&page=N` ([docs](https://himalayas.app/docs/remote-jobs-api))                   |
-| Jobs      | Remote only. `locationRestrictions` lists the countries a candidate must live in; empty means worldwide.    |
-| Auth      | Optional free key in `HIMALAYAS_API_KEY`, sent as `Authorization: Bearer …`; it raises the limits.          |
-| Limits    | Keyed: 60 requests a minute and 10,000 a UTC day. Unkeyed requests share one public allowance.              |
-| Freshness | Data refreshes every 24 hours, so one pass a day is enough.                                                 |
-| Pages     | 20 jobs a page, using page numbers. At most 5,000 results per query.              |
-| Run size  | Search each target role, newest first. Read `pages_per_query` pages (default 1), under the run deadline.  |
-| Terms     | [API terms](https://himalayas.app/terms), clause 113, read on 2026-10-23 (marked current as of 2026-10-22). |
+|           |                                                                                                                         |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Key       | `himalayas`                                                                                                             |
+| Endpoint  | `GET https://himalayas.app/jobs/api/search?q=…&sort=recent&page=N` ([docs](https://himalayas.app/docs/remote-jobs-api)) |
+| Jobs      | Remote only. `locationRestrictions` lists the countries a candidate must live in; empty means worldwide.                |
+| Auth      | Optional free key in `HIMALAYAS_API_KEY`, sent as `Authorization: Bearer …`; it raises the limits.                      |
+| Limits    | Keyed: 60 requests a minute and 10,000 a UTC day. Unkeyed requests share one public allowance.                          |
+| Freshness | Data refreshes every 24 hours, so one pass a day is enough.                                                             |
+| Pages     | 20 jobs a page, using page numbers. At most 5,000 results per query.                                                    |
+| Run size  | Search each target role, newest first. Read `pages_per_query` pages (default 1), under the run deadline.                |
+| Terms     | [API terms](https://himalayas.app/terms), clause 113, read on 2026-10-23 (marked current as of 2026-10-22).             |
 
 Obligations:
 
