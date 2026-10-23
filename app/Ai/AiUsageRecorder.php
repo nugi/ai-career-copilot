@@ -54,7 +54,7 @@ class AiUsageRecorder
      * Write the usage row of one provider attempt.
      *
      * An agent that does not implement TracksUsage writes no row. A model without a price writes a zero cost and a
-     * warning, so an unpriced call is visible instead of silently free.
+     * warning, so an unpriced call is visible instead of silently free. A failed attempt may carry unknown token counts, which are marked as estimated.
      */
     public function record(
         Agent $agent,
@@ -64,6 +64,7 @@ class AiUsageRecorder
         int $inputTokens,
         int $outputTokens,
         AiUsageStatus $status,
+        bool $tokensEstimated = false,
     ): void {
         if (! $agent instanceof TracksUsage) {
             return;
@@ -89,6 +90,7 @@ class AiUsageRecorder
                 'status' => $status,
                 'input_tokens' => $inputTokens,
                 'output_tokens' => $outputTokens,
+                'tokens_estimated' => $tokensEstimated,
                 'cost_usd' => $cost ?? '0.000000',
                 'latency_ms' => $this->latencyMs($invocationId),
             ]);
