@@ -50,15 +50,16 @@ Obligations:
 
 ### Jobicy
 
-|          |                                                                                                       |
-| -------- | ----------------------------------------------------------------------------------------------------- |
-| Key      | `jobicy`                                                                                              |
-| Endpoint | `GET https://jobicy.com/api/jobs` ([docs](https://jobicy.com/jobs-rss-feed))                          |
-| Jobs     | Remote only, from the last 7 days, newest first. `jobGeo` holds the region a candidate must live in.  |
-| Auth     | None. The optional paid Commercial key returns ATS links at $0.01 a job; the app does not use it.     |
-| Limits   | Start an automated pass at most once an hour. On 429, retry later.                                    |
-| Pages    | Up to 200 jobs a page (`count`). Pass `nextCursor` back as `cursor`. A cursor expires after 24 hours. |
-| Terms    | Usage terms on the [docs page](https://jobicy.com/jobs-rss-feed), read on 2026-10-23.                 |
+|          |                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Key      | `jobicy`                                                                                                                                   |
+| Endpoint | `GET https://jobicy.com/api/jobs?count=50&tag=…` ([docs](https://jobicy.com/jobs-rss-feed))                                                |
+| Jobs     | Remote only, from the last 7 days, newest first. `jobGeo` holds the region a candidate must live in.                                       |
+| Auth     | None. The optional paid Commercial key returns ATS links at $0.01 a job; the app does not use it.                                          |
+| Limits   | Start an automated pass at most once an hour. On 429, retry later.                                                                         |
+| Pages    | 50 jobs a page here (up to 200 with `count`); pass `nextCursor` back as `cursor` while `hasMore` is true; a cursor expires after 24 hours. |
+| Run size | Search each target role, read `pages_per_query` pages (default 1), under the run deadline.                                                 |
+| Terms    | Usage terms on the [docs page](https://jobicy.com/jobs-rss-feed), read on 2026-10-23.                                                      |
 
 Obligations:
 
@@ -67,23 +68,23 @@ Obligations:
 3. Do not use the postings for spam or for services that harm employers or candidates.
 4. Treat `jobDescription` as untrusted HTML and sanitize it before display.
 
-| `JobPostingData`  | Jobicy field                                  |
-| ----------------- | --------------------------------------------- |
-| `externalId`      | `id`                                          |
-| `title`           | `jobTitle`                                    |
-| `companyName`     | `companyName`                                 |
-| `applyUrl`        | `url`                                         |
-| `descriptionHtml` | `jobDescription`                              |
-| `postedAt`        | `pubDate`                                     |
-| `expiresAt`       | `pubDate` + 7 days (the feed covers 7 days)   |
-| `location`        | `jobGeo`                                      |
-| `remoteType`      | always `remote`                               |
-| `employmentType`  | `jobType` (an array), joined                  |
-| `seniority`       | `jobLevel`                                    |
-| `salaryMin`       | `salaryMin`                                   |
-| `salaryMax`       | `salaryMax`                                   |
-| `salaryCurrency`  | `salaryCurrency`                              |
-| `salaryPeriod`    | `salaryPeriod` (for example yearly or hourly) |
+| `JobPostingData`  | Jobicy field                                                                |
+| ----------------- | --------------------------------------------------------------------------- |
+| `externalId`      | `id`                                                                        |
+| `title`           | `jobTitle`                                                                  |
+| `companyName`     | `companyName`                                                               |
+| `applyUrl`        | `url`                                                                       |
+| `descriptionHtml` | `jobDescription`                                                            |
+| `postedAt`        | `pubDate`                                                                   |
+| `expiresAt`       | `pubDate` + 7 days (the feed covers 7 days)                                 |
+| `location`        | `jobGeo` (spaces collapsed)                                                 |
+| `remoteType`      | always `remote`                                                             |
+| `employmentType`  | `jobType` (an array), joined                                                |
+| `seniority`       | `jobLevel`                                                                  |
+| `salaryMin`       | `salaryMin`                                                                 |
+| `salaryMax`       | `salaryMax`                                                                 |
+| `salaryCurrency`  | `salaryCurrency`                                                            |
+| `salaryPeriod`    | `salaryPeriod` (for example yearly or hourly), null when there is no salary |
 
 ## Rejected
 

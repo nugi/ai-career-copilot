@@ -4,6 +4,7 @@ use App\JobSources\Contracts\JobSource;
 use App\JobSources\FakeJobSource;
 use App\JobSources\FetchReport;
 use App\JobSources\HimalayasJobSource;
+use App\JobSources\JobicyJobSource;
 use App\JobSources\JobPostingData;
 use Illuminate\Support\Facades\Http;
 
@@ -44,5 +45,14 @@ test('a job source yields valid postings under its own key', function (Closure $
         config(['services.himalayas.key' => 'test-key']);
 
         return app(HimalayasJobSource::class);
+    },
+    'jobicy' => function (): JobicyJobSource {
+        Http::fake([
+            'jobicy.com/*' => Http::response(json_decode((string) file_get_contents(base_path('tests/Fixtures/job-sources/jobicy/page.json')), true, 512, JSON_THROW_ON_ERROR)),
+        ]);
+
+        config(['job-sources.default_queries' => ['backend engineer']]);
+
+        return app(JobicyJobSource::class);
     },
 ]);

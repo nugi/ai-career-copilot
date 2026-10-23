@@ -1,0 +1,35 @@
+{
+    "apiVersion": "2.2.19",
+    "documentationUrl": "https://jobi.cy/apidocs",
+    "friendlyNotice": "Thanks for using Jobicy API! Please ensure Jobicy is clearly credited with a direct link to the source, and all application buttons redirect to the original job URL provided in this feed. That’s all! You might be building something amazing, we wish you the best of luck!",
+    "jobCount": 1,
+    "lastUpdate": "2026-10-23T04:00:11+00:00",
+    "hasMore": false,
+    "appliedFilters": {
+        "count": 50,
+        "tag": "backend engineer"
+    },
+    "statusCode": 200,
+    "success": true,
+    "jobs": [
+        {
+            "id": 900103,
+            "url": "https://jobicy.com/jobs/900103-staff-platform-engineer",
+            "jobSlug": "900103-staff-platform-engineer",
+            "jobTitle": "Staff Platform Engineer",
+            "companyName": "Example Cloud Co",
+            "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/example-logo.png",
+            "jobIndustry": ["Technical Support"],
+            "jobType": ["Full-Time"],
+            "jobGeo": "Canada,  USA",
+            "jobLevel": "Any",
+            "jobExcerpt": "Example excerpt for Staff Platform Engineer.",
+            "jobDescription": "<p>Example description for <strong>Staff Platform Engineer</strong> at Example Cloud Co.</p><ul><li>Build &amp; run services</li><li>Work with the team</li></ul>",
+            "pubDate": "2026-10-23T03:50:13+00:00",
+            "salaryMin": 212000,
+            "salaryMax": 291000,
+            "salaryCurrency": "USD",
+            "salaryPeriod": "yearly"
+        }
+    ]
+}
