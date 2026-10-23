@@ -27,9 +27,15 @@ test('a source with normal fields passes', function () {
         ->assertExitCode(0);
 
     Log::shouldNotHaveReceived('error');
+    Log::shouldHaveReceived('info')
+        ->with('jobs.source.field_shares', [
+            'source' => 'himalayas',
+            'postings' => 2,
+            'shares' => ['salaryMin' => 0.5, 'seniority' => 1.0, 'employmentType' => 1.0, 'location' => 0.5, 'descriptionHtml' => 1.0],
+        ])->once();
 });
 
-test('a renamed salary field fails and is logged', function () {
+test('a renamed salary field fails on the second run and is logged', function () {
     Log::spy();
 
     $page = himalayasPage();
@@ -46,6 +52,15 @@ test('a renamed salary field fails and is logged', function () {
     ]);
 
     $this->artisan('jobs:check-source himalayas')
+        ->expectsOutputToContain('salaryMin set on 0% of postings, expected at least 5% (first miss)')
+        ->assertExitCode(0);
+
+    Log::shouldHaveReceived('warning')
+        ->with('jobs.source.schema_drift_suspected', ['source' => 'himalayas', 'fields' => ['salaryMin' => 0.0]])
+        ->once();
+    Log::shouldNotHaveReceived('error');
+
+    $this->artisan('jobs:check-source himalayas')
         ->expectsOutputToContain('salaryMin set on 0% of postings, expected at least 5%')
         ->assertExitCode(1);
 
@@ -53,4 +68,48 @@ test('a renamed salary field fails and is logged', function () {
         ->withArgs(fn (string $message, array $context): bool => $message === 'jobs.source.schema_drift'
             && $context['source'] === 'himalayas'
             && $context['problems'] !== []);
+});
+
+test('a field that recovers clears the first miss', function () {
+    Log::spy();
+    $normal = himalayasPage();
+    $renamed = $normal;
+
+    foreach ($renamed['jobs'] as $index => $job) {
+        unset($renamed['jobs'][$index]['minSalary'], $renamed['jobs'][$index]['maxSalary']);
+        $renamed['jobs'][$index]['salaryMinimum'] = $job['minSalary'];
+        $renamed['jobs'][$index]['salaryMaximum'] = $job['maxSalary'];
+    }
+
+    $response = $renamed;
+    Http::fake([
+        'himalayas.app/*' => function () use (&$response) {
+            return Http::response($response);
+        },
+    ]);
+
+    $this->artisan('jobs:check-source himalayas')->assertExitCode(0);
+
+    $response = $normal;
+    $this->artisan('jobs:check-source himalayas')->assertExitCode(0);
+
+    $response = $renamed;
+    $this->artisan('jobs:check-source himalayas')
+        ->expectsOutputToContain('salaryMin set on 0% of postings, expected at least 5% (first miss)')
+        ->assertExitCode(0);
+
+    Log::shouldNotHaveReceived('error');
+});
+
+test('an unavailable source fails at once', function () {
+    Log::spy();
+    Http::fake(['himalayas.app/*' => Http::response([], 404)]);
+
+    $this->artisan('jobs:check-source himalayas')->assertExitCode(1);
+
+    Http::assertSentCount(1);
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $message, array $context): bool => $message === 'jobs.source.unavailable'
+            && $context['source'] === 'himalayas')
+        ->once();
 });

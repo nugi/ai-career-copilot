@@ -38,13 +38,11 @@ test('a job source yields valid postings under its own key', function (Closure $
     'fake' => fn () => new FakeJobSource,
     'himalayas' => function (): HimalayasJobSource {
         Http::fake([
-            'himalayas.app/*' => Http::sequence()
-                ->pushFile(base_path('tests/Fixtures/job-sources/himalayas/page.json'))
-                ->pushFile(base_path('tests/Fixtures/job-sources/himalayas/last-page.json')),
+            'himalayas.app/*' => Http::response(json_decode((string) file_get_contents(base_path('tests/Fixtures/job-sources/himalayas/page.json')), true, 512, JSON_THROW_ON_ERROR)),
         ]);
 
         config(['services.himalayas.key' => 'test-key']);
 
-        return new HimalayasJobSource;
+        return app(HimalayasJobSource::class);
     },
 ]);

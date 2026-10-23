@@ -2,7 +2,9 @@
 
 use App\JobSources\Exceptions\JobSourceRateLimited;
 use App\JobSources\Exceptions\JobSourceUnavailable;
+use App\JobSources\RunDeadline;
 use App\JobSources\SourceHttpClient;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterval;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -27,6 +29,22 @@ test('a 429 waits for Retry-After and then succeeds', function () {
         fn (CarbonInterval $duration): bool => (int) $duration->totalSeconds === 2,
         1,
     );
+});
+
+test('a 429 whose wait passes the deadline throws without waiting', function () {
+    Sleep::fake();
+    $this->freezeTime();
+
+    Http::fake([
+        'https://jobs.example.com/*' => Http::response([], 429, ['Retry-After' => '10']),
+    ]);
+
+    $client = new SourceHttpClient('himalayas', 'https://jobs.example.com', null, new RunDeadline(CarbonImmutable::now()->addSeconds(20)));
+
+    expect(fn () => $client->getJson('/jobs'))->toThrow(JobSourceRateLimited::class);
+
+    Http::assertSentCount(1);
+    Sleep::assertNeverSlept();
 });
 
 test('a 429 with a long Retry-After throws at once', function () {

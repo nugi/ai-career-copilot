@@ -9,10 +9,9 @@ use Generator;
 /**
  * The Himalayas remote job feed.
  *
- * The source reads the browse feed, which is newest first, and pages through it with a cursor. A run reads at most
- * job-sources.himalayas.max_pages pages, so it reads only the newest jobs of a feed that holds about 123,000. The feed
- * refreshes every 24 hours, and docs/job-sources.md holds the field map, the limits and the terms that come with using
- * the postings.
+ * The source searches the feed for each target-role query, newest first, reading pages_per_query pages per query
+ * under the run deadline. It yields each guid once per run. The feed refreshes every 24 hours, and
+ * docs/job-sources.md holds the field map, the limits and the terms that come with using the postings.
  */
 final class HimalayasJobSource implements JobSource
 {
@@ -21,60 +20,86 @@ final class HimalayasJobSource implements JobSource
      */
     private const int FALLBACK_LIFETIME_DAYS = 30;
 
+    /**
+     * Resolve the target-role queries for each run.
+     */
+    public function __construct(private TargetRoleQueries $queries) {}
+
+    /**
+     * Get the source key.
+     */
     public function key(): string
     {
         return 'himalayas';
     }
 
+    /**
+     * Search each role under the page and time limits, yielding each external ID once.
+     *
+     * @return Generator<int, JobPostingData, mixed, FetchReport>
+     */
     public function fetch(): Generator
     {
-        $maxPages = config()->integer('job-sources.himalayas.max_pages');
+        $deadline = RunDeadline::fromConfig();
+        $pagesPerQuery = config()->integer('job-sources.himalayas.pages_per_query');
         $key = config('services.himalayas.key');
 
         $client = new SourceHttpClient(
             'himalayas',
             config()->string('job-sources.himalayas.base_url'),
             is_string($key) && trim($key) !== '' ? $key : null,
+            $deadline,
         );
 
         $builder = new PostingBuilder('himalayas');
-
         $pages = 0;
-        $cursor = null;
+        $stoppedEarly = false;
 
-        /** @var list<string> $seenCursors */
-        $seenCursors = [];
+        /** @var array<string, true> $seenGuids */
+        $seenGuids = [];
 
-        while ($pages < $maxPages) {
-            $data = $client->getJson('/jobs/api', ['limit' => 20, 'cursor' => $cursor]);
+        foreach ($this->queries->all() as $query) {
+            for ($page = 1; $page <= $pagesPerQuery; $page++) {
+                if ($deadline->hasPassed()) {
+                    $stoppedEarly = true;
 
-            $jobs = $data['jobs'] ?? null;
+                    break 2;
+                }
 
-            if (! is_array($jobs) || $jobs === []) {
-                break;
-            }
+                $data = $client->getJson('/jobs/api/search', ['q' => $query, 'sort' => 'recent', 'page' => $page]);
+                $jobs = $data['jobs'] ?? null;
 
-            $pages++;
+                if (! is_array($jobs) || $jobs === []) {
+                    break;
+                }
 
-            foreach ($jobs as $job) {
-                $posting = $builder->build(is_array($job) ? $this->values($job) : []);
+                $pages++;
 
-                if ($posting !== null) {
-                    yield $posting;
+                foreach ($jobs as $job) {
+                    $guid = is_array($job) ? ($job['guid'] ?? null) : null;
+
+                    if (is_string($guid) || is_int($guid)) {
+                        if (isset($seenGuids[$guid])) {
+                            continue;
+                        }
+
+                        $seenGuids[$guid] = true;
+                    }
+
+                    $posting = $builder->build(is_array($job) ? $this->values($job) : []);
+
+                    if ($posting !== null) {
+                        yield $posting;
+                    }
+                }
+
+                if (count($jobs) < 20) {
+                    break;
                 }
             }
-
-            $nextCursor = $data['nextCursor'] ?? null;
-
-            if (! is_string($nextCursor) || trim($nextCursor) === '' || in_array($nextCursor, $seenCursors, true)) {
-                break;
-            }
-
-            $seenCursors[] = $nextCursor;
-            $cursor = $nextCursor;
         }
 
-        return $builder->report($pages);
+        return $builder->report($pages, $stoppedEarly);
     }
 
     /**

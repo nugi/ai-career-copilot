@@ -9,14 +9,18 @@ use App\JobSources\JobSourceRegistry;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Samples source searches daily, reporting hard failures and repeated low field shares.
+ */
 #[Signature('jobs:check-source {source? : The source key; checks every registered source when omitted}')]
-#[Description('Fetch one live page from a job source and fail when its fields look changed')]
+#[Description('Sample job source searches and fail on hard problems or repeated low field shares')]
 class CheckJobSourceCommand extends Command
 {
     /**
-     * Read one page of each chosen source and fail when a source is unreachable, yields nothing or lost a field.
+     * Sample each chosen source and fail on hard problems or fields low in two consecutive runs.
      *
      * The command prints counts and field names only. It never prints a posting, a job description or the API key.
      */
@@ -62,13 +66,16 @@ class CheckJobSourceCommand extends Command
     }
 
     /**
-     * Check one source, and print a line about its fields.
+     * Read one page per sampled query and report field shares, first misses and failures.
      */
     private function check(JobSource $source): bool
     {
         $key = $source->key();
 
-        config(["job-sources.{$key}.max_pages" => 1]);
+        config([
+            'job-sources.max_queries' => config()->integer('job-sources.check_pages'),
+            "job-sources.{$key}.pages_per_query" => 1,
+        ]);
 
         /** @var list<JobPostingData> $postings */
         $postings = [];
@@ -116,7 +123,7 @@ class CheckJobSourceCommand extends Command
     }
 
     /**
-     * Get the problems of the run, or an empty list when the fields still look the way that the source expects.
+     * Get hard problems and repeated low fields, caching this run's low fields and logging its shares.
      *
      * @param  list<JobPostingData>  $postings
      * @return list<string>
@@ -138,17 +145,53 @@ class CheckJobSourceCommand extends Command
             $problems[] = "{$droppedFields} fields dropped";
         }
 
-        foreach ($this->expectedFields($key) as $field => $minimum) {
-            $share = $this->shareSet($postings, $field);
+        $cacheKey = "jobs:check-source:{$key}:low-fields";
 
-            if ($share < $minimum) {
-                $problems[] = sprintf(
+        /** @var list<string> $previousLowFields */
+        $previousLowFields = Cache::get($cacheKey, []);
+        $lowFields = [];
+        $suspectedFields = [];
+        $shares = [];
+
+        if ($postings !== []) {
+            foreach ($this->expectedFields($key) as $field => $minimum) {
+                $share = $this->shareSet($postings, $field);
+                $shares[$field] = round($share, 2);
+
+                if ($share >= $minimum) {
+                    continue;
+                }
+
+                $lowFields[] = $field;
+                $message = sprintf(
                     '%s set on %d%% of postings, expected at least %d%%',
                     $field,
                     (int) round($share * 100),
                     (int) round($minimum * 100),
                 );
+
+                if (in_array($field, $previousLowFields, true)) {
+                    $problems[] = $message;
+                } else {
+                    $this->warn("{$key}: {$message} (first miss)");
+                    $suspectedFields[$field] = $share;
+                }
             }
+
+            Log::info('jobs.source.field_shares', [
+                'source' => $key,
+                'postings' => count($postings),
+                'shares' => $shares,
+            ]);
+        }
+
+        Cache::put($cacheKey, $lowFields, now()->addDays(3));
+
+        if ($suspectedFields !== []) {
+            Log::warning('jobs.source.schema_drift_suspected', [
+                'source' => $key,
+                'fields' => $suspectedFields,
+            ]);
         }
 
         return $problems;

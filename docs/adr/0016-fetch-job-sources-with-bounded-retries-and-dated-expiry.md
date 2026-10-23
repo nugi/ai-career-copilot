@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
+- **Amended:** 2026-10-24 (run deadline, search by target roles, daily drift check)
 
 ## Context
 
@@ -35,7 +36,7 @@
 **Benefits**
 
 1. A run has a known maximum cost in requests, and stays well inside the public allowance.
-2. A slow or rate-limited source never ties up a queue worker for longer than about 45 seconds.
+2. A slow or rate-limited source never ties up a queue worker for longer than the run deadline plus one attempt, about 75 seconds (see the amendment).
 3. One bad posting costs one posting, and one bad field costs one field. The counts show in every run summary.
 4. Postings expire on a date the user can see, and a short or capped feed never removes open jobs.
 
@@ -45,5 +46,23 @@
 2. A dropped field is lost until the source fixes it. Only the warning log shows it.
 3. The 30-day fallback expiry for Himalayas is a guess. A job can be listed after it closed, or hidden while it is still open.
 4. Anonymized fixtures can drift from the live shape; the daily check is the guard.
+
+## Amendment (2026-10-24)
+
+A review of the first source changed what a bounded run means.
+
+1. **The page cap did not bound time.** One request can try 3 times, each up to 15 seconds (10 seconds to answer, 5 to connect), with up to two 30-second `Retry-After` waits between them: about 105 seconds, not 45. Five pages could take several minutes. Each run now has a deadline, `job-sources.max_run_seconds` (60 by default):
+    - A source starts no new request after the deadline. It ends the run and reports `stoppedEarly` in its `FetchReport`.
+    - `SourceHttpClient` starts a retry only when the wait and one more attempt end before the deadline. Otherwise it throws as if the tries were used up: `JobSourceRateLimited` for a 429, `JobSourceUnavailable` for the rest.
+    - The worst run is the deadline plus one attempt, about 75 seconds. The queued ingestion job (Day 14) gets a 120-second timeout.
+2. **Search by what users want, not the newest of every job.** Five pages of the Himalayas browse feed gave about 100 jobs a day across every category, about a quarter of them tech roles, and matching cannot rank a job the app never fetched. A run now searches each source with queries built from the target roles on user profiles (`TargetRoleQueries`): the most common roles first, at most `job-sources.max_queries` (10), cleaned to letters, digits and spaces, at most 60 characters each. With no profiles, it uses `job-sources.default_queries`. Role titles are not personal data, so they may go to the source.
+    - Himalayas: `/jobs/api/search?q=…&sort=recent&page=N`, `pages_per_query` pages per query (1 by default). Search pages by page number, not cursor. The pages can overlap, which is harmless because postings are unique by ID.
+    - A source yields each external ID at most once per run, because two queries can return the same job.
+    - A bounded run is now queries × pages per query, under the deadline.
+3. **The drift check runs daily and alerts on a repeat.** The check ran hourly although Himalayas refreshes once a day, so a page that failed a threshold failed all day. With 20 postings, a 50% threshold and a real fill rate of 60%, the check also failed about 13% of the time by chance. Now:
+    - `jobs:check-source` runs once a day, after the feed refresh, and reads `check_pages` pages (3 by default) for a larger sample.
+    - A field under its threshold fails the check only when it was also under it in the previous run. The first miss logs `jobs.source.schema_drift_suspected` and passes. No postings, too many skipped postings, or an unavailable source still fail at once.
+    - Every run logs `jobs.source.field_shares`. After a week of runs, the thresholds are set from that data.
+    - A drift alert can now take up to two days. The per-run summary of ingestion is the faster second net.
 
 **Revisit when** a source offers an "updated since" filter, a paid key raises the limits enough to read a full feed, or the share of dropped fields in a run summary grows.
