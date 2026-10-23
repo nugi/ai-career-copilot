@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\Currency;
 use App\Enums\SalaryPeriod;
 use App\Models\JobMatch;
 use App\Models\JobPosting;
@@ -38,7 +37,7 @@ test('the same external ID from different sources is two postings', function () 
 });
 
 test('importing a posting again updates it instead of adding a duplicate', function (?string $externalId) {
-    $attributes = JobPosting::factory()->raw(['source' => 'board', 'external_id' => $externalId, 'title' => 'PHP Developer']);
+    $attributes = JobPosting::factory()->make(['source' => 'board', 'external_id' => $externalId, 'title' => 'PHP Developer'])->getAttributes();
     JobPosting::query()->upsert([$attributes], uniqueBy: ['source', 'dedup_key'], update: ['title']);
 
     JobPosting::query()->upsert([[...$attributes, 'title' => 'Senior PHP Developer']], uniqueBy: ['source', 'dedup_key'], update: ['title']);
@@ -64,15 +63,41 @@ test('a posting stores its salary as whole amounts with a currency and period', 
     $posting = JobPosting::factory()->create([
         'salary_min' => 20_000_000,
         'salary_max' => 30_000_000,
-        'salary_currency' => Currency::Idr,
+        'salary_currency' => 'IDR',
         'salary_period' => SalaryPeriod::Monthly,
     ]);
 
     expect($posting->fresh()->only('salary_min', 'salary_max', 'salary_currency', 'salary_period'))->toBe([
         'salary_min' => 20_000_000,
         'salary_max' => 30_000_000,
-        'salary_currency' => Currency::Idr,
+        'salary_currency' => 'IDR',
         'salary_period' => SalaryPeriod::Monthly,
+    ]);
+});
+
+test('a posting stores pay as posted in any currency and period', function () {
+    $hourly = JobPosting::factory()->withoutSalary()->create([
+        'salary_min' => 40,
+        'salary_max' => 60,
+        'salary_currency' => 'EUR',
+        'salary_period' => SalaryPeriod::Hourly,
+    ]);
+    $unknownUnit = JobPosting::factory()->withoutSalary()->create([
+        'salary_min' => 40,
+        'salary_max' => 60,
+    ]);
+
+    expect($hourly->fresh()->only('salary_min', 'salary_max', 'salary_currency', 'salary_period'))->toBe([
+        'salary_min' => 40,
+        'salary_max' => 60,
+        'salary_currency' => 'EUR',
+        'salary_period' => SalaryPeriod::Hourly,
+    ]);
+    expect($unknownUnit->fresh()->only('salary_min', 'salary_max', 'salary_currency', 'salary_period'))->toBe([
+        'salary_min' => 40,
+        'salary_max' => 60,
+        'salary_currency' => null,
+        'salary_period' => null,
     ]);
 });
 
@@ -88,14 +113,15 @@ test('the database rejects an invalid salary', function (array $salary, string $
 })->with([
     'minimum above maximum' => [['salary_min' => 30_000_000, 'salary_max' => 20_000_000], 'job_postings_salary_range_check'],
     'negative maximum' => [['salary_min' => null, 'salary_max' => -1], 'job_postings_salary_range_check'],
-    'amount without currency' => [['salary_currency' => null], 'job_postings_salary_unit_check'],
-    'amount without period' => [['salary_period' => null], 'job_postings_salary_unit_check'],
+    'currency without an amount' => [['salary_min' => null, 'salary_max' => null, 'salary_currency' => 'USD', 'salary_period' => null], 'job_postings_salary_unit_check'],
+    'period without an amount' => [['salary_min' => null, 'salary_max' => null, 'salary_currency' => null, 'salary_period' => SalaryPeriod::Monthly], 'job_postings_salary_unit_check'],
+    'annual minimum above annual maximum' => [['annual_salary_min' => 60, 'annual_salary_max' => 40], 'job_postings_annual_salary_range_check'],
 ]);
 
 test('the database rejects an unsupported currency written without the model', function () {
     $posting = JobPosting::factory()->create();
 
-    expect(fn () => DB::table('job_postings')->where('id', $posting->id)->update(['salary_currency' => 'EUR']))
+    expect(fn () => DB::table('job_postings')->where('id', $posting->id)->update(['salary_currency' => 'eur']))
         ->toThrow(QueryException::class, 'job_postings_salary_currency_check');
 });
 

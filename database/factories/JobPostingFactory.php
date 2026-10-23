@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\Currency;
 use App\Enums\EmploymentType;
+use App\Enums\JobRegion;
 use App\Enums\SalaryPeriod;
 use App\Enums\SeniorityLevel;
 use App\Enums\WorkArrangement;
@@ -65,6 +66,8 @@ class JobPostingFactory extends Factory
             'description' => $this->descriptionFor($role, $company),
             'location' => fake()->randomElement(self::INDONESIAN_CITIES),
             'country_code' => 'ID',
+            'country_codes' => ['ID'],
+            'region' => null,
             'work_arrangement' => fake()->randomElement([WorkArrangement::Onsite, WorkArrangement::Hybrid]),
             'employment_type' => fake()->randomElement([EmploymentType::FullTime, EmploymentType::FullTime, EmploymentType::Contract]),
             'seniority' => $seniority,
@@ -89,6 +92,8 @@ class JobPostingFactory extends Factory
                 'description' => $this->descriptionFor($this->roleFor($attributes['title']), $company),
                 'location' => fake()->randomElement(['Remote (Worldwide)', 'Remote (APAC)', 'Remote (UTC+7 ± 3 hours)']),
                 'country_code' => null,
+                'country_codes' => [],
+                'region' => JobRegion::Worldwide,
                 'work_arrangement' => WorkArrangement::Remote,
                 'employment_type' => fake()->randomElement([EmploymentType::FullTime, EmploymentType::Contract, EmploymentType::Freelance]),
                 ...$this->usdYearlySalary($seniority),
@@ -106,6 +111,9 @@ class JobPostingFactory extends Factory
             'salary_max' => null,
             'salary_currency' => null,
             'salary_period' => null,
+            'annual_salary_min' => null,
+            'annual_salary_max' => null,
+            'salary_normalization_version' => null,
         ]);
     }
 
@@ -171,32 +179,42 @@ class JobPostingFactory extends Factory
     }
 
     /**
-     * @return array{salary_min: int, salary_max: int, salary_currency: Currency, salary_period: SalaryPeriod}
+     * @return array{salary_min: int, salary_max: int, salary_currency: string, salary_period: SalaryPeriod, annual_salary_min: int, annual_salary_max: int, salary_normalization_version: int}
      */
     private function idrMonthlySalary(SeniorityLevel $seniority): array
     {
         $min = $this->scaleForSeniority(fake()->numberBetween(10, 20), $seniority) * 1_000_000;
+        $max = $min + fake()->numberBetween(3, 12) * 1_000_000;
+        $factor = SalaryPeriod::Monthly->annualFactor('ID');
 
         return [
             'salary_min' => $min,
-            'salary_max' => $min + fake()->numberBetween(3, 12) * 1_000_000,
-            'salary_currency' => Currency::Idr,
+            'salary_max' => $max,
+            'salary_currency' => Currency::Idr->value,
             'salary_period' => SalaryPeriod::Monthly,
+            'annual_salary_min' => $min * $factor,
+            'annual_salary_max' => $max * $factor,
+            'salary_normalization_version' => 1,
         ];
     }
 
     /**
-     * @return array{salary_min: int, salary_max: int, salary_currency: Currency, salary_period: SalaryPeriod}
+     * @return array{salary_min: int, salary_max: int, salary_currency: string, salary_period: SalaryPeriod, annual_salary_min: int, annual_salary_max: int, salary_normalization_version: int}
      */
     private function usdYearlySalary(SeniorityLevel $seniority): array
     {
         $min = $this->scaleForSeniority(fake()->numberBetween(8, 16), $seniority) * 5_000;
+        $max = $min + fake()->numberBetween(2, 8) * 5_000;
+        $factor = SalaryPeriod::Yearly->annualFactor(null);
 
         return [
             'salary_min' => $min,
-            'salary_max' => $min + fake()->numberBetween(2, 8) * 5_000,
-            'salary_currency' => Currency::Usd,
+            'salary_max' => $max,
+            'salary_currency' => Currency::Usd->value,
             'salary_period' => SalaryPeriod::Yearly,
+            'annual_salary_min' => $min * $factor,
+            'annual_salary_max' => $max * $factor,
+            'salary_normalization_version' => 1,
         ];
     }
 

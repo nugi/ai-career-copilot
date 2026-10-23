@@ -43,7 +43,7 @@ class OnboardingController extends Controller
             'options' => [
                 'workArrangements' => $this->options(WorkArrangement::cases()),
                 'currencies' => $this->options(Currency::cases()),
-                'salaryPeriods' => $this->options(SalaryPeriod::cases()),
+                'salaryPeriods' => $this->options(SalaryPeriod::profileCases()),
                 'proficiencies' => $this->options(SkillProficiency::cases()),
             ],
         ]);

@@ -3,6 +3,7 @@
 use App\Enums\AiFeature;
 use App\Enums\Currency;
 use App\Enums\EmploymentType;
+use App\Enums\JobRegion;
 use App\Enums\ResumeSection;
 use App\Enums\SalaryPeriod;
 use App\Enums\SeniorityLevel;
@@ -42,10 +43,10 @@ function rowIn(string $table): array
     };
 }
 
-test('the database accepts every case of an enum column and nothing else', function (string $table, string $column, string $enum) {
+test('the database accepts every case of an enum column and nothing else', function (string $table, string $column, string $enum, ?array $cases = null) {
     $row = rowIn($table);
 
-    foreach ($enum::cases() as $case) {
+    foreach ($cases ?? $enum::cases() as $case) {
         DB::table($table)->where($row)->update([$column => $case->value]);
     }
 
@@ -55,10 +56,10 @@ test('the database accepts every case of an enum column and nothing else', funct
     'job_postings.work_arrangement' => ['job_postings', 'work_arrangement', WorkArrangement::class],
     'job_postings.employment_type' => ['job_postings', 'employment_type', EmploymentType::class],
     'job_postings.seniority' => ['job_postings', 'seniority', SeniorityLevel::class],
-    'job_postings.salary_currency' => ['job_postings', 'salary_currency', Currency::class],
+    'job_postings.region' => ['job_postings', 'region', JobRegion::class],
     'job_postings.salary_period' => ['job_postings', 'salary_period', SalaryPeriod::class],
     'profiles.salary_currency' => ['profiles', 'salary_currency', Currency::class],
-    'profiles.salary_period' => ['profiles', 'salary_period', SalaryPeriod::class],
+    'profiles.salary_period' => ['profiles', 'salary_period', SalaryPeriod::class, SalaryPeriod::profileCases()],
     'resume_chunks.section' => ['resume_chunks', 'section', ResumeSection::class],
     'user_skills.proficiency' => ['user_skills', 'proficiency', SkillProficiency::class],
     'user_skills.source' => ['user_skills', 'source', SkillSource::class],

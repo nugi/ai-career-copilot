@@ -1,0 +1,93 @@
+<?php
+
+namespace App\JobSources\Normalization;
+
+use App\Enums\EmploymentType;
+use App\Enums\JobRegion;
+use App\Enums\SalaryPeriod;
+use App\Enums\SeniorityLevel;
+use App\Enums\WorkArrangement;
+use Carbon\CarbonImmutable;
+
+/**
+ * A posting in the app's own enums and units, ready to be stored as one job_postings row.
+ */
+final readonly class NormalizedPosting
+{
+    /**
+     * Hold a normalized row and the duplicate keys that are not yet persisted.
+     *
+     * @param  list<string>  $countryCodes
+     */
+    public function __construct(
+        public string $source,
+        public string $externalId,
+        public string $title,
+        public string $companyName,
+        public string $description,
+        public ?string $location,
+        public ?string $city,
+        public ?string $countryCode,
+        public array $countryCodes,
+        public ?JobRegion $region,
+        public WorkArrangement $workArrangement,
+        public ?EmploymentType $employmentType,
+        public ?SeniorityLevel $seniority,
+        public ?int $salaryMin,
+        public ?int $salaryMax,
+        public ?string $salaryCurrency,
+        public ?SalaryPeriod $salaryPeriod,
+        public ?int $annualSalaryMin,
+        public ?int $annualSalaryMax,
+        public ?int $salaryNormalizationVersion,
+        public string $applyUrl,
+        public CarbonImmutable $postedAt,
+        public CarbonImmutable $expiresAt,
+        public string $normalizedCompany,
+        public string $normalizedTitle,
+        public string $locationKey,
+        public string $duplicateKey,
+    ) {}
+
+    /**
+     * Export only persisted job_postings attributes, with enum backing values.
+     *
+     * @return array{
+     *     source: string, external_id: string, title: string, company_name: string,
+     *     description: string, location: ?string, city: ?string, country_code: ?string,
+     *     country_codes: list<string>, region: ?string, work_arrangement: string,
+     *     employment_type: ?string, seniority: ?string, salary_min: ?int, salary_max: ?int,
+     *     salary_currency: ?string, salary_period: ?string, annual_salary_min: ?int,
+     *     annual_salary_max: ?int, salary_normalization_version: ?int, apply_url: string,
+     *     posted_at: CarbonImmutable, expires_at: CarbonImmutable
+     * }
+     */
+    public function toAttributes(): array
+    {
+        return [
+            'source' => $this->source,
+            'external_id' => $this->externalId,
+            'title' => $this->title,
+            'company_name' => $this->companyName,
+            'description' => $this->description,
+            'location' => $this->location,
+            'city' => $this->city,
+            'country_code' => $this->countryCode,
+            'country_codes' => $this->countryCodes,
+            'region' => $this->region?->value,
+            'work_arrangement' => $this->workArrangement->value,
+            'employment_type' => $this->employmentType?->value,
+            'seniority' => $this->seniority?->value,
+            'salary_min' => $this->salaryMin,
+            'salary_max' => $this->salaryMax,
+            'salary_currency' => $this->salaryCurrency,
+            'salary_period' => $this->salaryPeriod?->value,
+            'annual_salary_min' => $this->annualSalaryMin,
+            'annual_salary_max' => $this->annualSalaryMax,
+            'salary_normalization_version' => $this->salaryNormalizationVersion,
+            'apply_url' => $this->applyUrl,
+            'posted_at' => $this->postedAt,
+            'expires_at' => $this->expiresAt,
+        ];
+    }
+}

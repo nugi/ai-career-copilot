@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-14
 - **Amended:** 2026-10-19 (±5% tolerance band)
+- **Amended by:** [0017](0017-store-job-pay-as-posted.md) (any currency and period, annual figures stored)
 
 ## Context
 

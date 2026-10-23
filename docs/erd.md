@@ -86,6 +86,12 @@ erDiagram
         bigint salary_max
         char3 salary_currency
         string salary_period
+        bigint annual_salary_min
+        bigint annual_salary_max
+        smallint salary_normalization_version
+        string city
+        jsonb country_codes
+        string region
         timestamp posted_at
         timestamp expires_at
     }
@@ -124,7 +130,7 @@ erDiagram
 
 ## Conventions
 
-- **Money** is stored as a whole amount in `bigint`, plus a `char(3)` currency (`IDR` or `USD`) and a period (`monthly` or `yearly`). It is never stored as a string. IDR has no minor unit in practice and salaries are quoted in whole dollars, so amounts are whole units, not cents. `bigint` holds a yearly IDR salary, which overflows `integer`.
+- **Money** is stored as a whole amount in `bigint`, plus a `char(3)` currency and a period. Profiles use `IDR` or `USD`, per `monthly` or `yearly`; postings keep the currency and period as posted, with annual figures beside them ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). It is never stored as a string. IDR has no minor unit in practice and salaries are quoted in whole dollars, so amounts are whole units, not cents. `bigint` holds a yearly IDR salary, which overflows `integer`.
 - **Enums** are `string` columns cast to PHP backed enums in `app/Enums`, and each column has a CHECK constraint listing the allowed values. Adding a case therefore needs a migration that replaces the CHECK. `tests/Feature/Database/SchemaConstraintsTest.php` writes every case of every enum, so an enum and its CHECK cannot drift apart unnoticed.
 - **CHECK constraints** guard the rules that every writer must follow, including imports, queue jobs and raw SQL: enum values, salary range and unit, score range, and non-negative counts, sizes and costs. Validation repeats them for user-facing messages.
 - **No unsigned types:** PostgreSQL has none, and Laravel's `unsigned()` modifier is silently ignored. Columns that must not go negative have a `>= 0` CHECK instead.
@@ -196,7 +202,7 @@ The product never asks "which users have skill X", but merging, deleting and pro
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 
-CHECK constraints: `salary_min <= salary_max`, both non-negative, currency in (`IDR`, `USD`), currency and period present whenever an amount is, and allowed values for `work_arrangement`, `employment_type`, `seniority` and `salary_period`.
+CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
 
 ### job_posting_skill
 
