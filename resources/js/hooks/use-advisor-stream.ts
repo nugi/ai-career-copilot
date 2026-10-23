@@ -78,7 +78,8 @@ async function reportFailure(
             .catch(() => ({}))) as TooManyRequestsResponse;
 
         setters.setError(
-            body.code === 'ai_budget_exceeded' &&
+            (body.code === 'ai_budget_exceeded' ||
+                body.code === 'ai_global_budget_exceeded') &&
                 typeof body.message === 'string'
                 ? body.message
                 : RATE_LIMITED_MESSAGE,

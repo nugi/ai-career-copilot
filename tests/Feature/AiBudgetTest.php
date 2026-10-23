@@ -82,8 +82,8 @@ test('another user\'s spend does not count', function () {
         ->assertJsonPath('answer', 'Start with one portfolio project.');
 });
 
-test('a null daily budget turns the check off', function () {
-    config(['ai-routing.daily_budget_usd' => null]);
+test('null daily budgets turn the checks off', function () {
+    config(['ai-routing.daily_budget_usd' => null, 'ai-routing.global_daily_budget_usd' => null]);
     CareerAdvisor::fake(['Start with one portfolio project.']);
     $user = User::factory()->onboarded()->create();
     AiUsage::factory()->for($user)->create(['cost_usd' => 9_999.00]);
@@ -106,4 +106,21 @@ test('an exceeded budget is logged with the user id', function () {
         ->assertTooManyRequests();
 
     Log::shouldHaveReceived('info')->with('ai.budget.exceeded', ['user_id' => $user->id])->once();
+});
+
+test('the advisor is paused for every user when the spend of all users reaches the global budget', function () {
+    config(['ai-routing.daily_budget_usd' => 0.50, 'ai-routing.global_daily_budget_usd' => 1.00]);
+    CareerAdvisor::fake();
+    AiUsage::factory()->for(User::factory()->onboarded())->create(['cost_usd' => 1.00]);
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('advisor.stream'), ['question' => 'What should I learn next?'])
+        ->assertTooManyRequests()
+        ->assertJson([
+            'message' => 'The advisor is paused for today. It resets at midnight UTC.',
+            'code' => 'ai_global_budget_exceeded',
+        ]);
+
+    CareerAdvisor::assertNeverPrompted();
 });

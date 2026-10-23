@@ -17,6 +17,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0011](0011-run-ai-work-on-separate-queues-and-stream-chat.md)           | Run AI work on separate queues and stream chat answers   | Accepted |
 | [0012](0012-route-ai-tasks-to-model-tiers-and-record-every-call.md)      | Route AI tasks to model tiers and record every call      | Accepted |
 | [0013](0013-run-chat-on-the-cheap-tier-until-evaluations-show-a-gain.md) | Run chat on the cheap tier until evaluations show a gain | Accepted |
+| [0014](0014-cap-the-daily-ai-spend-of-all-users.md)                      | Cap the daily AI spend of all users                      | Accepted |
 
 ## Adding a record
 

@@ -39,3 +39,9 @@ The Laravel AI SDK dispatches an event before each provider attempt, and after e
 3. A model's options live in config, so a new model needs a live check of the options it accepts before it is added.
 
 **Revisit when** the evaluation suite can compare tiers on real questions, which may move simple chat questions to the cheap tier, or when a provider bill differs from the report by more than 10%.
+
+## Notes
+
+**2026-10-23: failed attempts.** A failed attempt records 0 tokens. When the failure is not an error response from the provider (a dropped connection, a timeout, a broken stream), the provider can still bill tokens, so the row is marked `tokens_estimated`.
+
+**2026-10-23: budget overshoot is an accepted risk.** The budget check reads the spend before a call and the usage row is written after it. Parallel requests can all pass the check at the limit, so the spend can go over the budget by the cost of the calls that are running at that moment. The `advisor` rate limit (10 requests a minute per user) keeps that overshoot to a fraction of a cent per user on the cheap tier, so the check takes no lock.
