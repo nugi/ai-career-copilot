@@ -46,3 +46,13 @@ Three facts shape the design:
 3. Polling costs one small request every 3 seconds per open resumes page while a parse is pending.
 
 **Revisit when** chat answers need tools or long reasoning, or web workers saturate under streaming load. Then move chat to `broadcastOnQueue` on `ai-high` with a websocket server.
+
+## Notes
+
+**2026-10-23: stream errors.** The stream now ends with one `error` event for any exception after the headers are sent, not only when every provider fails. The exception is still reported.
+
+**2026-10-23: when to move chat off the web workers.** The trigger is how long streams take, not the number of users. A pool of 20 PHP workers with 3.5 s streams serves about 340 streams a minute. At 30 s per stream (a slow provider) the same pool serves about 40 a minute.
+
+1. First, route `/advisor/stream` to its own small PHP-FPM pool through its own nginx location. Slow chat then uses up only that pool, never the rest of the site. This is the same bulkhead pattern as the queues.
+2. Move chat to a queued, broadcast answer when p95 stream time × peak concurrent streams regularly passes about half of that pool.
+3. Track time to first token as the service-level objective, not total stream time.

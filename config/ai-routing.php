@@ -79,12 +79,21 @@ return [
     | Daily Budget
     |--------------------------------------------------------------------------
     |
-    | The most a user may spend on advisor calls each UTC day, in USD. Null
-    | turns the check off. Resume parsing does not count against the check,
-    | but its cost is in the daily spend.
+    | daily_budget_usd is the most that one user may spend on advisor calls
+    | each UTC day, in USD. It is a fairness limit.
+    |
+    | global_daily_budget_usd is the most that all users together may spend
+    | each UTC day, in USD. When the spend reaches it, the advisor stops for
+    | every user until midnight UTC.
+    |
+    | Resume parsing never stops, but its cost counts in both sums.
+    |
+    | Null turns a check off.
     |
     */
 
     'daily_budget_usd' => env('AI_DAILY_BUDGET_USD') === null ? null : (float) env('AI_DAILY_BUDGET_USD'),
+
+    'global_daily_budget_usd' => env('AI_GLOBAL_DAILY_BUDGET_USD') === null ? null : (float) env('AI_GLOBAL_DAILY_BUDGET_USD'),
 
 ];
