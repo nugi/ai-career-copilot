@@ -2,7 +2,9 @@
 
 namespace App\JobSources\Contracts;
 
+use App\JobSources\FetchReport;
 use App\JobSources\JobPostingData;
+use Generator;
 
 /**
  * A job board API or feed that posts can be fetched from.
@@ -20,7 +22,14 @@ interface JobSource
     /**
      * Fetch the source's current postings, page by page.
      *
-     * @return iterable<int, JobPostingData>
+     * A source maps the values of each posting and builds it with PostingBuilder. A posting that cannot be used is
+     * skipped and logged, so one bad posting never ends the run. The generator returns a FetchReport for the run
+     * summary.
+     *
+     * Every posting carries an expiresAt that the source sets. Ingestion expires a posting by that date only, never
+     * because a run did not see the posting.
+     *
+     * @return Generator<int, JobPostingData, mixed, FetchReport>
      */
-    public function fetch(): iterable;
+    public function fetch(): Generator;
 }

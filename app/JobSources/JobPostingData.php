@@ -10,9 +10,12 @@ use InvalidArgumentException;
  *
  * The values are as the source sends them, and the constructor throws when one of them cannot be stored or shown.
  *
- * remoteType, employmentType and salaryPeriod are the source's own words, for example "Full Time" or "hourly". The
- * normalizer maps them to the app's enums. salaryText holds a salary that the source sends only as text, such as
- * "Up to $60k". applyUrl is the link that the source requires for the Apply action.
+ * remoteType, employmentType, seniority and salaryPeriod are the source's own words, for example "Full Time",
+ * "Senior" or "hourly". The normalizer maps them to the app's enums. salaryText holds a salary that the source sends
+ * only as text, such as "Up to $60k". applyUrl is the link that the source requires for the Apply action.
+ *
+ * postedAt is the date that the source sends, which for some sources is the time of the last update. Every source must
+ * set expiresAt, and ingestion expires postings by this date only.
  */
 final readonly class JobPostingData
 {
@@ -24,10 +27,11 @@ final readonly class JobPostingData
         public string $applyUrl,
         public string $descriptionHtml,
         public CarbonImmutable $postedAt,
-        public ?CarbonImmutable $expiresAt = null,
+        public CarbonImmutable $expiresAt,
         public ?string $location = null,
         public ?string $remoteType = null,
         public ?string $employmentType = null,
+        public ?string $seniority = null,
         public ?float $salaryMin = null,
         public ?float $salaryMax = null,
         public ?string $salaryCurrency = null,
@@ -66,6 +70,10 @@ final readonly class JobPostingData
 
         if (! is_string($scheme) || ! in_array(strtolower($scheme), ['http', 'https'], true)) {
             throw new InvalidArgumentException($this->invalidMessage('an apply URL that is not http or https'));
+        }
+
+        if (! $this->expiresAt->greaterThan($this->postedAt)) {
+            throw new InvalidArgumentException($this->invalidMessage('an expiry date that is not after its posted date'));
         }
 
         if ($this->salaryMin !== null && $this->salaryMin < 0) {
