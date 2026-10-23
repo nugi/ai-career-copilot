@@ -28,11 +28,22 @@ return [
     | about 6,000 requests. max_pages caps one run, so a run reads only the
     | newest pages of the feed.
     |
+    | expected_fields holds the smallest share of the postings in one page that
+    | must have each field. A lower share means that the source changed a field,
+    | and jobs:check-source reports it.
+    |
     */
 
     'himalayas' => [
         'base_url' => 'https://himalayas.app',
         'max_pages' => (int) env('HIMALAYAS_MAX_PAGES', 5),
+        'expected_fields' => [
+            'salaryMin' => 0.05,
+            'seniority' => 0.5,
+            'employmentType' => 0.5,
+            'location' => 0.3,
+            'descriptionHtml' => 0.9,
+        ],
     ],
 
     /*

@@ -103,4 +103,4 @@ Obligations:
 - Build each posting with `PostingBuilder`: skip a posting that cannot be used, and drop a bad optional field instead of the posting.
 - Set `expiresAt` on every posting. Ingestion expires postings by this date, never because a run did not see them.
 - Read a bounded number of pages per run.
-- Pass the shared contract test in `tests/Feature/JobSources/JobSourceContractTest.php`.
+- Pass the shared contract test in `tests/Feature/JobSources/JobSourceContractTest.php`, and give the source `expected_fields` for `jobs:check-source`.
