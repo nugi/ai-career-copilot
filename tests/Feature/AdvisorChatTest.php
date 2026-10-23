@@ -3,6 +3,7 @@
 use App\Ai\Agents\CareerAdvisor;
 use App\Models\Profile;
 use App\Models\User;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
@@ -114,6 +115,29 @@ test('an outage on every provider is streamed as an error event', function () {
         ->and($payloads->last())->toBe('[DONE]');
 
     Exceptions::assertReported(ProviderOverloadedException::class);
+});
+
+test('a provider error that does not fail over is streamed as an error event', function () {
+    Exceptions::fake();
+    Http::fake([
+        'api.openai.com/*' => Http::response(['error' => ['type' => 'invalid_request_error', 'message' => 'Incorrect API key provided.']], 401),
+        'api.anthropic.com/*' => Http::response(anthropicAnswer('Start with one project.')),
+    ]);
+
+    $response = $this->actingAs(User::factory()->onboarded()->create())
+        ->postJson(route('advisor.stream'), ['question' => 'What should I learn next?']);
+
+    $response->assertOk();
+
+    $payloads = advisorStreamPayloads($response->streamedContent());
+
+    expect($payloads->first())->toBe(json_encode([
+        'type' => 'error',
+        'message' => 'The advisor is unavailable. Try again in a minute.',
+    ]))
+        ->and($payloads->last())->toBe('[DONE]');
+
+    Exceptions::assertReported(RequestException::class);
 });
 
 test('the advisor returns 429 to the 11th stream request in a minute without asking the agent', function () {
