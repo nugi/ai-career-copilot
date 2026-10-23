@@ -37,7 +37,8 @@ function himalayasQuery(Request $request): array
 beforeEach(function () {
     config([
         'services.himalayas.key' => 'test-key',
-        'job-sources.himalayas.max_pages' => 5,
+        'job-sources.himalayas.pages_per_query' => 1,
+        'job-sources.default_queries' => ['php developer'],
     ]);
 });
 
@@ -50,7 +51,7 @@ test('a page maps to postings', function () {
             ->push(himalayasFixture('last-page')),
     ]);
 
-    $postings = iterator_to_array((new HimalayasJobSource)->fetch(), false);
+    $postings = iterator_to_array(app(HimalayasJobSource::class)->fetch(), false);
 
     $first = $postings[0];
     $second = $postings[1];
@@ -73,8 +74,73 @@ test('a page maps to postings', function () {
         ->and($second->location)->toBeNull();
 });
 
-test('the cursor is followed until the last page', function () {
+test('each query is searched newest first', function () {
+    config(['job-sources.default_queries' => ['php developer', 'go developer']]);
+
+    Http::fake([
+        'himalayas.app/*' => Http::sequence()
+            ->push(himalayasFixture('page'))
+            ->push(himalayasFixture('last-page')),
+    ]);
+
+    iterator_to_array(app(HimalayasJobSource::class)->fetch(), false);
+
+    $requests = Http::recorded()->map(fn (array $pair): Request => $pair[0])->values();
+
+    expect($requests)->toHaveCount(2);
+
+    foreach (['php developer', 'go developer'] as $index => $query) {
+        expect(parse_url($requests[$index]->url(), PHP_URL_PATH))->toBe('/jobs/api/search')
+            ->and(himalayasQuery($requests[$index]))->toBe(['q' => $query, 'sort' => 'recent', 'page' => '1']);
+    }
+});
+
+test('a job found by two queries is yielded once', function () {
+    config(['job-sources.default_queries' => ['php developer', 'go developer']]);
     $page = himalayasFixture('page');
+
+    Http::fake(['himalayas.app/*' => Http::response($page)]);
+
+    $generator = app(HimalayasJobSource::class)->fetch();
+    $postings = iterator_to_array($generator, false);
+
+    expect($postings)->toHaveCount(count($page['jobs']))
+        ->and($generator->getReturn()->yielded)->toBe(count($page['jobs']));
+
+    Http::assertSentCount(2);
+});
+
+test('a run stops at the deadline', function () {
+    $this->freezeTime();
+    config([
+        'job-sources.max_run_seconds' => 60,
+        'job-sources.default_queries' => ['php developer', 'go developer'],
+    ]);
+
+    Http::fake(function (Request $request) {
+        $this->travel(61)->seconds();
+
+        return Http::response(himalayasFixture('page'));
+    });
+
+    $generator = app(HimalayasJobSource::class)->fetch();
+    iterator_to_array($generator, false);
+
+    expect($generator->getReturn()->stoppedEarly)->toBeTrue();
+    Http::assertSentCount(1);
+});
+
+test('a full page asks for the next page', function () {
+    config(['job-sources.himalayas.pages_per_query' => 2]);
+    $page = himalayasFixture('page');
+    $jobs = $page['jobs'];
+    $page['jobs'] = [];
+
+    for ($index = 0; $index < 20; $index++) {
+        $job = $jobs[$index % count($jobs)];
+        $job['guid'] .= '-'.$index;
+        $page['jobs'][] = $job;
+    }
 
     Http::fake([
         'himalayas.app/*' => Http::sequence()
@@ -82,28 +148,24 @@ test('the cursor is followed until the last page', function () {
             ->push(himalayasFixture('last-page')),
     ]);
 
-    $generator = (new HimalayasJobSource)->fetch();
+    $generator = app(HimalayasJobSource::class)->fetch();
     $postings = iterator_to_array($generator, false);
+    $requests = Http::recorded()->map(fn (array $pair): Request => $pair[0])->values();
 
-    $requests = Http::recorded()
-        ->map(fn (array $pair): Request => $pair[0])
-        ->values();
-
-    expect($postings)->toHaveCount(3)
+    expect($postings)->toHaveCount(21)
         ->and($requests)->toHaveCount(2)
-        ->and(himalayasQuery($requests[0]))->not->toHaveKey('cursor')
-        ->and(himalayasQuery($requests[1])['cursor'])->toBe($page['nextCursor'])
+        ->and(himalayasQuery($requests[1])['page'])->toBe('2')
         ->and($generator->getReturn()->pages)->toBe(2);
 });
 
 test('a run stops at the page limit', function () {
-    config(['job-sources.himalayas.max_pages' => 1]);
+    config(['job-sources.himalayas.pages_per_query' => 1]);
 
     Http::fake([
         'himalayas.app/*' => Http::response(himalayasFixture('page')),
     ]);
 
-    $postings = iterator_to_array((new HimalayasJobSource)->fetch(), false);
+    $postings = iterator_to_array(app(HimalayasJobSource::class)->fetch(), false);
 
     expect($postings)->toHaveCount(2);
 
@@ -115,7 +177,7 @@ test('an empty page ends the run', function () {
         'himalayas.app/*' => Http::response(himalayasFixture('empty-page')),
     ]);
 
-    $generator = (new HimalayasJobSource)->fetch();
+    $generator = app(HimalayasJobSource::class)->fetch();
     $postings = iterator_to_array($generator, false);
 
     expect($postings)->toHaveCount(0)
@@ -132,10 +194,10 @@ test('a job without a title is skipped', function () {
             ->push(himalayasFixture('last-page')),
     ]);
 
-    $generator = (new HimalayasJobSource)->fetch();
+    $generator = app(HimalayasJobSource::class)->fetch();
     $postings = iterator_to_array($generator, false);
 
-    expect($postings)->toHaveCount(2)
+    expect($postings)->toHaveCount(1)
         ->and($generator->getReturn()->skipped)->toBe(1);
 });
 
@@ -147,7 +209,7 @@ test('a missing expiry date falls back to 30 days', function () {
         'himalayas.app/*' => Http::response($lastPage),
     ]);
 
-    $postings = iterator_to_array((new HimalayasJobSource)->fetch(), false);
+    $postings = iterator_to_array(app(HimalayasJobSource::class)->fetch(), false);
 
     expect($postings)->toHaveCount(1)
         ->and($postings[0]->expiresAt->getTimestamp())
@@ -161,12 +223,12 @@ test('the API key is sent as a bearer token', function () {
             ->push(himalayasFixture('last-page')),
     ]);
 
-    iterator_to_array((new HimalayasJobSource)->fetch(), false);
+    iterator_to_array(app(HimalayasJobSource::class)->fetch(), false);
 
     Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer test-key'));
 });
 
-test('the fixtures have the fields the mapper reads', function (string $fixture, bool $hasNextCursor) {
+test('the fixtures have the fields the mapper reads', function (string $fixture) {
     $page = himalayasFixture($fixture);
 
     expect($page['jobs'])->toBeArray()->not->toBeEmpty();
@@ -195,12 +257,8 @@ test('the fixtures have the fields the mapper reads', function (string $fixture,
             ->and($job['locationRestrictions'])->toBeArray();
     }
 
-    expect(array_key_exists('nextCursor', $page))->toBe($hasNextCursor);
-
-    if ($hasNextCursor) {
-        expect($page['nextCursor'])->toBeString();
-    }
+    expect($page['totalCount'])->toBeInt();
 })->with([
-    'first page' => ['page', true],
-    'last page' => ['last-page', false],
+    'first page' => ['page'],
+    'last page' => ['last-page'],
 ]);

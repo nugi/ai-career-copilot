@@ -20,6 +20,9 @@ final class PostingBuilder
 
     private int $droppedFields = 0;
 
+    /**
+     * Start the posting counts for one source run.
+     */
     public function __construct(private string $source) {}
 
     /**
@@ -131,15 +134,16 @@ final class PostingBuilder
     }
 
     /**
-     * Get the counts of the run that read the given number of pages.
+     * Get the counts and deadline stop status of the run that read the given number of pages.
      */
-    public function report(int $pages): FetchReport
+    public function report(int $pages, bool $stoppedEarly = false): FetchReport
     {
         return new FetchReport(
             pages: $pages,
             yielded: $this->yielded,
             skipped: $this->skipped,
             droppedFields: $this->droppedFields,
+            stoppedEarly: $stoppedEarly,
         );
     }
 
@@ -155,6 +159,9 @@ final class PostingBuilder
         return $this->trimmedString($value);
     }
 
+    /**
+     * Get nonblank trimmed text, or null when the value is not usable text.
+     */
     private function trimmedString(mixed $value): ?string
     {
         if (! is_string($value)) {

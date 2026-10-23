@@ -25,10 +25,23 @@ final class SourceHttpClient
 
     public const MAX_RETRY_AFTER_SECONDS = 30;
 
+    /**
+     * The 10-second timeout plus the 5-second connect timeout.
+     */
+    public const ATTEMPT_SECONDS = 15;
+
+    private int $failures = 0;
+
+    private int $retryDelay = 0;
+
+    /**
+     * Configure the source connection and optional run deadline.
+     */
     public function __construct(
         private string $source,
         private string $baseUrl,
         private ?string $token = null,
+        private ?RunDeadline $deadline = null,
     ) {}
 
     /**
@@ -42,6 +55,8 @@ final class SourceHttpClient
      */
     public function getJson(string $path, array $query = []): array
     {
+        $this->failures = 0;
+
         $request = Http::baseUrl($this->baseUrl)
             ->acceptJson()
             ->withUserAgent(config()->string('job-sources.user_agent'))
@@ -49,7 +64,7 @@ final class SourceHttpClient
             ->connectTimeout(5)
             ->retry(
                 self::MAX_TRIES,
-                fn (int $attempt, Throwable $exception): int => $this->delay($attempt, $exception),
+                fn (int $attempt, Throwable $exception): int => $this->retryDelay,
                 fn (Throwable $exception): bool => $this->shouldRetry($exception),
             );
 
@@ -94,6 +109,13 @@ final class SourceHttpClient
      */
     private function shouldRetry(Throwable $exception): bool
     {
+        $this->failures++;
+        $this->retryDelay = $this->delay($this->failures, $exception);
+
+        if ($this->deadline !== null && ! $this->deadline->allows($this->retryDelay / 1000 + self::ATTEMPT_SECONDS)) {
+            return false;
+        }
+
         if ($exception instanceof ConnectionException) {
             return true;
         }
