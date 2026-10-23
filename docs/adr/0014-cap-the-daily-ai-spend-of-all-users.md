@@ -31,3 +31,7 @@ Nothing limited the spend of all users together. One scripted account, or a few,
 2. Both values are set by hand, so they need a review when the tier, the prompt size or the number of users changes.
 
 **Revisit when** real usage gives a measured per-user distribution, or when paid plans need their own budgets.
+
+## Notes
+
+**2026-10-23: fake accounts.** The global budget can be spent by accounts made only to spend it. At $0.02 each, 50 accounts reach the $1.00 cap and switch the advisor off for every user. Email verification does not stop this, because throwaway addresses are free. The planned fix is to reserve part of the global budget for established accounts, such as accounts older than a few days or with an uploaded resume, so new accounts cannot use all of it. Per-plan quotas replace this later.

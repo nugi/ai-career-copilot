@@ -38,3 +38,7 @@ Recruiters and users ask for the largest boards, such as LinkedIn. LinkedIn has 
 4. Salaries in EUR, GBP or hourly pay cannot be stored until the currency and period enums, their database checks and ADR 0004 are widened.
 
 **Revisit when** a source changes its terms, the app adds public job pages or emails postings to users (check both sources' terms first), or a partner feed for a large board becomes available.
+
+## Notes
+
+**2026-10-23: pasted postings.** The fallback in decision 6 accepts the text of a posting that the user pastes. If the user pastes a URL, the app stores it only as a link the user can open. The server never fetches it, because a server request to a site that forbids automated access is scraping, even when a user starts it.
