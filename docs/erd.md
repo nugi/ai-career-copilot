@@ -77,6 +77,11 @@ erDiagram
         string source
         string external_id
         string dedup_key
+        string normalized_company
+        string normalized_title
+        string location_key
+        char64 duplicate_key
+        bigint duplicate_of_id FK
         string title
         string company_name
         string work_arrangement
@@ -201,6 +206,8 @@ The product never asks "which users have skill X", but merging, deleting and pro
 | Upsert on import without duplicates: `on conflict (source, dedup_key)`                                            | `unique (source, dedup_key)`    |
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
+
+`dedup_key` stops duplicates within one source; `duplicate_key` and `duplicate_of_id` link the same job across sources ([ADR 0018](adr/0018-link-duplicate-jobs-across-sources.md)).
 
 CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
 

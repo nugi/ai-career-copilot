@@ -1,0 +1,178 @@
+<?php
+
+use App\Actions\Jobs\ImportJobPostings;
+use App\Enums\SeniorityLevel;
+use App\JobSources\FakeJobSource;
+use App\JobSources\JobSourceRegistry;
+use App\JobSources\Normalization\DuplicateKey;
+use App\Models\JobPosting;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
+
+/**
+ * Load a source response without changing the fixture on disk.
+ *
+ * @return array<string, mixed>
+ */
+function importJobFixture(string $source, string $name): array
+{
+    return json_decode((string) file_get_contents(base_path("tests/Fixtures/job-sources/{$source}/{$name}.json")), true, 512, JSON_THROW_ON_ERROR);
+}
+
+/**
+ * Serve the same shared job on both boards and the remaining fixture postings.
+ */
+function fakeImportJobSources(): void
+{
+    $jobicy = importJobFixture('jobicy', 'page');
+    $jobicy['jobs'][0]['companyName'] = 'Northwind Systems Inc.';
+    $jobicy['jobs'][0]['jobTitle'] = 'Sr. Backend Engineer';
+    $jobicy['jobs'][0]['jobGeo'] = 'USA';
+
+    Http::fake([
+        'himalayas.app/jobs/api/search*' => Http::response(importJobFixture('himalayas', 'page')),
+        'jobicy.com/api/jobs*' => fn (Request $request) => Http::response(
+            str_contains($request->url(), 'cursor=') ? importJobFixture('jobicy', 'last-page') : $jobicy,
+        ),
+    ]);
+}
+
+beforeEach(function () {
+    config([
+        'job-sources.default_queries' => ['backend engineer'],
+        'job-sources.himalayas.pages_per_query' => 1,
+        'job-sources.jobicy.pages_per_query' => 2,
+    ]);
+
+    Http::preventStrayRequests();
+});
+
+test('running both sources twice creates no duplicates', function () {
+    $this->freezeTime();
+    fakeImportJobSources();
+    $sources = app(JobSourceRegistry::class);
+    $import = app(ImportJobPostings::class);
+    $import->handle($sources->get('himalayas'));
+    $firstJobicy = $import->handle($sources->get('jobicy'));
+    $firstCount = JobPosting::query()->count();
+
+    $secondHimalayas = $import->handle($sources->get('himalayas'));
+    $secondJobicy = $import->handle($sources->get('jobicy'));
+
+    $this->assertDatabaseCount('job_postings', $firstCount);
+    expect($firstCount)->toBe(5);
+    expect(JobPosting::query()->select('source', 'dedup_key')->groupBy('source', 'dedup_key')->havingRaw('count(*) > 1')->get())->toBeEmpty();
+    $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer');
+    expect((clone $shared)->count())->toBe(2);
+    $canonical = (clone $shared)->canonical()->sole();
+    $duplicate = (clone $shared)->whereNotNull('duplicate_of_id')->sole();
+    expect($duplicate->duplicate_of_id)->toBe($canonical->id);
+    expect($duplicate->duplicateOf->is($canonical))->toBeTrue();
+    expect($firstJobicy->linksChanged)->toBe(1);
+    expect($secondHimalayas->linksChanged)->toBe(0);
+    expect($secondJobicy->linksChanged)->toBe(0);
+    Http::assertSentCount(6);
+});
+
+test('a stored posting keeps its places and pay', function () {
+    $this->freezeTime();
+    Http::fake([
+        'jobicy.com/api/jobs*' => Http::sequence()
+            ->push(importJobFixture('jobicy', 'page'))
+            ->push(importJobFixture('jobicy', 'last-page')),
+    ]);
+
+    $report = app(ImportJobPostings::class)->handle(app(JobSourceRegistry::class)->get('jobicy'));
+
+    $posting = JobPosting::query()->where('source', 'jobicy')->where('external_id', '900103')->sole()->fresh();
+    expect($posting->country_codes)->toBe(['CA', 'US']);
+    expect(array_is_list($posting->country_codes))->toBeTrue();
+    expect($posting->salary_currency)->toBe('USD');
+    expect($posting->annual_salary_min)->toBe(212000);
+    expect($report->source)->toBe('jobicy');
+    expect($report->fetch->yielded)->toBe(3);
+    expect($report->normalized)->toBe(3);
+    expect($report->skipped)->toBe(0);
+    expect($report->stored)->toBe(3);
+    Http::assertSentCount(2);
+});
+
+test('the next posting takes over when the canonical one expires', function () {
+    $this->freezeTime();
+    fakeImportJobSources();
+    $sources = app(JobSourceRegistry::class);
+    $import = app(ImportJobPostings::class);
+    $import->handle($sources->get('himalayas'));
+    $import->handle($sources->get('jobicy'));
+    $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer');
+    $canonical = (clone $shared)->whereNull('duplicate_of_id')->sole();
+    $duplicate = (clone $shared)->whereNotNull('duplicate_of_id')->sole();
+    $canonical->update(['expires_at' => now()->subDay()]);
+
+    $report = $import->handle(new FakeJobSource([]));
+
+    expect($duplicate->fresh()->duplicate_of_id)->toBeNull();
+    expect($canonical->fresh()->duplicate_of_id)->toBeNull();
+    expect($report->linksChanged)->toBe(1);
+    Http::assertSentCount(3);
+});
+
+test('near-duplicate titles at the same company are linked', function () {
+    $this->freezeTime();
+    $postings = [];
+
+    foreach (['Senior Backend Engineer, Laravel', 'Senior Backend Engineer (Laravel/PHP)'] as $title) {
+        $company = DuplicateKey::company('Northwind Systems Inc.');
+        $normalizedTitle = DuplicateKey::title($title);
+        $postings[] = JobPosting::factory()->create([
+            'title' => $title,
+            'company_name' => 'Northwind Systems Inc.',
+            'normalized_company' => $company,
+            'normalized_title' => $normalizedTitle,
+            'location_key' => 'US',
+            'duplicate_key' => DuplicateKey::hash($company, $normalizedTitle, 'US'),
+            'seniority' => SeniorityLevel::Senior,
+            'expires_at' => null,
+        ]);
+    }
+
+    $import = app(ImportJobPostings::class);
+    $first = $import->handle(new FakeJobSource([]));
+    $second = $import->handle(new FakeJobSource([]));
+
+    expect($postings[0]->fresh()->duplicate_of_id)->toBeNull();
+    expect($postings[1]->fresh()->duplicate_of_id)->toBe($postings[0]->id);
+    expect($first->linksChanged)->toBe(1);
+    expect($second->linksChanged)->toBe(0);
+    Http::assertNothingSent();
+});
+
+test('different roles or companies are not linked', function (string $firstTitle, string $secondTitle, string $firstCompany, string $secondCompany, ?SeniorityLevel $firstSeniority, ?SeniorityLevel $secondSeniority) {
+    $this->freezeTime();
+    $first = JobPosting::factory()->create([
+        'title' => $firstTitle,
+        'company_name' => $firstCompany,
+        'seniority' => $firstSeniority,
+        'location_key' => 'US',
+        'expires_at' => null,
+    ]);
+    $second = JobPosting::factory()->create([
+        'title' => $secondTitle,
+        'company_name' => $secondCompany,
+        'seniority' => $secondSeniority,
+        'location_key' => 'US',
+        'expires_at' => null,
+    ]);
+
+    $report = app(ImportJobPostings::class)->handle(new FakeJobSource([]));
+
+    expect($first->fresh()->duplicate_of_id)->toBeNull();
+    expect($second->fresh()->duplicate_of_id)->toBeNull();
+    expect($report->linksChanged)->toBe(0);
+    Http::assertNothingSent();
+})->with([
+    'different roles' => ['Senior Backend Engineer', 'Senior Frontend Engineer', 'Northwind Systems', 'Northwind Systems', SeniorityLevel::Senior, SeniorityLevel::Senior],
+    'different companies' => ['Senior Backend Engineer', 'Senior Backend Engineer', 'Northwind Systems', 'Baltic Data', SeniorityLevel::Senior, SeniorityLevel::Senior],
+    'a level word in one title only' => ['Software Engineer, Growth', 'Senior Software Engineer, Growth', 'Northwind Systems', 'Northwind Systems', null, null],
+    'conflicting seniority' => ['Junior Data Engineer', 'Senior Data Engineer', 'Northwind Systems', 'Northwind Systems', SeniorityLevel::Junior, SeniorityLevel::Senior],
+]);

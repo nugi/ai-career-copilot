@@ -21,6 +21,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0015](0015-take-jobs-only-from-sources-whose-terms-allow-it.md)         | Take jobs only from sources whose terms allow it         | Accepted |
 | [0016](0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md)  | Fetch job sources with bounded retries and dated expiry  | Accepted |
 | [0017](0017-store-job-pay-as-posted.md)                                  | Store job pay as posted                                  | Accepted |
+| [0018](0018-link-duplicate-jobs-across-sources.md)                       | Link duplicate jobs across sources                       | Accepted |
 
 ## Adding a record
 
