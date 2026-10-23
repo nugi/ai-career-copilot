@@ -22,6 +22,15 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(AiUsageRecorder::class);
+        $this->registerJobSources();
+    }
+
+    /**
+     * Tag every configured job source class, so the registry receives them.
+     */
+    protected function registerJobSources(): void
+    {
+        $this->app->tag(config()->array('job-sources.sources'), 'job-sources');
     }
 
     /**
