@@ -54,7 +54,7 @@ final class PostingNormalizer
         $location = self::whitespace($posting->location ?? '');
         $parsedLocation = $this->locations->parse($location);
         $countryCode = count($parsedLocation->countryCodes) === 1 ? $parsedLocation->countryCodes[0] : null;
-        $salary = $this->salary($posting);
+        $salary = $this->salary($posting, $countryCode);
         $annualFactor = $salary->period?->annualFactor($countryCode);
         $normalizedCompany = DuplicateKey::company($companyName);
         $normalizedTitle = DuplicateKey::title($title);
@@ -164,7 +164,7 @@ final class PostingNormalizer
     /**
      * Use salary text only when both source amounts are absent, with its own units.
      */
-    private function salary(JobPostingData $posting): SalaryText
+    private function salary(JobPostingData $posting, ?string $countryCode): SalaryText
     {
         $period = $posting->salaryPeriod === null ? null : SalaryTextParser::period($posting->salaryPeriod);
 
@@ -173,7 +173,7 @@ final class PostingNormalizer
         }
 
         if ($posting->salaryMin === null && $posting->salaryMax === null) {
-            return ($posting->salaryText === null ? null : $this->salaryText->parse($posting->salaryText))
+            return ($posting->salaryText === null ? null : $this->salaryText->parse($posting->salaryText, $countryCode))
                 ?? new SalaryText(null, null, null, null);
         }
 
