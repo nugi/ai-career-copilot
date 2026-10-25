@@ -22,6 +22,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0016](0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md)  | Fetch job sources with bounded retries and dated expiry  | Accepted |
 | [0017](0017-store-job-pay-as-posted.md)                                  | Store job pay as posted                                  | Accepted |
 | [0018](0018-link-duplicate-jobs-across-sources.md)                       | Link duplicate jobs across sources                       | Accepted |
+| [0019](0019-give-each-job-a-stable-identity.md)                          | Give each job a stable identity                          | Accepted |
 | [0020](0020-ingest-job-sources-on-a-schedule.md)                         | Ingest job sources on a schedule                         | Accepted |
 
 ## Adding a record
