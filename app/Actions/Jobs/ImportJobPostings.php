@@ -3,17 +3,20 @@
 namespace App\Actions\Jobs;
 
 use App\JobSources\Contracts\JobSource;
+use App\JobSources\Normalization\NormalizedPosting;
 use App\JobSources\Normalization\PostingNormalizer;
 use App\Models\JobPosting;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 /**
  * Imports one source run: normalizes its postings, upserts them on (source, dedup_key) and links the rows of one job
  * across sources to a canonical row (ADR 0018). Running it again with the same data creates no rows and changes no
  * links. A later run that sends no salary, employment type or seniority keeps the stored value, and a new salary
- * replaces the whole salary group. first_seen_at never changes, last_seen_at moves on every run, and updated_at moves
- * only when the content hash changes.
+ * replaces the whole salary group. Before it computes the content hash it fills those missing values from the stored
+ * row, so the hash describes the row that is stored and a run that changes nothing counts as unchanged. first_seen_at
+ * never changes, last_seen_at moves on every run, and updated_at moves only when the content hash changes.
  */
 class ImportJobPostings
 {
@@ -22,31 +25,6 @@ class ImportJobPostings
      * Keep the cutoff between these pairs, rounded to a 0.05 increment.
      */
     private const float TITLE_SIMILARITY_THRESHOLD = 0.75;
-
-    /**
-     * Pay columns that a later run without pay must not clear; a new salary replaces all of them together.
-     *
-     * @var array<string, literal-string>
-     */
-    private const array SALARY_UPDATES = [
-        'salary_min' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_min else excluded.salary_min end',
-        'salary_max' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_max else excluded.salary_max end',
-        'salary_currency' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_currency else excluded.salary_currency end',
-        'salary_period' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_period else excluded.salary_period end',
-        'annual_salary_min' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.annual_salary_min else excluded.annual_salary_min end',
-        'annual_salary_max' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.annual_salary_max else excluded.annual_salary_max end',
-        'salary_normalization_version' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_normalization_version else excluded.salary_normalization_version end',
-    ];
-
-    /**
-     * Columns where a later run that omits the value keeps the stored one.
-     *
-     * @var array<string, literal-string>
-     */
-    private const array KEPT_UPDATES = [
-        'employment_type' => 'coalesce(excluded.employment_type, job_postings.employment_type)',
-        'seniority' => 'coalesce(excluded.seniority, job_postings.seniority)',
-    ];
 
     public function __construct(private PostingNormalizer $normalizer) {}
 
@@ -69,17 +47,11 @@ class ImportJobPostings
             }
 
             $attributes = $normalized->toAttributes();
-            $attributes['country_codes'] = json_encode($attributes['country_codes'], JSON_THROW_ON_ERROR);
             $rows[] = $attributes;
         }
 
         $fetch = $generator->getReturn();
         $seenAt = now();
-
-        foreach ($rows as $index => $row) {
-            $rows[$index]['first_seen_at'] = $seenAt;
-            $rows[$index]['last_seen_at'] = $seenAt;
-        }
 
         $created = 0;
         $updated = 0;
@@ -87,20 +59,40 @@ class ImportJobPostings
 
         foreach (array_chunk($rows, 100) as $chunk) {
             $stored = JobPosting::query()
+                ->toBase()
                 ->where('source', $source->key())
                 ->whereIn('dedup_key', array_column($chunk, 'external_id'))
-                ->pluck('content_hash', 'dedup_key');
+                ->select([
+                    'dedup_key', 'content_hash', 'salary_min', 'salary_max', 'salary_currency', 'salary_period',
+                    'annual_salary_min', 'annual_salary_max', 'salary_normalization_version', 'employment_type', 'seniority',
+                ])
+                ->get()
+                ->keyBy('dedup_key');
 
-            foreach ($chunk as $row) {
+            foreach ($chunk as $index => $row) {
                 $key = $row['external_id'];
+                $existing = $stored->get($key);
 
-                if (! $stored->has($key)) {
+                if ($existing !== null) {
+                    $row = self::withKeptValues($row, $existing);
+                }
+
+                $hashInput = $row;
+                unset($hashInput['content_hash'], $hashInput['text_hash']);
+                $row['content_hash'] = NormalizedPosting::contentHash($hashInput);
+
+                if ($existing === null) {
                     $created++;
-                } elseif ($stored->get($key) === $row['content_hash']) {
+                } elseif ($existing->content_hash === $row['content_hash']) {
                     $unchanged++;
                 } else {
                     $updated++;
                 }
+
+                $row['country_codes'] = json_encode($row['country_codes'], JSON_THROW_ON_ERROR);
+                $row['first_seen_at'] = $seenAt;
+                $row['last_seen_at'] = $seenAt;
+                $chunk[$index] = $row;
             }
 
             JobPosting::query()->upsert(
@@ -123,8 +115,46 @@ class ImportJobPostings
     }
 
     /**
-     * Build the upsert update list. The salary group moves as one, so a new maximum is never stored beside an old minimum.
-     * An existing row keeps its first-seen time, and its updated time moves only when the content hash changes.
+     * Fill the salary group, the employment type and the seniority from the stored row when this run sends no value,
+     * so the hash of the row is the hash of what stays stored.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private static function withKeptValues(array $row, stdClass $stored): array
+    {
+        if ($row['salary_min'] === null && $row['salary_max'] === null) {
+            $row['salary_min'] = self::storedInt($stored->salary_min);
+            $row['salary_max'] = self::storedInt($stored->salary_max);
+            $row['salary_currency'] = $stored->salary_currency;
+            $row['salary_period'] = $stored->salary_period;
+            $row['annual_salary_min'] = self::storedInt($stored->annual_salary_min);
+            $row['annual_salary_max'] = self::storedInt($stored->annual_salary_max);
+            $row['salary_normalization_version'] = self::storedInt($stored->salary_normalization_version);
+        }
+
+        if ($row['employment_type'] === null) {
+            $row['employment_type'] = $stored->employment_type;
+        }
+
+        if ($row['seniority'] === null) {
+            $row['seniority'] = $stored->seniority;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Cast a stored integer column, so the JSON of the hash matches the JSON of an incoming row.
+     */
+    private static function storedInt(mixed $value): ?int
+    {
+        return $value === null ? null : (int) $value;
+    }
+
+    /**
+     * Build the upsert update list. An existing row keeps its first-seen time, and its updated time moves only when the
+     * content hash changes.
      *
      * @param  list<string>  $columns
      * @return array<int|string, string|Expression>
@@ -135,18 +165,6 @@ class ImportJobPostings
 
         foreach ($columns as $column) {
             if (in_array($column, ['source', 'external_id', 'first_seen_at'], true)) {
-                continue;
-            }
-
-            if (isset(self::SALARY_UPDATES[$column])) {
-                $updates[$column] = DB::raw(self::SALARY_UPDATES[$column]);
-
-                continue;
-            }
-
-            if (isset(self::KEPT_UPDATES[$column])) {
-                $updates[$column] = DB::raw(self::KEPT_UPDATES[$column]);
-
                 continue;
             }
 

@@ -91,6 +91,7 @@ test('a posting without a salary has no salary fields', function () use ($postin
             'normalized_title' => 'backend engineer',
             'location_key' => 'worldwide',
             'duplicate_key' => '6432a93a2f7020bdb1d04d4d79bc0a2739873da4347df6e20da70bc6346a0a46',
+            'text_hash' => 'c7b5070be5e14b9d995c54102ad86e4b1427bc59461291e9418385af754ab15a',
         ])
         ->and($contentHash)->toMatch('/^[0-9a-f]{64}$/');
 });
