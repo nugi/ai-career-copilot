@@ -1,11 +1,16 @@
 <?php
 
 use App\Actions\Jobs\ImportJobPostings;
+use App\Enums\EmploymentType;
+use App\Enums\SalaryPeriod;
 use App\Enums\SeniorityLevel;
 use App\JobSources\FakeJobSource;
+use App\JobSources\JobPostingData;
 use App\JobSources\JobSourceRegistry;
 use App\JobSources\Normalization\DuplicateKey;
+use App\JobSources\Normalization\PostingNormalizer;
 use App\Models\JobPosting;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -68,6 +73,8 @@ test('running both sources twice creates no duplicates', function () {
     $duplicate = (clone $shared)->whereNotNull('duplicate_of_id')->sole();
     expect($duplicate->duplicate_of_id)->toBe($canonical->id);
     expect($duplicate->duplicateOf->is($canonical))->toBeTrue();
+    expect($duplicate->duplicate_reason)->toBe('exact');
+    expect($duplicate->duplicate_similarity)->toBeNull();
     expect($firstJobicy->linksChanged)->toBe(1);
     expect($secondHimalayas->linksChanged)->toBe(0);
     expect($secondJobicy->linksChanged)->toBe(0);
@@ -141,9 +148,60 @@ test('near-duplicate titles at the same company are linked', function () {
     $second = $import->handle(new FakeJobSource([]));
 
     expect($postings[0]->fresh()->duplicate_of_id)->toBeNull();
+    expect($postings[0]->fresh()->duplicate_reason)->toBeNull();
+    expect($postings[0]->fresh()->duplicate_similarity)->toBeNull();
     expect($postings[1]->fresh()->duplicate_of_id)->toBe($postings[0]->id);
+    expect($postings[1]->fresh()->duplicate_reason)->toBe('trigram');
+    expect($postings[1]->fresh()->duplicate_similarity)->toBe(0.889);
     expect($first->linksChanged)->toBe(1);
     expect($second->linksChanged)->toBe(0);
+    Http::assertNothingSent();
+});
+
+test('a later run without pay keeps the stored pay', function () {
+    $this->freezeTime();
+    $import = app(ImportJobPostings::class);
+    $posting = fn (array $overrides): JobPostingData => new JobPostingData(...[
+        'source' => 'fake',
+        'externalId' => 'fake-pay',
+        'title' => 'Senior Laravel Engineer',
+        'companyName' => 'Northwind Systems',
+        'applyUrl' => 'https://example.com/jobs/fake-pay',
+        'descriptionHtml' => '<p>Own the billing API and its queue workers.</p>',
+        'postedAt' => CarbonImmutable::parse('2026-10-20 09:00:00'),
+        'expiresAt' => CarbonImmutable::parse('2026-11-19 09:00:00'),
+        'remoteType' => 'remote',
+        ...$overrides,
+    ]);
+    $stored = fn (): JobPosting => JobPosting::query()->where('source', 'fake')->where('external_id', 'fake-pay')->sole();
+
+    $import->handle(new FakeJobSource([$posting([
+        'salaryMin' => 80000.0,
+        'salaryMax' => 100000.0,
+        'salaryCurrency' => 'USD',
+        'salaryPeriod' => 'yearly',
+        'employmentType' => 'Full Time',
+    ])]));
+    $import->handle(new FakeJobSource([$posting([])]));
+
+    expect($stored()->salary_min)->toBe(80000)
+        ->and($stored()->salary_max)->toBe(100000)
+        ->and($stored()->salary_currency)->toBe('USD')
+        ->and($stored()->salary_period)->toBe(SalaryPeriod::Yearly)
+        ->and($stored()->annual_salary_min)->toBe(80000)
+        ->and($stored()->annual_salary_max)->toBe(100000)
+        ->and($stored()->salary_normalization_version)->toBe(PostingNormalizer::NORMALIZATION_VERSION)
+        ->and($stored()->employment_type)->toBe(EmploymentType::FullTime);
+
+    $import->handle(new FakeJobSource([$posting([
+        'salaryMax' => 120000.0,
+        'salaryCurrency' => 'EUR',
+        'salaryPeriod' => 'yearly',
+    ])]));
+
+    expect($stored()->salary_min)->toBeNull()
+        ->and($stored()->salary_max)->toBe(120000)
+        ->and($stored()->salary_currency)->toBe('EUR');
     Http::assertNothingSent();
 });
 

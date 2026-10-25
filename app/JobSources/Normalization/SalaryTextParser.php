@@ -12,7 +12,30 @@ final class SalaryTextParser
 {
     private const string MULTIPLIERS = 'mn|juta|jt|ribu|rb|lakh|lac|k|m';
 
-    private const string CURRENCY_TOKEN = '(?:[A-Z]{3}|[ACS]\$|Rp|[$€£₹¥])';
+    private const string CURRENCY_TOKEN = '(?:[A-Z]{3}|'.self::DOLLAR_PREFIXES.'|Rp|[$€£₹¥])';
+
+    /**
+     * Dollar symbols that name their own currency, so only a bare "$" depends on the country.
+     */
+    private const string DOLLAR_PREFIXES = '(?<![A-Za-z])(?:US\$|AU\$|A\$|CA\$|C\$|S\$|NZ\$|HK\$|NT\$|MX\$|R\$)';
+
+    /**
+     * @var array<string, string>
+     */
+    private const array PREFIXED_DOLLARS = [
+        'US$' => 'USD', 'AU$' => 'AUD', 'A$' => 'AUD', 'CA$' => 'CAD', 'C$' => 'CAD',
+        'S$' => 'SGD', 'NZ$' => 'NZD', 'HK$' => 'HKD', 'NT$' => 'TWD', 'MX$' => 'MXN', 'R$' => 'BRL',
+    ];
+
+    /**
+     * Countries whose local dollar is not in CURRENCIES, so a bare "$" there has no known currency.
+     *
+     * @var list<string>
+     */
+    private const array OTHER_DOLLAR_COUNTRIES = [
+        'AR', 'CL', 'CO', 'CU', 'DO', 'UY', 'BS', 'BB', 'BZ', 'BM', 'BN', 'KY',
+        'FJ', 'GY', 'JM', 'LR', 'NA', 'SB', 'SR', 'TT', 'TW',
+    ];
 
     /** @var list<string> */
     private const array CURRENCIES = [
@@ -24,7 +47,7 @@ final class SalaryTextParser
     /**
      * Read a single amount or an explicit range, never unrelated or reversed amounts.
      */
-    public function parse(string $text): ?SalaryText
+    public function parse(string $text, ?string $countryCode = null): ?SalaryText
     {
         preg_match_all(
             '~\d+(?:[.,]\d+)*(?:\s*(?:'.self::MULTIPLIERS.')(?!\p{L}))?~iu',
@@ -71,7 +94,7 @@ final class SalaryTextParser
             }
         } else {
             $prefix = substr($text, 0, $amounts[0][1]);
-            $prefix = preg_replace('~\b(?:'.implode('|', self::CURRENCIES).')\b|[ACS]\$|Rp|[$€£₹¥]~u', '', $prefix) ?? $prefix;
+            $prefix = preg_replace('~\b(?:'.implode('|', self::CURRENCIES).')\b|'.self::DOLLAR_PREFIXES.'|Rp|[$€£₹¥]~u', '', $prefix) ?? $prefix;
 
             if (preg_match('/\b(?:up\s+to|max|maximum|hingga|sampai)\s*$/iu', $prefix) === 1) {
                 $min = null;
@@ -82,7 +105,7 @@ final class SalaryTextParser
             }
         }
 
-        return new SalaryText($min, $max, $this->currency($text), self::period($text));
+        return new SalaryText($min, $max, $this->currency($text, $countryCode), self::period($text));
     }
 
     /**
@@ -140,9 +163,10 @@ final class SalaryTextParser
     }
 
     /**
-     * Prefer an adjacent known ISO code to symbols; a bare yen symbol stays ambiguous.
+     * Prefer an adjacent known ISO code to symbols; a bare yen symbol stays ambiguous. A bare dollar sign
+     * follows the posting's country.
      */
-    private function currency(string $text): ?string
+    private function currency(string $text, ?string $countryCode): ?string
     {
         preg_match_all('/(?<![A-Za-z])[A-Z]{3}(?![A-Za-z])/u', $text, $matches, PREG_OFFSET_CAPTURE);
         $codes = [];
@@ -157,7 +181,7 @@ final class SalaryTextParser
             $before = substr($text, 0, $offset);
             $after = substr($text, $offset + strlen($code));
 
-            if (preg_match('~^\s*(?:[ACS]?\$|[€£₹¥])?\s*\d~u', $after) === 1
+            if (preg_match('~^\s*(?:'.self::DOLLAR_PREFIXES.'|[$€£₹¥])?\s*\d~u', $after) === 1
                 || preg_match('~\d(?:[.,]\d+)*(?:\s*(?:'.self::MULTIPLIERS.'))?\s*$~iu', $before) === 1) {
                 $codes[] = $code;
             }
@@ -173,12 +197,42 @@ final class SalaryTextParser
             return null;
         }
 
-        foreach (['A$' => 'AUD', 'C$' => 'CAD', 'S$' => 'SGD', '€' => 'EUR', '£' => 'GBP', 'Rp' => 'IDR', '₹' => 'INR', '$' => 'USD'] as $symbol => $code) {
-            if (str_contains($text, $symbol)) {
-                return $code;
+        foreach (self::PREFIXED_DOLLARS as $symbol => $currency) {
+            if (preg_match('~(?<![A-Za-z])'.preg_quote($symbol, '~').'~u', $text) === 1) {
+                return $currency;
             }
         }
 
+        foreach (['€' => 'EUR', '£' => 'GBP', 'Rp' => 'IDR', '₹' => 'INR'] as $symbol => $currency) {
+            if (str_contains($text, $symbol)) {
+                return $currency;
+            }
+        }
+
+        if (str_contains($text, '$')) {
+            return self::dollarCurrency($countryCode);
+        }
+
         return null;
+    }
+
+    /**
+     * Read a bare dollar sign as the posted country's dollar, and leave a local dollar outside CURRENCIES unknown.
+     */
+    private static function dollarCurrency(?string $countryCode): ?string
+    {
+        if ($countryCode === null) {
+            return 'USD';
+        }
+
+        return match ($countryCode) {
+            'CA' => 'CAD',
+            'AU' => 'AUD',
+            'NZ' => 'NZD',
+            'SG' => 'SGD',
+            'HK' => 'HKD',
+            'MX' => 'MXN',
+            default => in_array($countryCode, self::OTHER_DOLLAR_COUNTRIES, true) ? null : 'USD',
+        };
     }
 }

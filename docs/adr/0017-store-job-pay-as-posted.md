@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-24
+- **Amended:** 2026-10-25 (keep stored pay, dollar sign by country)
 - **Amends:** [0004](0004-compare-salaries-as-annual-gross-in-the-users-currency.md)
 
 ## Context
@@ -54,5 +55,20 @@ Currency conversion still happens at query time with the daily rates of ADR 0004
 1. 2,080 hours a year is a full-time assumption. An hourly contract with fewer hours shows a higher annual figure than it pays.
 2. The exchange-rate table must hold every currency the sources send. A currency without a rate cannot be compared and shows as such (ADR 0004).
 3. Two pairs of salary columns must stay in step. Only the normalizer writes them.
+
+## Amendment (2026-10-25)
+
+A review of the import found two ways to store the wrong pay.
+
+1. **A later run without pay erased stored pay.** The import replaced every column on conflict, so a run where the source left out the salary wrote nulls over a salary the app already had. That is the field drift that `jobs:check-source` watches for ([ADR 0016](0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md)). Now:
+    - The seven salary columns (amounts, currency, period, annual figures, version) change as one group. A run that sends no amount keeps the stored group. A run that sends any amount replaces the whole group, so an old minimum is never paired with a new maximum or a new currency.
+    - `employment_type` and `seniority` keep their stored value when a run sends none.
+    - An employer who removes the pay from a posting is not seen. The stored pay stays until the posting expires.
+2. **A bare `$` was always USD.** Salary text such as "$80k" on a posting in Canada was stored as USD, and "US$" matched the `S$` of Singapore. Now:
+    - A prefixed symbol names its currency: `US$`, `A$`/`AU$`, `C$`/`CA$`, `S$`, `NZ$`, `HK$`, `NT$`, `MX$`, `R$`.
+    - A bare `$` follows the posting's single country: CAD, AUD, NZD, SGD, HKD or MXN in those countries. In a country whose local dollar has no exchange rate (Argentina, Chile, Colombia, …) the currency is null, never a guess. Anywhere else, or with no single country, it is USD.
+    - An ISO code next to the amount still wins over any symbol.
+
+The annual factors did not change, so `salary_normalization_version` stays at 1.
 
 **Revisit when** a source sends hours per week, users ask to compare hourly rates directly, or a currency without an ECB rate becomes common.
