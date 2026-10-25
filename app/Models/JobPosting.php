@@ -53,6 +53,9 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property string $apply_url
  * @property CarbonImmutable $posted_at
  * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable $first_seen_at When an import first stored the row; it never changes.
+ * @property CarbonImmutable $last_seen_at When an import last returned the row.
+ * @property string|null $content_hash SHA-256 of the normalized row; set on its next import when null.
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, Skill&object{pivot: Pivot}> $skills
@@ -63,6 +66,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'work_arrangement', 'employment_type', 'seniority', 'salary_min', 'salary_max', 'salary_currency',
     'salary_period', 'annual_salary_min', 'annual_salary_max', 'salary_normalization_version',
     'city', 'country_codes', 'region', 'apply_url', 'posted_at', 'expires_at',
+    'first_seen_at', 'last_seen_at', 'content_hash',
     'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'duplicate_of_id',
     'duplicate_reason', 'duplicate_similarity',
 ])]
@@ -94,6 +98,8 @@ class JobPosting extends Model
             'region' => JobRegion::class,
             'posted_at' => 'datetime',
             'expires_at' => 'datetime',
+            'first_seen_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-24
 - **Amended:** 2026-10-25 (record the reason for each link)
+- **Amended by:** [0019](0019-give-each-job-a-stable-identity.md) (a stable job identity replaces the canonical row)
 
 ## Context
 

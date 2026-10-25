@@ -50,6 +50,9 @@ test('a posting without a salary has no salary fields', function () use ($postin
     $source = $posting(salaryCurrency: 'USD', salaryPeriod: 'annual');
 
     $normalized = (new PostingNormalizer)->normalize($source);
+    $attributes = $normalized->toAttributes();
+    $contentHash = $attributes['content_hash'];
+    unset($attributes['content_hash']);
 
     expect($normalized)->not->toBeNull()
         ->and($normalized->salaryMin)->toBeNull()
@@ -60,7 +63,7 @@ test('a posting without a salary has no salary fields', function () use ($postin
         ->and($normalized->annualSalaryMax)->toBeNull()
         ->and($normalized->salaryNormalizationVersion)->toBeNull()
         ->and($normalized->employmentType)->toBe(EmploymentType::FullTime)
-        ->and($normalized->toAttributes())->toBe([
+        ->and($attributes)->toBe([
             'source' => 'himalayas',
             'external_id' => 'posting-1',
             'title' => 'Backend Engineer',
@@ -88,7 +91,8 @@ test('a posting without a salary has no salary fields', function () use ($postin
             'normalized_title' => 'backend engineer',
             'location_key' => 'worldwide',
             'duplicate_key' => '6432a93a2f7020bdb1d04d4d79bc0a2739873da4347df6e20da70bc6346a0a46',
-        ]);
+        ])
+        ->and($contentHash)->toMatch('/^[0-9a-f]{64}$/');
 });
 
 test('an hourly salary gets annual figures', function () use ($posting) {

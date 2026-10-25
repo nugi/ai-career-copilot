@@ -14,7 +14,9 @@ final readonly class ImportReport
         public FetchReport $fetch,
         public int $normalized,
         public int $skipped,
-        public int $stored,
+        public int $created,
+        public int $updated,
+        public int $unchanged,
         public int $linksChanged,
     ) {}
 }

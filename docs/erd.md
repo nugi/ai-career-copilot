@@ -101,6 +101,9 @@ erDiagram
         string region
         timestamp posted_at
         timestamp expires_at
+        timestamp first_seen_at
+        timestamp last_seen_at
+        char64 content_hash
     }
     job_posting_skill {
         bigint job_posting_id PK,FK
@@ -132,6 +135,20 @@ erDiagram
         decimal cost_usd
         int latency_ms
         timestamp created_at
+    }
+    ingestion_runs {
+        bigint id PK
+        string source
+        string status
+        timestamp started_at
+        timestamp finished_at
+        int fetched
+        int created
+        int updated
+        int unchanged
+        int links_changed
+        int duration_ms
+        string error
     }
 ```
 
@@ -211,6 +228,8 @@ The product never asks "which users have skill X", but merging, deleting and pro
 
 `dedup_key` stops duplicates within one source; `duplicate_key` and `duplicate_of_id` link the same job across sources ([ADR 0018](adr/0018-link-duplicate-jobs-across-sources.md)).
 
+`first_seen_at` is set on insert and never updated; `last_seen_at` moves on every run that returns the posting; `updated_at` moves only when `content_hash` changes ([ADR 0020](adr/0020-ingest-job-sources-on-a-schedule.md)).
+
 CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
 
 ### job_posting_skill
@@ -244,3 +263,13 @@ Append-only log of every AI call, with no `updated_at`.
 | The user's spend this month, for budgets and rate limits | `(user_id, created_at)` |
 | Cost per feature and model per day                       | `(created_at)`          |
 | Cost per tier, agent and model for the last 7 days       | `(created_at)`          |
+
+### ingestion_runs
+
+One row per queued ingestion run of one source; the counts also go to the `jobs.ingest.finished` log ([ADR 0020](adr/0020-ingest-job-sources-on-a-schedule.md)). The diagram shows the main columns; the table also holds `pages`, `skipped`, `dropped_fields` and `stopped_early`.
+
+| Query                                       | Index                  |
+| ------------------------------------------- | ---------------------- |
+| The latest runs of a source, for its health | `(source, started_at)` |
+
+CHECK constraint: `status` is `running`, `succeeded`, `failed` or `rate_limited`.

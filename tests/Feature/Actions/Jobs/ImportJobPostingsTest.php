@@ -60,12 +60,30 @@ test('running both sources twice creates no duplicates', function () {
     $import->handle($sources->get('himalayas'));
     $firstJobicy = $import->handle($sources->get('jobicy'));
     $firstCount = JobPosting::query()->count();
+    $beforeSecondRun = JobPosting::query()->orderBy('id')->get()->keyBy('id');
+    $firstHimalayas = JobPosting::query()->where('source', 'himalayas')->count();
+    $firstJobicyRows = JobPosting::query()->where('source', 'jobicy')->count();
+
+    $this->travel(1)->hours();
 
     $secondHimalayas = $import->handle($sources->get('himalayas'));
     $secondJobicy = $import->handle($sources->get('jobicy'));
 
     $this->assertDatabaseCount('job_postings', $firstCount);
     expect($firstCount)->toBe(5);
+    expect($secondHimalayas->created)->toBe(0)
+        ->and($secondHimalayas->updated)->toBe(0)
+        ->and($secondHimalayas->unchanged)->toBe($firstHimalayas)
+        ->and($secondJobicy->created)->toBe(0)
+        ->and($secondJobicy->updated)->toBe(0)
+        ->and($secondJobicy->unchanged)->toBe($firstJobicyRows);
+
+    foreach ($beforeSecondRun as $posting) {
+        $current = $posting->fresh();
+        expect($current->first_seen_at->equalTo($posting->first_seen_at))->toBeTrue()
+            ->and($current->updated_at->equalTo($posting->updated_at))->toBeTrue()
+            ->and($current->last_seen_at->greaterThan($posting->last_seen_at))->toBeTrue();
+    }
     expect(JobPosting::query()->select('source', 'dedup_key')->groupBy('source', 'dedup_key')->havingRaw('count(*) > 1')->get())->toBeEmpty();
     $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer');
     expect((clone $shared)->count())->toBe(2);
@@ -100,7 +118,7 @@ test('a stored posting keeps its places and pay', function () {
     expect($report->fetch->yielded)->toBe(3);
     expect($report->normalized)->toBe(3);
     expect($report->skipped)->toBe(0);
-    expect($report->stored)->toBe(3);
+    expect($report->created)->toBe(3);
     Http::assertSentCount(2);
 });
 
@@ -155,6 +173,38 @@ test('near-duplicate titles at the same company are linked', function () {
     expect($postings[1]->fresh()->duplicate_similarity)->toBe(0.889);
     expect($first->linksChanged)->toBe(1);
     expect($second->linksChanged)->toBe(0);
+    Http::assertNothingSent();
+});
+
+test('a changed description counts as one update', function () {
+    $this->freezeTime();
+    $posting = fn (string $descriptionHtml): JobPostingData => new JobPostingData(
+        source: 'fake',
+        externalId: 'fake-description',
+        title: 'Senior Laravel Engineer',
+        companyName: 'Northwind Systems',
+        applyUrl: 'https://example.com/jobs/fake-description',
+        descriptionHtml: $descriptionHtml,
+        postedAt: CarbonImmutable::parse('2026-10-20 09:00:00'),
+        expiresAt: CarbonImmutable::parse('2026-11-19 09:00:00'),
+        remoteType: 'remote',
+    );
+    $stored = fn (): JobPosting => JobPosting::query()->where('source', 'fake')->where('external_id', 'fake-description')->sole();
+    $import = app(ImportJobPostings::class);
+
+    $import->handle(new FakeJobSource([$posting('<p>Own the billing API.</p>')]));
+    $firstSeenAt = $stored()->first_seen_at;
+    $updatedAt = $stored()->updated_at;
+
+    $this->travel(1)->hours();
+
+    $report = $import->handle(new FakeJobSource([$posting('<p>Own the billing API and its queue workers.</p>')]));
+
+    expect($report->created)->toBe(0)
+        ->and($report->updated)->toBe(1)
+        ->and($report->unchanged)->toBe(0)
+        ->and($stored()->updated_at->greaterThan($updatedAt))->toBeTrue()
+        ->and($stored()->first_seen_at->equalTo($firstSeenAt))->toBeTrue();
     Http::assertNothingSent();
 });
 

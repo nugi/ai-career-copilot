@@ -28,7 +28,7 @@
     - A bad optional field (a negative salary, a minimum above the maximum, a currency that is not three capital letters) is dropped, the posting is kept, and a warning `jobs.source.field_dropped` is logged.
     - `fetch()` returns a `FetchReport` (pages, yielded, skipped, dropped fields) as the generator's return value, for the run summary.
 4. **Expiry by date only:** every posting carries an `expiresAt` set by its source. Himalayas uses `expiryDate`, or the last update plus 30 days when it is missing. Jobicy uses `pubDate` plus 7 days. Ingestion expires postings by this date and never because a run did not see them.
-5. **Dates:** `postedAt` is the date the source sends, which for Himalayas is the last update. Ranking by age uses the time the app first saw a posting.
+5. **Dates:** `postedAt` is the date the source sends, which for Himalayas is the last update. Ranking by age uses the time the app first saw a posting, stored as `first_seen_at` ([ADR 0020](0020-ingest-job-sources-on-a-schedule.md)).
 6. **Tests:** tests never call a source (`Http::preventStrayRequests()`). Fixtures start from a real response, cut to a few jobs, with the company, title and description text replaced, because the source terms forbid passing jobs on and the repository is public. A daily `jobs:check-source` run against the live API catches the field changes that fixtures cannot.
 
 ## Consequences
