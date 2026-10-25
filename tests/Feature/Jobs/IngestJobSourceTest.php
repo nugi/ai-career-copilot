@@ -9,6 +9,7 @@ use App\JobSources\Exceptions\JobSourceUnavailable;
 use App\JobSources\FakeJobSource;
 use App\JobSources\JobSourceRegistry;
 use App\Models\IngestionRun;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -54,6 +55,62 @@ test('a successful run records the counts', function () {
         'links_changed' => 0,
         'stopped_early' => false,
     ])->once();
+});
+
+test('a run closes the running rows of its source as abandoned', function () {
+    $this->freezeTime();
+    $this->app->instance(JobSourceRegistry::class, ingestSourceRegistry(new FakeJobSource));
+    $abandoned = IngestionRun::factory()->create([
+        'source' => 'fake',
+        'status' => IngestionRunStatus::Running,
+        'finished_at' => null,
+    ]);
+    $other = IngestionRun::factory()->create([
+        'source' => 'other',
+        'status' => IngestionRunStatus::Running,
+        'finished_at' => null,
+    ]);
+
+    (new IngestJobSource('fake'))->handle(app(JobSourceRegistry::class), app(ImportJobPostings::class));
+
+    expect($abandoned->fresh()->status)->toBe(IngestionRunStatus::Abandoned)
+        ->and($abandoned->fresh()->finished_at)->not->toBeNull()
+        ->and($other->fresh()->status)->toBe(IngestionRunStatus::Running);
+});
+
+test('a rate limit does not use up the tries', function () {
+    $this->freezeTime();
+    $job = new IngestJobSource('fake');
+
+    expect(property_exists($job, 'tries'))->toBeFalse()
+        ->and($job->retryUntil()->getTimestamp())->toBeGreaterThanOrEqual(now()->addMinutes(50)->getTimestamp())
+        ->and($job->retryUntil()->getTimestamp())->toBeLessThanOrEqual(now()->addMinutes(60)->getTimestamp());
+});
+
+test('a failure after the deadline leaves a failed run', function () {
+    $this->freezeTime();
+    $job = new IngestJobSource('fake');
+
+    $job->failed(new MaxAttemptsExceededException('The job has timed out.'));
+
+    $lost = IngestionRun::query()->where('source', 'fake')->sole();
+    expect($lost->status)->toBe(IngestionRunStatus::Failed)
+        ->and($lost->started_at)->not->toBeNull()
+        ->and($lost->finished_at)->not->toBeNull()
+        ->and($lost->error)->toBe(MaxAttemptsExceededException::class.': The job has timed out.');
+
+    $running = IngestionRun::factory()->create([
+        'source' => 'fake',
+        'status' => IngestionRunStatus::Running,
+        'finished_at' => null,
+    ]);
+
+    $job->failed(new RuntimeException('boom'));
+
+    expect($running->fresh()->status)->toBe(IngestionRunStatus::Failed)
+        ->and($running->fresh()->finished_at)->not->toBeNull()
+        ->and($running->fresh()->error)->toBe(RuntimeException::class.': boom')
+        ->and(IngestionRun::query()->count())->toBe(2);
 });
 
 test('a rate limited source records the wait and releases the job', function () {

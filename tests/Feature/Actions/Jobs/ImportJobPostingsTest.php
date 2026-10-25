@@ -281,6 +281,77 @@ test('a later run without pay keeps the stored pay', function () {
     Http::assertNothingSent();
 });
 
+test('a run without pay after a run with pay changes nothing', function () {
+    $this->freezeTime();
+    $import = app(ImportJobPostings::class);
+    $posting = fn (?float $salaryMin, ?float $salaryMax): JobPostingData => new JobPostingData(
+        source: 'fake',
+        externalId: 'fake-pay-hash',
+        title: 'Senior Laravel Engineer',
+        companyName: 'Northwind Systems',
+        applyUrl: 'https://example.com/jobs/fake-pay-hash',
+        descriptionHtml: '<p>Own the billing API.</p>',
+        postedAt: CarbonImmutable::parse('2026-10-20 09:00:00'),
+        expiresAt: CarbonImmutable::parse('2026-11-19 09:00:00'),
+        remoteType: 'remote',
+        employmentType: 'Full Time',
+        salaryMin: $salaryMin,
+        salaryMax: $salaryMax,
+        salaryCurrency: $salaryMin === null ? null : 'USD',
+        salaryPeriod: $salaryMin === null ? null : 'yearly',
+    );
+    $stored = fn (): JobPosting => JobPosting::query()->where('source', 'fake')->where('external_id', 'fake-pay-hash')->sole();
+
+    $import->handle(new FakeJobSource([$posting(80000.0, 100000.0)]));
+    $storedHash = $stored()->content_hash;
+    $storedUpdatedAt = $stored()->updated_at;
+
+    $this->travel(1)->hours();
+
+    $report = $import->handle(new FakeJobSource([$posting(null, null)]));
+
+    expect($report->created)->toBe(0)
+        ->and($report->updated)->toBe(0)
+        ->and($report->unchanged)->toBe(1)
+        ->and($stored()->updated_at->equalTo($storedUpdatedAt))->toBeTrue()
+        ->and($stored()->content_hash)->toBe($storedHash);
+    Http::assertNothingSent();
+});
+
+test('the text hash changes only with the title or the description', function () {
+    $this->freezeTime();
+    $import = app(ImportJobPostings::class);
+    $posting = fn (string $descriptionHtml, float $salaryMax): JobPostingData => new JobPostingData(
+        source: 'fake',
+        externalId: 'fake-text-hash',
+        title: 'Senior Laravel Engineer',
+        companyName: 'Northwind Systems',
+        applyUrl: 'https://example.com/jobs/fake-text-hash',
+        descriptionHtml: $descriptionHtml,
+        postedAt: CarbonImmutable::parse('2026-10-20 09:00:00'),
+        expiresAt: CarbonImmutable::parse('2026-11-19 09:00:00'),
+        remoteType: 'remote',
+        salaryMin: 80000.0,
+        salaryMax: $salaryMax,
+        salaryCurrency: 'USD',
+        salaryPeriod: 'yearly',
+    );
+    $storedTextHash = fn (): ?string => JobPosting::query()->where('source', 'fake')->where('external_id', 'fake-text-hash')->sole()->text_hash;
+
+    $import->handle(new FakeJobSource([$posting('<p>Own the billing API.</p>', 100000.0)]));
+    $firstHash = $storedTextHash();
+
+    $import->handle(new FakeJobSource([$posting('<p>Own the billing API.</p>', 120000.0)]));
+    $afterSalary = $storedTextHash();
+
+    $import->handle(new FakeJobSource([$posting('<p>Own the billing API and its queue workers.</p>', 120000.0)]));
+    $afterDescription = $storedTextHash();
+
+    expect($afterSalary)->toBe($firstHash)
+        ->and($afterDescription)->not->toBe($firstHash);
+    Http::assertNothingSent();
+});
+
 test('different roles or companies are not linked', function (string $firstTitle, string $secondTitle, string $firstCompany, string $secondCompany, ?SeniorityLevel $firstSeniority, ?SeniorityLevel $secondSeniority) {
     $this->freezeTime();
     $first = JobPosting::factory()->create([
