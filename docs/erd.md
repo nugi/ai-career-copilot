@@ -82,6 +82,8 @@ erDiagram
         string location_key
         char64 duplicate_key
         bigint duplicate_of_id FK
+        string duplicate_reason
+        decimal duplicate_similarity
         string title
         string company_name
         string work_arrangement

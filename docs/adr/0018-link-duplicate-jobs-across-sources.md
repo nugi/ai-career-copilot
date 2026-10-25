@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-24
+- **Amended:** 2026-10-25 (record the reason for each link)
 
 ## Context
 
@@ -42,5 +43,14 @@ A user must see each job once. Matching (Day 21) and embeddings (Day 19) must al
 
 - **Embedding similarity** of the title and the first part of the description, within the same company: catches rewording, and costs one embedding per posting, which Day 19 computes anyway. It needs a labelled set of pairs to choose its threshold.
 - **A model as the judge** for pairs in a grey band of similarity only: highest accuracy, but it costs a call per pair and needs the spend cap of [ADR 0014](0014-cap-the-daily-ai-spend-of-all-users.md).
+
+## Amendment (2026-10-25)
+
+The threshold and the role list need labelled pairs to tune, and the three false links in the first live sample were the first ones. Every link now records why it was made, so each review of links adds to that set.
+
+- `duplicate_reason` is `exact` for a row whose duplicate key matches its canonical row, and `trigram` when its group head was linked by title similarity.
+- `duplicate_similarity` holds the trigram similarity, rounded to three decimals, for `trigram` links only.
+- CHECKs keep the columns in step: a link has a reason, and only a `trigram` link has a similarity.
+- A change of reason or similarity counts as a link change, so a second run with the same data still changes no rows.
 
 **Revisit when** users report the same job twice, a new source has companies under other names, or Day 19 embeddings make the embedding check nearly free.

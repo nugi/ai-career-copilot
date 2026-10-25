@@ -31,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property string|null $location_key
  * @property string|null $duplicate_key
  * @property int|null $duplicate_of_id
+ * @property string|null $duplicate_reason Why the row was linked: "exact" key or "trigram" title match.
+ * @property float|null $duplicate_similarity Rounded title similarity when the reason is "trigram".
  * @property-read JobPosting|null $duplicateOf
  * @property string $description
  * @property string|null $location
@@ -62,6 +64,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'salary_period', 'annual_salary_min', 'annual_salary_max', 'salary_normalization_version',
     'city', 'country_codes', 'region', 'apply_url', 'posted_at', 'expires_at',
     'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'duplicate_of_id',
+    'duplicate_reason', 'duplicate_similarity',
 ])]
 class JobPosting extends Model
 {
@@ -87,6 +90,7 @@ class JobPosting extends Model
             'salary_normalization_version' => 'integer',
             'country_codes' => 'array',
             'duplicate_of_id' => 'integer',
+            'duplicate_similarity' => 'float',
             'region' => JobRegion::class,
             'posted_at' => 'datetime',
             'expires_at' => 'datetime',
