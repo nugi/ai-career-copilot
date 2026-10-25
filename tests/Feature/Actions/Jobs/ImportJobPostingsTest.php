@@ -122,6 +122,32 @@ test('a stored posting keeps its places and pay', function () {
     Http::assertSentCount(2);
 });
 
+test('a posting too long for its columns does not stop the run', function () {
+    $this->freezeTime();
+    $import = app(ImportJobPostings::class);
+    $posting = fn (string $externalId, string $title): JobPostingData => new JobPostingData(
+        source: 'fake',
+        externalId: $externalId,
+        title: $title,
+        companyName: 'Northwind Systems',
+        applyUrl: "https://example.com/jobs/{$externalId}",
+        descriptionHtml: '<p>Own the billing API and its queue workers.</p>',
+        postedAt: CarbonImmutable::parse('2026-10-20 09:00:00'),
+        expiresAt: CarbonImmutable::parse('2026-11-19 09:00:00'),
+        remoteType: 'remote',
+    );
+
+    $report = $import->handle(new FakeJobSource([
+        $posting('fake-normal', 'Senior Laravel Engineer'),
+        $posting('fake-overlong', str_repeat('a', 256)),
+    ]));
+
+    expect($report->created)->toBe(1)
+        ->and($report->skipped)->toBe(1)
+        ->and(JobPosting::query()->where('source', 'fake')->count())->toBe(1);
+    Http::assertNothingSent();
+});
+
 test('the next posting takes over when the canonical one expires', function () {
     $this->freezeTime();
     fakeImportJobSources();
