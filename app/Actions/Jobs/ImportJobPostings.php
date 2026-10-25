@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
  * Imports one source run: normalizes its postings, upserts them on (source, dedup_key) and links the rows of one job
  * across sources to a canonical row (ADR 0018). Running it again with the same data creates no rows and changes no
  * links. A later run that sends no salary, employment type or seniority keeps the stored value, and a new salary
- * replaces the whole salary group.
+ * replaces the whole salary group. first_seen_at never changes, last_seen_at moves on every run, and updated_at moves
+ * only when the content hash changes.
  */
 class ImportJobPostings
 {
@@ -73,8 +74,35 @@ class ImportJobPostings
         }
 
         $fetch = $generator->getReturn();
+        $seenAt = now();
+
+        foreach ($rows as $index => $row) {
+            $rows[$index]['first_seen_at'] = $seenAt;
+            $rows[$index]['last_seen_at'] = $seenAt;
+        }
+
+        $created = 0;
+        $updated = 0;
+        $unchanged = 0;
 
         foreach (array_chunk($rows, 100) as $chunk) {
+            $stored = JobPosting::query()
+                ->where('source', $source->key())
+                ->whereIn('dedup_key', array_column($chunk, 'external_id'))
+                ->pluck('content_hash', 'dedup_key');
+
+            foreach ($chunk as $row) {
+                $key = $row['external_id'];
+
+                if (! $stored->has($key)) {
+                    $created++;
+                } elseif ($stored->get($key) === $row['content_hash']) {
+                    $unchanged++;
+                } else {
+                    $updated++;
+                }
+            }
+
             JobPosting::query()->upsert(
                 $chunk,
                 uniqueBy: ['source', 'dedup_key'],
@@ -87,13 +115,16 @@ class ImportJobPostings
             fetch: $fetch,
             normalized: count($rows),
             skipped: $skipped,
-            stored: count($rows),
+            created: $created,
+            updated: $updated,
+            unchanged: $unchanged,
             linksChanged: $this->linkDuplicates(),
         );
     }
 
     /**
      * Build the upsert update list. The salary group moves as one, so a new maximum is never stored beside an old minimum.
+     * An existing row keeps its first-seen time, and its updated time moves only when the content hash changes.
      *
      * @param  list<string>  $columns
      * @return array<int|string, string|Expression>
@@ -103,7 +134,7 @@ class ImportJobPostings
         $updates = [];
 
         foreach ($columns as $column) {
-            if (in_array($column, ['source', 'external_id'], true)) {
+            if (in_array($column, ['source', 'external_id', 'first_seen_at'], true)) {
                 continue;
             }
 
@@ -121,6 +152,10 @@ class ImportJobPostings
 
             $updates[] = $column;
         }
+
+        $updates['updated_at'] = DB::raw(
+            'case when job_postings.content_hash is distinct from excluded.content_hash then excluded.updated_at else job_postings.updated_at end'
+        );
 
         return $updates;
     }

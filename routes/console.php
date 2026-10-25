@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 Schedule::command('jobs:check-source')->dailyAt('06:00');
+Schedule::command('jobs:ingest')->dailyAt('06:30')->withoutOverlapping()->onOneServer();

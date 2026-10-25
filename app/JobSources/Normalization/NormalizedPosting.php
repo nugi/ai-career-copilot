@@ -60,12 +60,13 @@ final readonly class NormalizedPosting
      *     salary_currency: ?string, salary_period: ?string, annual_salary_min: ?int,
      *     annual_salary_max: ?int, salary_normalization_version: ?int, apply_url: string,
      *     posted_at: CarbonImmutable, expires_at: CarbonImmutable,
-     *     normalized_company: string, normalized_title: string, location_key: string, duplicate_key: string
+     *     normalized_company: string, normalized_title: string, location_key: string, duplicate_key: string,
+     *     content_hash: string
      * }
      */
     public function toAttributes(): array
     {
-        return [
+        $attributes = [
             'source' => $this->source,
             'external_id' => $this->externalId,
             'title' => $this->title,
@@ -94,5 +95,13 @@ final readonly class NormalizedPosting
             'location_key' => $this->locationKey,
             'duplicate_key' => $this->duplicateKey,
         ];
+
+        $hashed = $attributes;
+        $hashed['posted_at'] = $this->postedAt->toIso8601String();
+        $hashed['expires_at'] = $this->expiresAt->toIso8601String();
+
+        $attributes['content_hash'] = hash('sha256', json_encode($hashed, JSON_THROW_ON_ERROR));
+
+        return $attributes;
     }
 }
