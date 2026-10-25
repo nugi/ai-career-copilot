@@ -1,6 +1,6 @@
 # 20. Ingest job sources on a schedule
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0021](0021-key-ai-work-on-the-posting-text.md) (point 3: what the hashes cover) and [0022](0022-close-ingestion-runs-that-a-worker-abandons.md) (points 5 and 6: retries and stuck runs)
 - **Date:** 2026-10-25
 
 ## Context

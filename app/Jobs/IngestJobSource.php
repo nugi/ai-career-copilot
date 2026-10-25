@@ -8,10 +8,12 @@ use App\JobSources\Exceptions\JobSourceRateLimited;
 use App\JobSources\Exceptions\JobSourceUnavailable;
 use App\JobSources\JobSourceRegistry;
 use App\Models\IngestionRun;
+use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\UniqueFor;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -20,10 +22,16 @@ use Throwable;
  * request and its outcome is a row instead of a log search (ADR 0020).
  *
  * The job is unique per source for 3600 seconds, so a second dispatch while a run waits or retries is dropped; the lock
- * must last longer than all the attempts of one job. A rate limit releases the job after the wait that the source asked
- * for and records the run as rate_limited. An unavailable source fails the job at once, because the HTTP client has
- * already retried and a job retry gets the same answer. Any other error records a failed run and rethrows, so the queue
- * retries it. The error column holds the exception class and message only, never a posting, a description or an API key.
+ * must last longer than all the attempts of one job. Because of that lock, a running row of the same source at the start
+ * of a run comes from a worker that was killed, so the job marks it abandoned before it records its own run. A rate limit
+ * releases the job after the wait that the source asked for and records the run as rate_limited; a release is not an
+ * error, so the retry window, not an attempt count, limits how long a rate-limited run keeps trying. An unavailable
+ * source fails the job at once, because the HTTP client has already retried and a job retry gets the same answer. Any
+ * other error records a failed run and rethrows until maxExceptions unexpected errors have happened. A run that passes
+ * the timeout fails at once, because another attempt would wait the same way and the next scheduled run tries again.
+ * A failure outside handle() is closed by failed(), which marks the running row failed or, after a lost deadline, adds
+ * the failed row that the dropped attempt never recorded. The error column holds the exception class and message only,
+ * never a posting, a description or an API key.
  */
 #[UniqueFor(3600)]
 class IngestJobSource implements ShouldBeUnique, ShouldQueue
@@ -31,15 +39,21 @@ class IngestJobSource implements ShouldBeUnique, ShouldQueue
     use Queueable;
 
     /**
-     * The number of attempts for an unexpected error.
+     * The number of unexpected errors before the job fails; a rate limit release is not an error.
      */
-    public int $tries = 3;
+    public int $maxExceptions = 3;
 
     /**
      * The seconds that one attempt may run: the worst run is the run deadline plus one attempt, about 75 seconds (ADR 0016).
      * The queue connection's retry_after must be longer, or a second worker starts the same job while the first one runs.
      */
     public int $timeout = 120;
+
+    /**
+     * A run that passes the timeout is far past its worst case of about 75 seconds, so another attempt waits the same way.
+     * The next scheduled run tries again.
+     */
+    public bool $failOnTimeout = true;
 
     /**
      * Create a new job instance.
@@ -55,11 +69,28 @@ class IngestJobSource implements ShouldBeUnique, ShouldQueue
     }
 
     /**
+     * Rate limits release the job until this time. The window must end before the 3600-second unique lock expires,
+     * with room for one more attempt.
+     */
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addMinutes(55);
+    }
+
+    /**
      * Import the source, record the run and close it with the counts, the failure or the wait that the source asked for.
      */
     public function handle(JobSourceRegistry $registry, ImportJobPostings $import): void
     {
         $startedAt = hrtime(true);
+
+        IngestionRun::query()
+            ->where('source', $this->source)
+            ->where('status', IngestionRunStatus::Running)
+            ->update([
+                'status' => IngestionRunStatus::Abandoned,
+                'finished_at' => now(),
+            ]);
 
         $run = IngestionRun::query()->create([
             'source' => $this->source,
@@ -115,6 +146,39 @@ class IngestJobSource implements ShouldBeUnique, ShouldQueue
     }
 
     /**
+     * Close the run of an attempt that failed outside handle(), such as a timeout or a lost deadline.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $closed = IngestionRun::query()
+            ->where('source', $this->source)
+            ->where('status', IngestionRunStatus::Running)
+            ->update([
+                'status' => IngestionRunStatus::Failed,
+                'finished_at' => now(),
+                'error' => $exception === null ? null : self::errorFor($exception),
+            ]);
+
+        if ($closed === 0 && $exception instanceof MaxAttemptsExceededException) {
+            IngestionRun::query()->create([
+                'source' => $this->source,
+                'status' => IngestionRunStatus::Failed,
+                'started_at' => now(),
+                'finished_at' => now(),
+                'error' => self::errorFor($exception),
+            ]);
+
+            $closed = 1;
+        }
+
+        if ($closed === 0 || $exception === null) {
+            return;
+        }
+
+        $this->logFailure($exception);
+    }
+
+    /**
      * Close the run with the failure, keeping only the exception class and a message cut to the column's length.
      */
     private function recordFailure(IngestionRun $run, IngestionRunStatus $status, Throwable $exception, int $startedAt): void
@@ -123,8 +187,16 @@ class IngestJobSource implements ShouldBeUnique, ShouldQueue
             'status' => $status,
             'finished_at' => now(),
             'duration_ms' => self::millisecondsSince($startedAt),
-            'error' => mb_substr($exception::class.': '.$exception->getMessage(), 0, 255),
+            'error' => self::errorFor($exception),
         ]);
+    }
+
+    /**
+     * Format the error column value from the exception class and message, cut to the column's length.
+     */
+    private static function errorFor(Throwable $exception): string
+    {
+        return mb_substr($exception::class.': '.$exception->getMessage(), 0, 255);
     }
 
     /**

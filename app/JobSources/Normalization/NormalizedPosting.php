@@ -61,7 +61,7 @@ final readonly class NormalizedPosting
      *     annual_salary_max: ?int, salary_normalization_version: ?int, apply_url: string,
      *     posted_at: CarbonImmutable, expires_at: CarbonImmutable,
      *     normalized_company: string, normalized_title: string, location_key: string, duplicate_key: string,
-     *     content_hash: string
+     *     content_hash: string, text_hash: string
      * }
      */
     public function toAttributes(): array
@@ -96,12 +96,31 @@ final readonly class NormalizedPosting
             'duplicate_key' => $this->duplicateKey,
         ];
 
-        $hashed = $attributes;
-        $hashed['posted_at'] = $this->postedAt->toIso8601String();
-        $hashed['expires_at'] = $this->expiresAt->toIso8601String();
-
-        $attributes['content_hash'] = hash('sha256', json_encode($hashed, JSON_THROW_ON_ERROR));
+        $attributes['content_hash'] = self::contentHash($attributes);
+        $attributes['text_hash'] = self::textHash($this->title, $this->description);
 
         return $attributes;
+    }
+
+    /**
+     * Hash a normalized row as it is stored, with the ISO timestamps that the timestamp columns keep.
+     *
+     * @param  array<string, mixed>  $attributes  a row from toAttributes(), with posted_at and expires_at as CarbonImmutable
+     */
+    public static function contentHash(array $attributes): string
+    {
+        $hashed = $attributes;
+        $hashed['posted_at'] = $attributes['posted_at']->toIso8601String();
+        $hashed['expires_at'] = $attributes['expires_at']->toIso8601String();
+
+        return hash('sha256', json_encode($hashed, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Hash the posting text that later AI work, such as skill extraction and embeddings, is keyed on.
+     */
+    public static function textHash(string $title, string $description): string
+    {
+        return hash('sha256', json_encode([$title, $description], JSON_THROW_ON_ERROR));
     }
 }
