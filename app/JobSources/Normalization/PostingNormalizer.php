@@ -13,11 +13,17 @@ use Illuminate\Support\Facades\Log;
  *
  * Pay stays in the posted currency and period, with annual figures beside it (ADR 0017). A posting whose work
  * arrangement is unknown is skipped, and an optional value that cannot be mapped is dropped and logged, as in
- * PostingBuilder.
+ * PostingBuilder. A posting whose text does not fit its column is skipped too, so one bad posting never fails
+ * the run.
  */
 final class PostingNormalizer
 {
     public const int NORMALIZATION_VERSION = 1;
+
+    /**
+     * The length of the text columns of job_postings. PostgreSQL counts characters.
+     */
+    public const int MAX_TEXT_LENGTH = 255;
 
     /**
      * Compose pure parsers without requiring the container or a database connection.
@@ -28,7 +34,7 @@ final class PostingNormalizer
     ) {}
 
     /**
-     * Normalize source data into a row, skipping only an unknown work arrangement.
+     * Normalize source data into a row, skipping an unknown work arrangement or text that does not fit its column.
      */
     public function normalize(JobPostingData $posting): ?NormalizedPosting
     {
@@ -60,7 +66,7 @@ final class PostingNormalizer
         $normalizedTitle = DuplicateKey::title($title);
         $locationKey = $parsedLocation->key();
 
-        return new NormalizedPosting(
+        $normalized = new NormalizedPosting(
             source: $posting->source,
             externalId: $posting->externalId,
             title: $title,
@@ -89,6 +95,47 @@ final class PostingNormalizer
             locationKey: $locationKey,
             duplicateKey: DuplicateKey::hash($normalizedCompany, $normalizedTitle, $locationKey),
         );
+
+        $column = $this->tooLongColumn($normalized);
+
+        if ($column !== null) {
+            Log::warning('jobs.source.posting_skipped', [
+                'source' => $posting->source,
+                'external_id' => $posting->externalId,
+                'reason' => sprintf('%s longer than %d characters', $column, self::MAX_TEXT_LENGTH),
+            ]);
+
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Name the first column whose final normalized value does not fit, or null when every value fits.
+     */
+    private function tooLongColumn(NormalizedPosting $normalized): ?string
+    {
+        /** @var array<string, ?string> $values */
+        $values = [
+            'external_id' => $normalized->externalId,
+            'title' => $normalized->title,
+            'company_name' => $normalized->companyName,
+            'location' => $normalized->location,
+            'city' => $normalized->city,
+            'apply_url' => $normalized->applyUrl,
+            'normalized_company' => $normalized->normalizedCompany,
+            'normalized_title' => $normalized->normalizedTitle,
+            'location_key' => $normalized->locationKey,
+        ];
+
+        foreach ($values as $column => $value) {
+            if ($value !== null && mb_strlen($value) > self::MAX_TEXT_LENGTH) {
+                return $column;
+            }
+        }
+
+        return null;
     }
 
     /**

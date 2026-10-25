@@ -157,6 +157,23 @@ test('an unknown remote type skips the posting', function () use ($posting) {
     ])->once();
 });
 
+test('a value too long for its column skips the posting', function (array $overrides, string $reason) use ($posting) {
+    Log::spy();
+
+    $normalized = (new PostingNormalizer)->normalize($posting(...$overrides));
+
+    expect($normalized)->toBeNull();
+    Log::shouldHaveReceived('warning')->with('jobs.source.posting_skipped', [
+        'source' => 'himalayas',
+        'external_id' => 'posting-1',
+        'reason' => $reason,
+    ])->once();
+})->with([
+    'title' => [['title' => str_repeat('a', 256)], 'title longer than 255 characters'],
+    'location' => [['location' => str_repeat('a', 256)], 'location longer than 255 characters'],
+    'derived title' => [['title' => trim(str_repeat('sde ', 64))], 'normalized_title longer than 255 characters'],
+]);
+
 test('the same job from two sources gets the same duplicate key', function () use ($posting) {
     $normalizer = new PostingNormalizer;
 
