@@ -105,16 +105,7 @@ final readonly class NormalizedPosting
     /**
      * Hash a normalized row as it is stored, with the ISO timestamps that the timestamp columns keep.
      *
-     * @param  array{
-     *     source: string, external_id: string, title: string, company_name: string,
-     *     description: string, location: ?string, city: ?string, country_code: ?string,
-     *     country_codes: list<string>, region: ?string, work_arrangement: string,
-     *     employment_type: ?string, seniority: ?string, salary_min: ?int, salary_max: ?int,
-     *     salary_currency: ?string, salary_period: ?string, annual_salary_min: ?int,
-     *     annual_salary_max: ?int, salary_normalization_version: ?int, apply_url: string,
-     *     posted_at: CarbonImmutable, expires_at: CarbonImmutable,
-     *     normalized_company: string, normalized_title: string, location_key: string, duplicate_key: string
-     * }  $attributes
+     * @param  array<string, mixed>  $attributes  a row from toAttributes(), with posted_at and expires_at as CarbonImmutable
      */
     public static function contentHash(array $attributes): string
     {
