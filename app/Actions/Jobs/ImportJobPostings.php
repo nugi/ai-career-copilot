@@ -25,19 +25,27 @@ class ImportJobPostings
     /**
      * Pay columns that a later run without pay must not clear; a new salary replaces all of them together.
      *
-     * @var list<string>
+     * @var array<string, literal-string>
      */
-    private const array SALARY_COLUMNS = [
-        'salary_min', 'salary_max', 'salary_currency', 'salary_period',
-        'annual_salary_min', 'annual_salary_max', 'salary_normalization_version',
+    private const array SALARY_UPDATES = [
+        'salary_min' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_min else excluded.salary_min end',
+        'salary_max' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_max else excluded.salary_max end',
+        'salary_currency' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_currency else excluded.salary_currency end',
+        'salary_period' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_period else excluded.salary_period end',
+        'annual_salary_min' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.annual_salary_min else excluded.annual_salary_min end',
+        'annual_salary_max' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.annual_salary_max else excluded.annual_salary_max end',
+        'salary_normalization_version' => 'case when excluded.salary_min is null and excluded.salary_max is null then job_postings.salary_normalization_version else excluded.salary_normalization_version end',
     ];
 
     /**
      * Columns where a later run that omits the value keeps the stored one.
      *
-     * @var list<string>
+     * @var array<string, literal-string>
      */
-    private const array KEPT_COLUMNS = ['employment_type', 'seniority'];
+    private const array KEPT_UPDATES = [
+        'employment_type' => 'coalesce(excluded.employment_type, job_postings.employment_type)',
+        'seniority' => 'coalesce(excluded.seniority, job_postings.seniority)',
+    ];
 
     public function __construct(private PostingNormalizer $normalizer) {}
 
@@ -88,7 +96,7 @@ class ImportJobPostings
      * Build the upsert update list. The salary group moves as one, so a new maximum is never stored beside an old minimum.
      *
      * @param  list<string>  $columns
-     * @return array<string, Expression>
+     * @return array<int|string, string|Expression>
      */
     private static function updates(array $columns): array
     {
@@ -99,13 +107,19 @@ class ImportJobPostings
                 continue;
             }
 
-            $updates[$column] = match (true) {
-                in_array($column, self::SALARY_COLUMNS, true) => DB::raw(
-                    "case when excluded.salary_min is null and excluded.salary_max is null then job_postings.{$column} else excluded.{$column} end"
-                ),
-                in_array($column, self::KEPT_COLUMNS, true) => DB::raw("coalesce(excluded.{$column}, job_postings.{$column})"),
-                default => DB::raw("excluded.{$column}"),
-            };
+            if (isset(self::SALARY_UPDATES[$column])) {
+                $updates[$column] = DB::raw(self::SALARY_UPDATES[$column]);
+
+                continue;
+            }
+
+            if (isset(self::KEPT_UPDATES[$column])) {
+                $updates[$column] = DB::raw(self::KEPT_UPDATES[$column]);
+
+                continue;
+            }
+
+            $updates[] = $column;
         }
 
         return $updates;
