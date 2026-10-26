@@ -30,10 +30,10 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property string|null $normalized_title
  * @property string|null $location_key
  * @property string|null $duplicate_key
- * @property int|null $duplicate_of_id
+ * @property int|null $opening_id Set by the import in the same transaction that stores the row.
  * @property string|null $duplicate_reason Why the row was linked: "exact" key or "trigram" title match.
  * @property float|null $duplicate_similarity Rounded title similarity when the reason is "trigram".
- * @property-read JobPosting|null $duplicateOf
+ * @property-read Opening|null $opening
  * @property string $description
  * @property string|null $location
  * @property string|null $country_code ISO 3166-1 alpha-2; null for remote roles open worldwide.
@@ -68,7 +68,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'salary_period', 'annual_salary_min', 'annual_salary_max', 'salary_normalization_version',
     'city', 'country_codes', 'region', 'apply_url', 'posted_at', 'expires_at',
     'first_seen_at', 'last_seen_at', 'content_hash', 'text_hash',
-    'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'duplicate_of_id',
+    'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'opening_id',
     'duplicate_reason', 'duplicate_similarity',
 ])]
 class JobPosting extends Model
@@ -94,7 +94,7 @@ class JobPosting extends Model
             'annual_salary_max' => 'integer',
             'salary_normalization_version' => 'integer',
             'country_codes' => 'array',
-            'duplicate_of_id' => 'integer',
+            'opening_id' => 'integer',
             'duplicate_similarity' => 'float',
             'region' => JobRegion::class,
             'posted_at' => 'datetime',
@@ -105,22 +105,22 @@ class JobPosting extends Model
     }
 
     /**
-     * Lists, matching and embeddings read only canonical postings (ADR 0018).
+     * Postings that have not expired.
      *
      * @param  Builder<JobPosting>  $query
      */
     #[Scope]
-    protected function canonical(Builder $query): void
+    protected function live(Builder $query): void
     {
-        $query->whereNull('duplicate_of_id');
+        $query->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
 
     /**
-     * @return BelongsTo<JobPosting, $this>
+     * @return BelongsTo<Opening, $this>
      */
-    public function duplicateOf(): BelongsTo
+    public function opening(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'duplicate_of_id');
+        return $this->belongsTo(Opening::class);
     }
 
     /**

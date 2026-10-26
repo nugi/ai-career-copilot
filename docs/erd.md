@@ -10,6 +10,8 @@ erDiagram
     users ||--o{ user_skills : has
     skills ||--o{ user_skills : "held by"
     skills ||--o{ skill_aliases : "also called"
+    openings ||--o{ job_postings : "posted as"
+    openings |o--o{ openings : "merged into"
     job_postings ||--o{ job_posting_skill : asks
     skills ||--o{ job_posting_skill : "asked by"
     users ||--o{ job_matches : receives
@@ -72,8 +74,13 @@ erDiagram
         string proficiency
         string source
     }
+    openings {
+        bigint id PK
+        bigint merged_into_id FK
+    }
     job_postings {
         bigint id PK
+        bigint opening_id FK
         string source
         string external_id
         string dedup_key
@@ -81,7 +88,6 @@ erDiagram
         string normalized_title
         string location_key
         char64 duplicate_key
-        bigint duplicate_of_id FK
         string duplicate_reason
         decimal duplicate_similarity
         string title
@@ -215,6 +221,17 @@ The catalogue holds a few thousand rows at most, so listing a skill's aliases ne
 
 The product never asks "which users have skill X", but merging, deleting and promoting skills do (promotion counts the users who list an unverified skill). Without this index all three scan the whole table, which grows with every user.
 
+### openings
+
+One row per logical job, whichever boards post it ([ADR 0019](adr/0019-give-each-job-a-stable-identity.md), [ADR 0023](adr/0023-name-the-job-identity-openings.md)). It holds no posting data. An opening is open while any of its postings is live. A merged opening keeps `merged_into_id`, so an old link still resolves, and has no postings.
+
+| Query                                         | Index                       |
+| --------------------------------------------- | --------------------------- |
+| The postings of an opening, and open openings | `job_postings (opening_id)` |
+| Point openings merged earlier at the kept one | `(merged_into_id)`          |
+
+CHECK constraint: `merged_into_id <> id`.
+
 ### job_postings
 
 | Query                                                                                                             | Index                           |
@@ -226,7 +243,7 @@ The product never asks "which users have skill X", but merging, deleting and pro
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 
-`dedup_key` stops duplicates within one source; `duplicate_key` and `duplicate_of_id` link the same job across sources ([ADR 0018](adr/0018-link-duplicate-jobs-across-sources.md)).
+`dedup_key` stops duplicates within one source; `duplicate_key` groups the postings of one job across sources ([ADR 0018](adr/0018-link-duplicate-jobs-across-sources.md)), and each group shares one `opening_id` ([ADR 0023](adr/0023-name-the-job-identity-openings.md)). `duplicate_reason` and `duplicate_similarity` record why a posting joined its group.
 
 `first_seen_at` is set on insert and never updated; `last_seen_at` moves on every run that returns the posting; `updated_at` moves only when `content_hash` changes ([ADR 0020](adr/0020-ingest-job-sources-on-a-schedule.md)).
 
@@ -272,4 +289,4 @@ One row per queued ingestion run of one source; the counts also go to the `jobs.
 | ------------------------------------------- | ---------------------- |
 | The latest runs of a source, for its health | `(source, started_at)` |
 
-CHECK constraint: `status` is `running`, `succeeded`, `failed` or `rate_limited`.
+CHECK constraint: `status` is `running`, `succeeded`, `failed`, `rate_limited` or `abandoned` ([ADR 0022](adr/0022-close-ingestion-runs-that-a-worker-abandons.md)).

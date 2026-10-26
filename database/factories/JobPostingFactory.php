@@ -10,6 +10,7 @@ use App\Enums\SeniorityLevel;
 use App\Enums\WorkArrangement;
 use App\JobSources\Normalization\DuplicateKey;
 use App\Models\JobPosting;
+use App\Models\Opening;
 use App\Models\Skill;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -80,6 +81,7 @@ class JobPostingFactory extends Factory
             'duplicate_key' => fn (array $attributes): string => DuplicateKey::hash(
                 $attributes['normalized_company'], $attributes['normalized_title'], $attributes['location_key'],
             ),
+            'opening_id' => Opening::factory(),
             'work_arrangement' => fake()->randomElement([WorkArrangement::Onsite, WorkArrangement::Hybrid]),
             'employment_type' => fake()->randomElement([EmploymentType::FullTime, EmploymentType::FullTime, EmploymentType::Contract]),
             'seniority' => $seniority,

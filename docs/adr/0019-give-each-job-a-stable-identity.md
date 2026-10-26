@@ -1,6 +1,6 @@
 # 19. Give each job a stable identity
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0023](0023-name-the-job-identity-openings.md) (the table name, and point 1)
 - **Date:** 2026-10-25
 
 ## Context
