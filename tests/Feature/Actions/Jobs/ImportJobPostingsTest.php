@@ -10,6 +10,7 @@ use App\JobSources\JobSourceRegistry;
 use App\JobSources\Normalization\DuplicateKey;
 use App\JobSources\Normalization\PostingNormalizer;
 use App\Models\JobPosting;
+use App\Models\Opening;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -40,6 +41,33 @@ function fakeImportJobSources(): void
             str_contains($request->url(), 'cursor=') ? importJobFixture('jobicy', 'last-page') : $jobicy,
         ),
     ]);
+}
+
+/**
+ * Create two live postings whose titles differ only enough to link through the title trigram match.
+ *
+ * @return array{0: JobPosting, 1: JobPosting}
+ */
+function nearDuplicatePostings(): array
+{
+    $postings = [];
+
+    foreach (['Senior Backend Engineer, Laravel', 'Senior Backend Engineer (Laravel/PHP)'] as $title) {
+        $company = DuplicateKey::company('Northwind Systems Inc.');
+        $normalizedTitle = DuplicateKey::title($title);
+        $postings[] = JobPosting::factory()->create([
+            'title' => $title,
+            'company_name' => 'Northwind Systems Inc.',
+            'normalized_company' => $company,
+            'normalized_title' => $normalizedTitle,
+            'location_key' => 'US',
+            'duplicate_key' => DuplicateKey::hash($company, $normalizedTitle, 'US'),
+            'seniority' => SeniorityLevel::Senior,
+            'expires_at' => null,
+        ]);
+    }
+
+    return [$postings[0], $postings[1]];
 }
 
 beforeEach(function () {
@@ -82,17 +110,18 @@ test('running both sources twice creates no duplicates', function () {
         $current = $posting->fresh();
         expect($current->first_seen_at->equalTo($posting->first_seen_at))->toBeTrue()
             ->and($current->updated_at->equalTo($posting->updated_at))->toBeTrue()
+            ->and($current->opening_id)->toBe($posting->opening_id)
             ->and($current->last_seen_at->greaterThan($posting->last_seen_at))->toBeTrue();
     }
     expect(JobPosting::query()->select('source', 'dedup_key')->groupBy('source', 'dedup_key')->havingRaw('count(*) > 1')->get())->toBeEmpty();
-    $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer');
-    expect((clone $shared)->count())->toBe(2);
-    $canonical = (clone $shared)->canonical()->sole();
-    $duplicate = (clone $shared)->whereNotNull('duplicate_of_id')->sole();
-    expect($duplicate->duplicate_of_id)->toBe($canonical->id);
-    expect($duplicate->duplicateOf->is($canonical))->toBeTrue();
-    expect($duplicate->duplicate_reason)->toBe('exact');
-    expect($duplicate->duplicate_similarity)->toBeNull();
+    $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer')->orderBy('id')->get();
+    expect($shared)->toHaveCount(2);
+    expect($shared[0]->opening_id)->not->toBeNull();
+    expect($shared[1]->opening_id)->toBe($shared[0]->opening_id);
+    expect($shared[0]->duplicate_reason)->toBeNull();
+    expect($shared[1]->duplicate_reason)->toBe('exact');
+    expect($shared[1]->duplicate_similarity)->toBeNull();
+    expect(JobPosting::query()->whereNull('opening_id')->exists())->toBeFalse();
     expect($firstJobicy->linksChanged)->toBe(1);
     expect($secondHimalayas->linksChanged)->toBe(0);
     expect($secondJobicy->linksChanged)->toBe(0);
@@ -148,57 +177,111 @@ test('a posting too long for its columns does not stop the run', function () {
     Http::assertNothingSent();
 });
 
-test('the next posting takes over when the canonical one expires', function () {
+test('an opening survives the expiry of its first posting', function () {
     $this->freezeTime();
     fakeImportJobSources();
     $sources = app(JobSourceRegistry::class);
     $import = app(ImportJobPostings::class);
     $import->handle($sources->get('himalayas'));
     $import->handle($sources->get('jobicy'));
-    $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer');
-    $canonical = (clone $shared)->whereNull('duplicate_of_id')->sole();
-    $duplicate = (clone $shared)->whereNotNull('duplicate_of_id')->sole();
-    $canonical->update(['expires_at' => now()->subDay()]);
+    $shared = JobPosting::query()->where('normalized_company', 'northwind systems')->where('normalized_title', 'senior backend engineer')->orderBy('id')->get();
+    $first = $shared[0];
+    $other = $shared[1];
+    $openingId = $first->opening_id;
+    $first->update(['expires_at' => now()->subDay()]);
 
     $report = $import->handle(new FakeJobSource([]));
 
-    expect($duplicate->fresh()->duplicate_of_id)->toBeNull();
-    expect($canonical->fresh()->duplicate_of_id)->toBeNull();
+    expect($first->fresh()->opening_id)->toBe($openingId);
+    expect($other->fresh()->opening_id)->toBe($openingId);
+    expect($other->fresh()->duplicate_reason)->toBeNull();
     expect($report->linksChanged)->toBe(1);
     Http::assertSentCount(3);
 });
 
 test('near-duplicate titles at the same company are linked', function () {
     $this->freezeTime();
-    $postings = [];
-
-    foreach (['Senior Backend Engineer, Laravel', 'Senior Backend Engineer (Laravel/PHP)'] as $title) {
-        $company = DuplicateKey::company('Northwind Systems Inc.');
-        $normalizedTitle = DuplicateKey::title($title);
-        $postings[] = JobPosting::factory()->create([
-            'title' => $title,
-            'company_name' => 'Northwind Systems Inc.',
-            'normalized_company' => $company,
-            'normalized_title' => $normalizedTitle,
-            'location_key' => 'US',
-            'duplicate_key' => DuplicateKey::hash($company, $normalizedTitle, 'US'),
-            'seniority' => SeniorityLevel::Senior,
-            'expires_at' => null,
-        ]);
-    }
+    [$first, $second] = nearDuplicatePostings();
+    $firstOpening = $first->opening_id;
+    $secondOpening = $second->opening_id;
 
     $import = app(ImportJobPostings::class);
-    $first = $import->handle(new FakeJobSource([]));
-    $second = $import->handle(new FakeJobSource([]));
+    $firstReport = $import->handle(new FakeJobSource([]));
+    $secondReport = $import->handle(new FakeJobSource([]));
 
-    expect($postings[0]->fresh()->duplicate_of_id)->toBeNull();
-    expect($postings[0]->fresh()->duplicate_reason)->toBeNull();
-    expect($postings[0]->fresh()->duplicate_similarity)->toBeNull();
-    expect($postings[1]->fresh()->duplicate_of_id)->toBe($postings[0]->id);
-    expect($postings[1]->fresh()->duplicate_reason)->toBe('trigram');
-    expect($postings[1]->fresh()->duplicate_similarity)->toBe(0.889);
-    expect($first->linksChanged)->toBe(1);
-    expect($second->linksChanged)->toBe(0);
+    expect($first->fresh()->opening_id)->toBe($firstOpening);
+    expect($second->fresh()->opening_id)->toBe($firstOpening);
+    expect(Opening::query()->findOrFail($secondOpening)->merged_into_id)->toBe($firstOpening);
+    expect($first->fresh()->duplicate_reason)->toBeNull();
+    expect($first->fresh()->duplicate_similarity)->toBeNull();
+    expect($second->fresh()->duplicate_reason)->toBe('trigram');
+    expect($second->fresh()->duplicate_similarity)->toBe(0.889);
+    expect($firstReport->linksChanged)->toBe(1);
+    expect($secondReport->linksChanged)->toBe(0);
+    Http::assertNothingSent();
+});
+
+test('a merged opening takes the expired postings with it', function () {
+    $this->freezeTime();
+    [$first, $second] = nearDuplicatePostings();
+    $secondOpening = $second->opening_id;
+    $expired = JobPosting::factory()->expired()->create([
+        'title' => 'Senior Frontend Engineer',
+        'company_name' => 'Baltic Data',
+        'opening_id' => $secondOpening,
+    ]);
+
+    app(ImportJobPostings::class)->handle(new FakeJobSource([]));
+
+    $firstOpening = $first->fresh()->opening_id;
+
+    expect($second->fresh()->opening_id)->toBe($firstOpening);
+    expect($expired->fresh()->opening_id)->toBe($firstOpening);
+    expect(Opening::query()->findOrFail($secondOpening)->merged_into_id)->toBe($firstOpening);
+    Http::assertNothingSent();
+});
+
+test('a split keeps the opening with the oldest posting', function () {
+    $this->freezeTime();
+    [$first, $second] = nearDuplicatePostings();
+    $firstOpening = $first->opening_id;
+    $import = app(ImportJobPostings::class);
+    $import->handle(new FakeJobSource([]));
+
+    $second->update(['seniority' => SeniorityLevel::Junior]);
+
+    $report = $import->handle(new FakeJobSource([]));
+
+    $secondOpening = $second->fresh()->opening_id;
+
+    expect($first->fresh()->opening_id)->toBe($firstOpening);
+    expect($secondOpening)->not->toBeNull();
+    expect($secondOpening)->not->toBe($firstOpening);
+    expect(Opening::query()->findOrFail($secondOpening)->merged_into_id)->toBeNull();
+    expect($report->linksChanged)->toBe(1);
+    Http::assertNothingSent();
+});
+
+test('a posting stored after it expired gets its own opening', function () {
+    $this->freezeTime();
+    $posting = new JobPostingData(
+        source: 'fake',
+        externalId: 'fake-expired',
+        title: 'Senior Laravel Engineer',
+        companyName: 'Northwind Systems',
+        applyUrl: 'https://example.com/jobs/fake-expired',
+        descriptionHtml: '<p>Own the billing API.</p>',
+        postedAt: CarbonImmutable::now()->subDays(30),
+        expiresAt: CarbonImmutable::now()->subDay(),
+        remoteType: 'remote',
+    );
+
+    app(ImportJobPostings::class)->handle(new FakeJobSource([$posting]));
+
+    $stored = JobPosting::query()->where('source', 'fake')->where('external_id', 'fake-expired')->sole();
+
+    expect($stored->opening_id)->not->toBeNull();
+    expect(JobPosting::query()->where('opening_id', $stored->opening_id)->count())->toBe(1);
     Http::assertNothingSent();
 });
 
@@ -371,8 +454,12 @@ test('different roles or companies are not linked', function (string $firstTitle
 
     $report = app(ImportJobPostings::class)->handle(new FakeJobSource([]));
 
-    expect($first->fresh()->duplicate_of_id)->toBeNull();
-    expect($second->fresh()->duplicate_of_id)->toBeNull();
+    $firstOpening = $first->opening_id;
+    $secondOpening = $second->opening_id;
+
+    expect($first->fresh()->opening_id)->toBe($firstOpening);
+    expect($second->fresh()->opening_id)->toBe($secondOpening);
+    expect($firstOpening)->not->toBe($secondOpening);
     expect($report->linksChanged)->toBe(0);
     Http::assertNothingSent();
 })->with([
