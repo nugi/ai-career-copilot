@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\Jobs\ImportJobPostings;
+use App\Actions\Jobs\QueueSkillExtraction;
 use App\Enums\IngestionRunStatus;
 use App\JobSources\Exceptions\JobSourceRateLimited;
 use App\JobSources\Exceptions\JobSourceUnavailable;
@@ -139,8 +140,11 @@ class IngestJobSource implements ShouldBeUnique, ShouldQueue
             ...$counts,
         ]);
 
+        $queuedSkillExtractions = app(QueueSkillExtraction::class)->handle($this->source);
+
         Log::info('jobs.ingest.finished', [
             'source' => $this->source,
+            'queued_skill_extractions' => $queuedSkillExtractions,
             ...$counts,
         ]);
     }

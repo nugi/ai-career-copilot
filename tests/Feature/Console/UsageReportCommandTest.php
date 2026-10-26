@@ -43,10 +43,10 @@ test('the report groups the last days by tier, agent, provider and model and add
 
     $this->artisan('usage:report')
         ->expectsTable(
-            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg latency (ms)'],
+            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg cost (USD)', 'Avg latency (ms)'],
             [
-                ['cheap', 'ResumeParser', 'openai', 'gpt-6-luna', 1, 1, 1, 200, 100, '0.0100', 500],
-                ['strong', 'CareerAdvisor', 'openai', 'gpt-6.1-sol', 1, 0, 0, 1_000, 500, '0.1000', 1_000],
+                ['cheap', 'ResumeParser', 'openai', 'gpt-6-luna', 1, 1, 1, 200, 100, '0.0100', '0.010000', 500],
+                ['strong', 'CareerAdvisor', 'openai', 'gpt-6.1-sol', 1, 0, 0, 1_000, 500, '0.1000', '0.100000', 1_000],
             ],
         )
         ->expectsTable(

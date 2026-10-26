@@ -27,6 +27,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0021](0021-key-ai-work-on-the-posting-text.md)                          | Key AI work on the posting text                          | Accepted                    |
 | [0022](0022-close-ingestion-runs-that-a-worker-abandons.md)              | Close ingestion runs that a worker abandons              | Accepted                    |
 | [0023](0023-name-the-job-identity-openings.md)                           | Name the job identity "openings"                         | Accepted                    |
+| [0024](0024-extract-job-skills-once-per-posting-text.md)                 | Extract job skills once per posting text                 | Accepted                    |
 
 ## Adding a record
 

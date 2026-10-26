@@ -10,4 +10,5 @@ enum AiFeature: string
     case Chat = 'chat';
     case Embedding = 'embedding';
     case ResumeParsing = 'resume_parsing';
+    case SkillExtraction = 'skill_extraction';
 }

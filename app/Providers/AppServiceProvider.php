@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Ai\AiUsageRecorder;
+use App\Jobs\ExtractJobSkills;
 use App\Jobs\IngestJobSource;
 use App\Jobs\ParseUploadedResume;
 use Carbon\CarbonImmutable;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Queue::route(ParseUploadedResume::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(IngestJobSource::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
+        Queue::route(ExtractJobSkills::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
     }
 
     /**

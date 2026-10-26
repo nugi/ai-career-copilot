@@ -13,9 +13,12 @@ use stdClass;
 class UsageReportCommand extends Command
 {
     /**
-     * Print the calls, the tokens, the cost and the average latency per tier, agent, provider and model, then the cost per tier.
+     * Print the calls, the tokens, the cost, the average cost per call and the average latency per tier, agent, provider
+     * and model, then the cost per tier.
      *
-     * The report reads the usage rows only. It never prints a prompt, an answer or an exception.
+     * The average cost divides the summed cost by the number of calls in the group, so one invalid first answer, which
+     * costs a second call, shows in the average of its agent. The report reads the usage rows only. It never prints a
+     * prompt, an answer or an exception.
      */
     public function handle(): int
     {
@@ -58,7 +61,7 @@ class UsageReportCommand extends Command
         }
 
         $this->table(
-            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg latency (ms)'],
+            ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg cost (USD)', 'Avg latency (ms)'],
             $rows->map(fn (stdClass $row): array => [
                 $row->tier ?? '-',
                 $row->agent,
@@ -70,6 +73,7 @@ class UsageReportCommand extends Command
                 (int) $row->input_tokens,
                 (int) $row->output_tokens,
                 number_format((float) $row->cost_usd, 4),
+                number_format((float) $row->cost_usd / (int) $row->calls, 6),
                 (int) $row->avg_latency_ms,
             ])->all(),
         );
