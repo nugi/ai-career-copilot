@@ -17,6 +17,7 @@ return [
 
     'tasks' => [
         'resume_parsing' => 'cheap',
+        'skill_extraction' => 'cheap',
         'chat' => 'cheap',
     ],
 
@@ -86,7 +87,8 @@ return [
     | each UTC day, in USD. When the spend reaches it, the advisor stops for
     | every user until midnight UTC.
     |
-    | Resume parsing never stops, but its cost counts in both sums.
+    | Resume parsing never stops, but its cost counts in both sums. Skill
+    | extraction is skipped while the global daily budget is spent.
     |
     | Null turns a check off.
     |

@@ -110,6 +110,12 @@ erDiagram
         timestamp first_seen_at
         timestamp last_seen_at
         char64 content_hash
+        char64 text_hash
+        jsonb extracted_skills
+        string extracted_seniority
+        smallint years_required
+        char64 skills_text_hash
+        string skills_prompt_version
     }
     job_posting_skill {
         bigint job_posting_id PK,FK
@@ -240,12 +246,15 @@ CHECK constraint: `merged_into_id <> id`.
 | The newest postings for one work arrangement (remote, hybrid, on-site)                                            | `(work_arrangement, posted_at)` |
 | Postings that may pay the user's minimum: `where salary_currency = ? and (salary_max >= ? or salary_max is null)` | `(salary_currency, salary_max)` |
 | Upsert on import without duplicates: `on conflict (source, dedup_key)`                                            | `unique (source, dedup_key)`    |
+| Reuse the skill extraction of another posting with the same text: `where text_hash = ?`                           | `(text_hash)`                   |
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 
 `dedup_key` stops duplicates within one source; `duplicate_key` groups the postings of one job across sources ([ADR 0018](adr/0018-link-duplicate-jobs-across-sources.md)), and each group shares one `opening_id` ([ADR 0023](adr/0023-name-the-job-identity-openings.md)). `duplicate_reason` and `duplicate_similarity` record why a posting joined its group.
 
 `first_seen_at` is set on insert and never updated; `last_seen_at` moves on every run that returns the posting; `updated_at` moves only when `content_hash` changes ([ADR 0020](adr/0020-ingest-job-sources-on-a-schedule.md)).
+
+`text_hash` covers the title and the description only ([ADR 0021](adr/0021-key-ai-work-on-the-posting-text.md)). A skill extraction is current while `skills_text_hash = text_hash` and `skills_prompt_version` is the extractor's version. `extracted_skills` keeps the grounded required and nice-to-have names, the unknown names for review and the dropped ungrounded names; `extracted_seniority` and `years_required` are read from the text and never overwrite the source's `seniority` ([ADR 0024](adr/0024-extract-job-skills-once-per-posting-text.md)). The table also holds `skills_extracted_at` and `skills_failed_at`.
 
 CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
 
@@ -256,7 +265,7 @@ CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_s
 | A posting's skills and which are required (detail page, fit scoring) | `primary key (job_posting_id, skill_id)` |
 | Postings that ask for skill X and skill Y; demand per skill          | `(skill_id, job_posting_id)`             |
 
-Why a pivot table and not a `jsonb` array: [ADR 0003](adr/0003-store-job-skills-in-a-pivot-table.md).
+Why a pivot table and not a `jsonb` array: [ADR 0003](adr/0003-store-job-skills-in-a-pivot-table.md). Rows come from the skill extraction, and only verified catalogue skills get one ([ADR 0024](adr/0024-extract-job-skills-once-per-posting-text.md)).
 
 ### job_matches
 

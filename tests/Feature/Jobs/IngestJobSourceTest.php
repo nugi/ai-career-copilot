@@ -2,6 +2,7 @@
 
 use App\Actions\Jobs\ImportJobPostings;
 use App\Enums\IngestionRunStatus;
+use App\Jobs\ExtractJobSkills;
 use App\Jobs\IngestJobSource;
 use App\JobSources\Contracts\JobSource;
 use App\JobSources\Exceptions\JobSourceRateLimited;
@@ -11,6 +12,7 @@ use App\JobSources\JobSourceRegistry;
 use App\Models\IngestionRun;
 use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 
 /**
  * Build a registry that holds one source under the "fake" key.
@@ -22,6 +24,7 @@ function ingestSourceRegistry(JobSource $source): JobSourceRegistry
 
 test('a successful run records the counts', function () {
     Log::spy();
+    Queue::fake();
     $registry = ingestSourceRegistry(new FakeJobSource);
     $this->app->instance(JobSourceRegistry::class, $registry);
 
@@ -43,8 +46,10 @@ test('a successful run records the counts', function () {
         ->and($run->links_changed)->toBe(0)
         ->and($run->stopped_early)->toBeFalse()
         ->and($run->error)->toBeNull();
+    Queue::assertPushed(ExtractJobSkills::class, 3);
     Log::shouldHaveReceived('info')->with('jobs.ingest.finished', [
         'source' => 'fake',
+        'queued_skill_extractions' => 3,
         'pages' => 1,
         'fetched' => 3,
         'skipped' => 0,
@@ -59,6 +64,7 @@ test('a successful run records the counts', function () {
 
 test('a run closes the running rows of its source as abandoned', function () {
     $this->freezeTime();
+    Queue::fake();
     $this->app->instance(JobSourceRegistry::class, ingestSourceRegistry(new FakeJobSource));
     $abandoned = IngestionRun::factory()->create([
         'source' => 'fake',

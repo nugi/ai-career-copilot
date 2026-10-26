@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Ai\Agents\JobSkillExtractor;
 use App\Enums\EmploymentType;
 use App\Enums\JobRegion;
 use App\Enums\SalaryPeriod;
@@ -57,6 +58,13 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property CarbonImmutable $last_seen_at When an import last returned the row.
  * @property string|null $content_hash SHA-256 of the normalized row; set on its next import when null.
  * @property string|null $text_hash SHA-256 of the title and description; AI work on the posting text is keyed on it.
+ * @property array<string, mixed>|null $extracted_skills The saved extraction: required, nice_to_have, unknown and ungrounded names.
+ * @property SeniorityLevel|null $extracted_seniority The seniority that the posting text asks for; the source seniority stays in seniority.
+ * @property int|null $years_required The minimum years of experience that the posting text asks for.
+ * @property string|null $skills_text_hash The text_hash that the extraction or the failure is for.
+ * @property string|null $skills_prompt_version The prompt version of the extraction or the failure.
+ * @property CarbonImmutable|null $skills_extracted_at
+ * @property CarbonImmutable|null $skills_failed_at When the extraction failed validation twice.
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, Skill&object{pivot: Pivot}> $skills
@@ -70,6 +78,8 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'first_seen_at', 'last_seen_at', 'content_hash', 'text_hash',
     'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'opening_id',
     'duplicate_reason', 'duplicate_similarity',
+    'extracted_skills', 'extracted_seniority', 'years_required',
+    'skills_text_hash', 'skills_prompt_version', 'skills_extracted_at', 'skills_failed_at',
 ])]
 class JobPosting extends Model
 {
@@ -97,6 +107,11 @@ class JobPosting extends Model
             'opening_id' => 'integer',
             'duplicate_similarity' => 'float',
             'region' => JobRegion::class,
+            'extracted_skills' => 'array',
+            'extracted_seniority' => SeniorityLevel::class,
+            'years_required' => 'integer',
+            'skills_extracted_at' => 'datetime',
+            'skills_failed_at' => 'datetime',
             'posted_at' => 'datetime',
             'expires_at' => 'datetime',
             'first_seen_at' => 'datetime',
@@ -113,6 +128,22 @@ class JobPosting extends Model
     protected function live(Builder $query): void
     {
         $query->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+    }
+
+    /**
+     * Live postings without a current extraction (ADR 0024).
+     *
+     * A recorded failure with the same text hash and prompt version counts too, so a text that the model cannot answer is not sent again.
+     *
+     * @param  Builder<JobPosting>  $query
+     */
+    #[Scope]
+    protected function needsSkills(Builder $query): void
+    {
+        $query->live()
+            ->whereRaw('(skills_text_hash is distinct from text_hash or skills_prompt_version is distinct from ?)', [
+                JobSkillExtractor::PROMPT_VERSION,
+            ]);
     }
 
     /**
