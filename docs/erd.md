@@ -162,6 +162,12 @@ erDiagram
         int duration_ms
         string error
     }
+    exchange_rates {
+        bigint id PK
+        date rate_date
+        char currency
+        decimal rate
+    }
 ```
 
 ## Conventions
@@ -299,3 +305,14 @@ One row per queued ingestion run of one source; the counts also go to the `jobs.
 | The latest runs of a source, for its health | `(source, started_at)` |
 
 CHECK constraint: `status` is `running`, `succeeded`, `failed`, `rate_limited` or `abandoned` ([ADR 0022](adr/0022-close-ingestion-runs-that-a-worker-abandons.md)).
+
+### exchange_rates
+
+The ECB daily reference rates, one row per date and currency, stored by `exchange-rates:fetch` ([ADR 0004](adr/0004-compare-salaries-as-annual-gross-in-the-users-currency.md)). `rate` is the units of `currency` for 1 EUR; EUR itself has no row. A cross rate divides two rows and keeps the older date.
+
+| Query                                             | Index                          |
+| ------------------------------------------------- | ------------------------------ |
+| The latest rate of each currency, once per search | `(currency, rate_date)`        |
+| Store one day's file again without duplicates     | unique `(rate_date, currency)` |
+
+CHECK constraints: `currency ~ '^[A-Z]{3}$'` and `rate > 0`.
