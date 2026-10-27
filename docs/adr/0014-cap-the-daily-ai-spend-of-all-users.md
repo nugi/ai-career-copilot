@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
+- **Amended:** 2026-10-27 (batch work gets its own cap)
 
 ## Context
 
@@ -29,6 +30,19 @@ Nothing limited the spend of all users together. One scripted account, or a few,
 
 1. When the global cap is reached, every user loses the advisor for the rest of the UTC day, including users who asked nothing.
 2. Both values are set by hand, so they need a review when the tier, the prompt size or the number of users changes.
+
+## Amendment (2026-10-27)
+
+Skill extraction ([ADR 0024](0024-extract-job-skills-once-per-posting-text.md)) also counts in the global sum. A backfill, a new prompt version or a new source with a few thousand postings could spend most of a day's $1.00 and switch the advisor off for every user, although no user asked for that work. This is the problem that separate queues solve for workers ([ADR 0011](0011-run-ai-work-on-separate-queues-and-stream-chat.md)), applied to money.
+
+**Batch work gets its own daily cap inside the global one.**
+
+- `AiFeature::runsInBatch()` marks the features that no user waits for: skill extraction and embeddings. Each new feature must be placed in a group, because the `match` lists every case.
+- `AI_BATCH_DAILY_BUDGET_USD=0.30` limits the spend of batch features each UTC day. Batch work stops at this cap or at the global cap. A stopped posting stays pending for the next run.
+- The advisor still checks only the global cap and the per-user cap. Batch work can take at most $0.30, so at least $0.70 of the global budget stays for interactive calls.
+- Resume parsing is interactive: a user waits for it. It still never stops.
+
+At the measured $0.000115 per posting text, $0.30 is about 2,600 texts a day, which is far more than a normal day's 300.
 
 **Revisit when** real usage gives a measured per-user distribution, or when paid plans need their own budgets.
 
