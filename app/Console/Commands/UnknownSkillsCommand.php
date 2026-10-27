@@ -13,10 +13,10 @@ use stdClass;
 class UnknownSkillsCommand extends Command
 {
     /**
-     * Print the unknown skill names, grouped by the name in lowercase, with the number of postings that ask for each.
+     * Print the unknown skill names, grouped by the normalized name, with the number of postings that require each and
+     * that list each as a plus.
      *
-     * The report reads the saved extractions only, so a name that the catalogue gained still shows until the posting
-     * text or the prompt version changes.
+     * skills:rematch removes a name from the saved extractions when a catalogue change makes it resolve.
      */
     public function handle(): int
     {
@@ -30,11 +30,14 @@ class UnknownSkillsCommand extends Command
 
         /** @var list<stdClass> $rows */
         $rows = DB::select(<<<SQL
-            select lower(unknown_names.name) as name, count(*) as postings
+            select min(entry->>'name') as name,
+                count(distinct posting.id) filter (where (entry->>'required')::boolean) as required,
+                count(distinct posting.id) filter (where not (entry->>'required')::boolean) as nice_to_have,
+                count(distinct posting.id) as postings
             from job_postings as posting
-            cross join jsonb_array_elements_text(posting.extracted_skills->'unknown') as unknown_names(name)
-            group by lower(unknown_names.name)
-            order by postings desc, name
+            cross join jsonb_array_elements(posting.extracted_skills->'unknown') as entry
+            group by entry->>'normalized'
+            order by postings desc, entry->>'normalized'
             limit {$limit}
             SQL);
 
@@ -45,8 +48,8 @@ class UnknownSkillsCommand extends Command
         }
 
         $this->table(
-            ['Name', 'Postings'],
-            array_map(fn (stdClass $row): array => [$row->name, (int) $row->postings], $rows),
+            ['Name', 'Required', 'Nice to have', 'Postings'],
+            array_map(fn (stdClass $row): array => [$row->name, (int) $row->required, (int) $row->nice_to_have, (int) $row->postings], $rows),
         );
 
         return self::SUCCESS;

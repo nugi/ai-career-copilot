@@ -11,7 +11,7 @@ Himalayas and Jobicy both list remote jobs, and many employers post to both. The
 
 `unique (source, dedup_key)` ([docs/erd.md](../erd.md)) stops duplicates inside one source. It cannot see across sources, because the IDs differ.
 
-A user must see each job once. Matching (Day 21) and embeddings (Day 19) must also handle each job once, or the user pays twice for the same work. But each source's terms require its own apply link and its own expiry sync ([ADR 0015](0015-take-jobs-only-from-sources-whose-terms-allow-it.md)), so a source's row cannot simply be dropped.
+A user must see each job once. Matching and embeddings must also handle each job once, or the user pays twice for the same work. But each source's terms require its own apply link and its own expiry sync ([ADR 0015](0015-take-jobs-only-from-sources-whose-terms-allow-it.md)), so a source's row cannot simply be dropped.
 
 ## Decision
 
@@ -42,7 +42,7 @@ A user must see each job once. Matching (Day 21) and embeddings (Day 19) must al
 
 **Alternatives for a later change**
 
-- **Embedding similarity** of the title and the first part of the description, within the same company: catches rewording, and costs one embedding per posting, which Day 19 computes anyway. It needs a labelled set of pairs to choose its threshold.
+- **Embedding similarity** of the title and the first part of the description, within the same company: catches rewording, and costs one embedding per posting, which the embedding pipeline computes anyway. It needs a labelled set of pairs to choose its threshold.
 - **A model as the judge** for pairs in a grey band of similarity only: highest accuracy, but it costs a call per pair and needs the spend cap of [ADR 0014](0014-cap-the-daily-ai-spend-of-all-users.md).
 
 ## Amendment (2026-10-25)
@@ -54,4 +54,4 @@ The threshold and the role list need labelled pairs to tune, and the three false
 - CHECKs keep the columns in step: a link has a reason, and only a `trigram` link has a similarity.
 - A change of reason or similarity counts as a link change, so a second run with the same data still changes no rows.
 
-**Revisit when** users report the same job twice, a new source has companies under other names, or Day 19 embeddings make the embedding check nearly free.
+**Revisit when** users report the same job twice, a new source has companies under other names, or job embeddings make the embedding check nearly free.

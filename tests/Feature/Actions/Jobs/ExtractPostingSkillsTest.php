@@ -51,14 +51,14 @@ test('an extraction attaches catalogue skills and keeps unknown names for review
 
     JobSkillExtractor::fake([extractedJobSkills([
         'required_skills' => ['postgres', 'k8s', 'Laravel', 'FooQL', 'Terraform'],
-        'nice_to_have_skills' => ['Redis'],
+        'nice_to_have_skills' => ['Redis', 'BarDB'],
         'seniority' => 'senior',
         'years_required' => 5,
     ])])->preventStrayPrompts();
 
     $posting = extractablePosting(
         'Senior Backend Engineer',
-        "You will work with postgres, k8s and Laravel.\nExperience with Redis and FooQL is a plus.",
+        "You will work with postgres, k8s and Laravel.\nExperience with Redis, FooQL and BarDB is a plus.",
     );
 
     app(ExtractPostingSkills::class)->handle($posting);
@@ -73,7 +73,10 @@ test('an extraction attaches catalogue skills and keeps unknown names for review
         'Laravel' => true,
         'Redis' => false,
     ])
-        ->and($posting->extracted_skills['unknown'])->toBe(['FooQL'])
+        ->and($posting->extracted_skills['unknown'])->toEqual([
+            ['name' => 'BarDB', 'normalized' => 'bardb', 'required' => false],
+            ['name' => 'FooQL', 'normalized' => 'fooql', 'required' => true],
+        ])
         ->and($posting->extracted_skills['ungrounded'])->toBe(['Terraform'])
         ->and($posting->extracted_seniority)->toBe(SeniorityLevel::Senior)
         ->and($posting->years_required)->toBe(5)

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Resume;
 
+use App\Actions\Skills\SkillGrounding;
 use App\Ai\Agents\ResumeParser;
 use App\Enums\SkillSource;
 use App\Models\Resume;
@@ -30,6 +31,7 @@ class ParseResume
     public function __construct(
         private CountExperienceYears $countExperienceYears,
         private CheckResumeGrounding $checkResumeGrounding,
+        private SkillGrounding $skillGrounding,
     ) {}
 
     /**
@@ -247,7 +249,7 @@ class ParseResume
         $computedYears = $this->countExperienceYears->handle($output['experiences']);
         $modelYears = $output['years_of_experience'];
         $yearsMismatch = is_numeric($modelYears) && $computedYears !== null && abs((float) $modelYears - $computedYears) > 1.0;
-        [$grounded, $ungrounded] = $this->checkResumeGrounding->skills($content, $output['skills']);
+        [$grounded, $ungrounded] = $this->skillGrounding->skills($content, $output['skills']);
         $ungroundedBullets = $this->checkResumeGrounding->bullets($content, $output['experiences']);
 
         $parsedData = [

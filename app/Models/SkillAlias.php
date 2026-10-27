@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\RematchSkills;
 use Carbon\CarbonImmutable;
 use Database\Factories\SkillAliasFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,18 @@ class SkillAlias extends Model
 {
     /** @use HasFactory<SkillAliasFactory> */
     use HasFactory;
+
+    /**
+     * Queue resolution when an alias of a verified skill is added or changed, so stored unknown names can attach.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (SkillAlias $alias): void {
+            if (($alias->wasRecentlyCreated || $alias->wasChanged(['alias', 'skill_id'])) && $alias->skill()->where('is_verified', true)->exists()) {
+                RematchSkills::dispatch()->afterCommit();
+            }
+        });
+    }
 
     /**
      * Store aliases in normalized form so lookups match regardless of case and spacing.

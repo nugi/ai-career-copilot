@@ -28,8 +28,8 @@ ADR 0019 also leaves the assignment details open: when a new posting gets its id
 6. **Split:** the group with the oldest posting keeps the opening. The postings that leave get the lowest other opening they claim, or a new one.
 7. **Open openings:** `Opening::open()` reads openings with at least one live posting. It replaces `JobPosting::canonical()`.
 8. **Not in this change:**
-    - `job_matches` still points at a posting. It moves to `opening_id`, with its line in the merge step, when matching writes its first rows (Day 21).
-    - Choosing the representative posting of an opening (ADR 0019, point 5) lands with the jobs list (Day 16).
+    - `job_matches` still points at a posting. It moves to `opening_id`, with its line in the merge step, when matching writes its first rows.
+    - Choosing the representative posting of an opening (ADR 0019, point 5) lands with the jobs list.
 9. **Existing data:** the migration gives each canonical posting an opening with the same ID, and its duplicates join it.
 
 This supersedes the table name in ADR 0019 and its point 1, where `job_id` is a required column.
