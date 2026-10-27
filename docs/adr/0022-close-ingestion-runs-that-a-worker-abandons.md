@@ -7,7 +7,7 @@
 
 [ADR 0020](0020-ingest-job-sources-on-a-schedule.md) records every run of `IngestJobSource` in `ingestion_runs`. Two gaps remained:
 
-1. **Stuck rows.** A worker killed by the timeout, a deploy or the operating system leaves a row at `running` that nothing closes. The Day 36 dashboard would show a run that never ends.
+1. **Stuck rows.** A worker killed by the timeout, a deploy or the operating system leaves a row at `running` that nothing closes. The dashboard would show a run that never ends.
 2. **Rate limits used up the tries.** A rate limit calls `release()`, and a release counts as an attempt. With `$tries = 3`, three rate limits in a row failed the job. The job had no `failed()` method, so the last row said `rate_limited` and no row showed that the run gave up.
 
 A separate sweeper, a scheduled job that closes old `running` rows, would fix the first gap, but it is one more process to schedule and watch.
@@ -23,7 +23,7 @@ A separate sweeper, a scheduled job that closes old `running` rows, would fix th
     - An unavailable source still fails the job at once ([ADR 0020](0020-ingest-job-sources-on-a-schedule.md), point 5).
     - A run that passes the 120-second timeout fails at once (`$failOnTimeout`). Its worst case is about 75 seconds, so another attempt would wait the same way; the next scheduled run tries again.
 3. **`failed()`** closes the `running` row of the source as `failed` with the error. When no row is running and the job ran out of time or attempts, it writes a `failed` row, so the last row of a run that gave up says so.
-4. **Backstop for the dashboard:** a source that never runs again keeps its last `running` row. The Day 36 dashboard treats a `running` row older than the timeout plus a margin as failed.
+4. **Backstop for the dashboard:** a source that never runs again keeps its last `running` row. The dashboard treats a `running` row older than the timeout plus a margin as failed.
 
 This supersedes points 5 and 6 of ADR 0020 where they say "up to 3 tries" and that a stuck `running` row means the worker was killed, and replaces its third drawback.
 

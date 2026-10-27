@@ -7,7 +7,10 @@ test('unknown skills are listed by the number of postings', function () {
         'extracted_skills' => [
             'required' => [],
             'nice_to_have' => [],
-            'unknown' => ['FooQL', 'Zeta'],
+            'unknown' => [
+                ['name' => 'FooQL', 'normalized' => 'fooql', 'required' => true],
+                ['name' => 'Zeta', 'normalized' => 'zeta', 'required' => false],
+            ],
             'ungrounded' => [],
         ],
     ]);
@@ -16,17 +19,17 @@ test('unknown skills are listed by the number of postings', function () {
         'extracted_skills' => [
             'required' => [],
             'nice_to_have' => [],
-            'unknown' => ['FooQL'],
+            'unknown' => [['name' => 'fooql', 'normalized' => 'fooql', 'required' => false]],
             'ungrounded' => [],
         ],
     ]);
 
     $this->artisan('skills:unknown')
         ->expectsTable(
-            ['Name', 'Postings'],
+            ['Name', 'Required', 'Nice to have', 'Postings'],
             [
-                ['fooql', 2],
-                ['zeta', 1],
+                ['fooql', 1, 1, 2],
+                ['Zeta', 0, 1, 1],
             ],
         )
         ->assertExitCode(0);

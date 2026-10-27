@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\RematchSkills;
 use Carbon\CarbonImmutable;
 use Database\Factories\SkillFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -30,6 +31,18 @@ class Skill extends Model
 {
     /** @use HasFactory<SkillFactory> */
     use HasFactory;
+
+    /**
+     * Queue resolution when a verified catalogue name is added, renamed or promoted, so stored unknown names can attach.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (Skill $skill): void {
+            if ($skill->is_verified && ($skill->wasRecentlyCreated || $skill->wasChanged(['is_verified', 'normalized_name']))) {
+                RematchSkills::dispatch()->afterCommit();
+            }
+        });
+    }
 
     /**
      * The model's default values for attributes.
