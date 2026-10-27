@@ -31,7 +31,7 @@ class JobSkillExtractor implements Agent, HasPromptVersion, HasProviderOptions, 
 {
     use Promptable;
 
-    public const PROMPT_VERSION = 'v1';
+    public const PROMPT_VERSION = 'v2';
 
     /**
      * The most characters of the description that the model reads. Longer descriptions are cut, so one posting

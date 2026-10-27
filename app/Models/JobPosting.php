@@ -58,7 +58,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property CarbonImmutable $last_seen_at When an import last returned the row.
  * @property string|null $content_hash SHA-256 of the normalized row; set on its next import when null.
  * @property string|null $text_hash SHA-256 of the title and description; AI work on the posting text is keyed on it.
- * @property array<string, mixed>|null $extracted_skills The saved extraction: required, nice_to_have, unknown and ungrounded names.
+ * @property array{required: list<string>, nice_to_have: list<string>, unknown: list<array{name: string, normalized: string, required: bool}>, ungrounded: list<string>}|null $extracted_skills The saved extraction: required, nice_to_have and ungrounded are lists of names; unknown keeps each name, normalized name and required group.
  * @property SeniorityLevel|null $extracted_seniority The seniority that the posting text asks for; the source seniority stays in seniority.
  * @property int|null $years_required The minimum years of experience that the posting text asks for.
  * @property string|null $skills_text_hash The text_hash that the extraction or the failure is for.

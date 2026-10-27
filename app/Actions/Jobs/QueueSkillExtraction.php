@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Queue one skill extraction per distinct posting text among the pending postings of a source (ADR 0024).
  *
- * Nothing is queued while the global daily budget is spent, because the postings stay pending and the next run picks
+ * Nothing is queued while the batch or global daily budget is spent, because the postings stay pending and the next run picks
  * them up. Postings that share a text queue one job: the lowest ID is queued and the rest copy its result.
  */
 class QueueSkillExtraction
@@ -23,7 +23,7 @@ class QueueSkillExtraction
      */
     public function handle(?string $source = null, ?int $limit = null): int
     {
-        if ($this->budget->isGloballyExceeded()) {
+        if ($this->budget->isBatchExceeded()) {
             Log::info('jobs.skills.skipped_budget', ['source' => $source]);
 
             return 0;

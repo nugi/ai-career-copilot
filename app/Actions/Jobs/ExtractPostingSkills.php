@@ -2,7 +2,7 @@
 
 namespace App\Actions\Jobs;
 
-use App\Actions\Resume\CheckResumeGrounding;
+use App\Actions\Skills\SkillGrounding;
 use App\Ai\Agents\JobSkillExtractor;
 use App\Models\JobPosting;
 use App\Models\Skill;
@@ -24,7 +24,7 @@ use Laravel\Ai\Responses\StructuredAgentResponse;
  */
 class ExtractPostingSkills
 {
-    public function __construct(private CheckResumeGrounding $checkResumeGrounding) {}
+    public function __construct(private SkillGrounding $skillGrounding) {}
 
     /**
      * Extract the skills of the posting and save them, or copy them from a posting with the same text, or record the failure.
@@ -203,8 +203,8 @@ class ExtractPostingSkills
     private function recordSuccess(JobPosting $posting, array $output): JobPosting
     {
         $text = "{$posting->title}\n{$posting->description}";
-        [$requiredNames, $ungroundedRequired] = $this->checkResumeGrounding->skills($text, $output['required_skills']);
-        [$niceNames, $ungroundedNice] = $this->checkResumeGrounding->skills($text, $output['nice_to_have_skills']);
+        [$requiredNames, $ungroundedRequired] = $this->skillGrounding->skills($text, $output['required_skills']);
+        [$niceNames, $ungroundedNice] = $this->skillGrounding->skills($text, $output['nice_to_have_skills']);
 
         $requiredNormalized = array_map(Skill::normalize(...), $requiredNames);
         $niceNames = array_values(array_filter(
@@ -222,7 +222,8 @@ class ExtractPostingSkills
                 $skill = Skill::findByName($name);
 
                 if ($skill === null || ! $skill->is_verified) {
-                    $unknown[] = $name;
+                    $normalized = Skill::normalize($name);
+                    $unknown[$normalized] ??= ['name' => $name, 'normalized' => $normalized, 'required' => $isRequired];
 
                     continue;
                 }
@@ -235,8 +236,8 @@ class ExtractPostingSkills
         sort($ungrounded);
         sort($requiredNames);
         sort($niceNames);
-        $unknown = array_values(array_unique($unknown));
-        sort($unknown);
+        ksort($unknown, SORT_STRING);
+        $unknown = array_values($unknown);
 
         $extractedSkills = [
             'required' => $requiredNames,
@@ -256,7 +257,7 @@ class ExtractPostingSkills
         if ($unknown !== []) {
             Log::info('jobs.skills.unknown', [
                 'job_posting_id' => $saved->id,
-                'names' => $unknown,
+                'names' => array_column($unknown, 'name'),
             ]);
         }
 
