@@ -50,13 +50,13 @@ class ExtractJobSkills implements ShouldBeUnique, ShouldQueue
     ) {}
 
     /**
-     * Extract the skills of the posting, unless the global daily budget is spent.
+     * Extract the skills of the posting, unless the batch or global daily budget is spent.
      *
      * The posting then stays pending, and the next run queues it again.
      */
     public function handle(ExtractPostingSkills $extract, DailyBudget $budget): void
     {
-        if ($budget->isGloballyExceeded()) {
+        if ($budget->isBatchExceeded()) {
             Log::info('jobs.skills.skipped_budget', [
                 'job_posting_id' => $this->posting->getKey(),
             ]);

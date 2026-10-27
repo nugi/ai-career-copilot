@@ -87,8 +87,12 @@ return [
     | each UTC day, in USD. When the spend reaches it, the advisor stops for
     | every user until midnight UTC.
     |
-    | Resume parsing never stops, but its cost counts in both sums. Skill
-    | extraction is skipped while the global daily budget is spent.
+    | Resume parsing never stops, but its cost counts in both sums.
+    |
+    | batch_daily_budget_usd is the most that batch features (skill
+    | extraction, embeddings) may spend each UTC day, in USD. Batch work
+    | stops at this budget or at the global budget, so it cannot use up
+    | the share that the advisor needs.
     |
     | Null turns a check off.
     |
@@ -97,5 +101,7 @@ return [
     'daily_budget_usd' => env('AI_DAILY_BUDGET_USD') === null ? null : (float) env('AI_DAILY_BUDGET_USD'),
 
     'global_daily_budget_usd' => env('AI_GLOBAL_DAILY_BUDGET_USD') === null ? null : (float) env('AI_GLOBAL_DAILY_BUDGET_USD'),
+
+    'batch_daily_budget_usd' => env('AI_BATCH_DAILY_BUDGET_USD') === null ? null : (float) env('AI_BATCH_DAILY_BUDGET_USD'),
 
 ];

@@ -11,4 +11,20 @@ enum AiFeature: string
     case Embedding = 'embedding';
     case ResumeParsing = 'resume_parsing';
     case SkillExtraction = 'skill_extraction';
+
+    /**
+     * Determine whether the feature runs as background work that no user waits for, which the batch budget limits.
+     */
+    public function runsInBatch(): bool
+    {
+        return match ($this) {
+            self::SkillExtraction => true,
+            self::Embedding => true,
+            self::FitScoring => false,
+            self::SkillGapPlan => false,
+            self::ResumeSuggestion => false,
+            self::Chat => false,
+            self::ResumeParsing => false,
+        };
+    }
 }
