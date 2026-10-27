@@ -40,6 +40,10 @@ return [
         'timeout' => (int) env('PDFTOTEXT_TIMEOUT', 10),
     ],
 
+    'ecb' => [
+        'rates_url' => env('ECB_RATES_URL', 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'),
+    ],
+
     'himalayas' => [
         'key' => env('HIMALAYAS_API_KEY'),
     ],
