@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import {
     BookOpen,
+    Briefcase,
     FileText,
     FolderGit2,
     LayoutGrid,
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { chat as advisorChat } from '@/routes/advisor';
+import { index as jobsIndex } from '@/routes/jobs';
 import { edit as editOnboarding } from '@/routes/onboarding';
 import { index as resumesIndex } from '@/routes/resumes';
 import type { NavItem } from '@/types';
@@ -31,6 +33,11 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Jobs',
+        href: jobsIndex(),
+        icon: Briefcase,
     },
     {
         title: 'Job preferences',

@@ -28,6 +28,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0022](0022-close-ingestion-runs-that-a-worker-abandons.md)              | Close ingestion runs that a worker abandons              | Accepted                    |
 | [0023](0023-name-the-job-identity-openings.md)                           | Name the job identity "openings"                         | Accepted                    |
 | [0024](0024-extract-job-skills-once-per-posting-text.md)                 | Extract job skills once per posting text                 | Accepted                    |
+| [0025](0025-list-openings-through-a-representative-posting.md)           | List openings through a representative posting           | Accepted                    |
 
 ## Adding a record
 

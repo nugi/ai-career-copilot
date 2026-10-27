@@ -67,7 +67,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property CarbonImmutable|null $skills_failed_at When the extraction failed validation twice.
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property-read Collection<int, Skill&object{pivot: Pivot}> $skills
+ * @property-read Collection<int, Skill&object{pivot: Pivot&object{is_required: bool}}> $skills
  * @property-read Collection<int, JobMatch> $matches
  */
 #[Fillable([
