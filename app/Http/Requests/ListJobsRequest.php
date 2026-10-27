@@ -36,7 +36,7 @@ class ListJobsRequest extends FormRequest
         return new JobSearch(
             array_values(array_map(fn (string $value): WorkArrangement => WorkArrangement::from($value), $data['arrangement'] ?? [])),
             isset($data['country']) ? strtoupper($data['country']) : null,
-            isset($data['skill']) ? Skill::query()->where('is_verified', true)->findOrFail($data['skill']) : null,
+            isset($data['skill']) ? Skill::query()->where('is_verified', true)->findOrFail($this->integer('skill')) : null,
             (bool) ($data['floor'] ?? false),
         );
     }

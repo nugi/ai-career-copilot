@@ -34,18 +34,12 @@ final class SearchOpenings
      */
     public function handle(JobSearch $search, Profile $profile): CursorPaginator
     {
-        $sources = array_keys($this->sources->all());
-        $rank = 'case source';
-        foreach ($sources as $position => $source) {
-            $rank .= " when ? then {$position}";
-        }
-        $rank = $sources === [] ? '0' : $rank.' else '.count($sources).' end';
-        $order = $rank.', posted_at desc, id desc';
+        $sources = '{'.implode(',', array_map(fn (string $source): string => '"'.$source.'"', array_keys($this->sources->all()))).'}';
 
         $ranked = JobPosting::query()->live()->whereNotNull('opening_id')
             ->select(['id', 'opening_id'])
-            ->selectRaw("row_number() over (partition by opening_id order by {$order}) as representative_rank", $sources)
-            ->selectRaw("row_number() over (partition by opening_id order by (salary_min is null and salary_max is null), {$order}) as pay_rank", $sources);
+            ->selectRaw('row_number() over (partition by opening_id order by coalesce(array_position(?::text[], source::text), 2147483647), posted_at desc, id desc) as representative_rank', [$sources])
+            ->selectRaw('row_number() over (partition by opening_id order by (salary_min is null and salary_max is null), coalesce(array_position(?::text[], source::text), 2147483647), posted_at desc, id desc) as pay_rank', [$sources]);
 
         $query = JobPosting::query()
             ->select('job_postings.*')

@@ -9,9 +9,11 @@ use App\Http\Resources\JobListingResource;
 use App\Models\JobPosting;
 use App\Models\Skill;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use Locale;
+use stdClass;
 
 class JobController extends Controller
 {
@@ -38,11 +40,7 @@ class JobController extends Controller
                 'skill' => $search->skill?->id,
                 'floor' => $search->meetsFloor,
             ],
-            'skills' => fn () => Skill::query()->select(['id', 'name'])->where('is_verified', true)
-                ->withCount(['jobPostings as postings' => fn (Builder $postings) => $postings->live()])
-                ->whereHas('jobPostings', fn (Builder $postings) => $postings->live())
-                ->orderByDesc('postings')->orderBy('name')->limit(100)->get()
-                ->map(fn (Skill $skill): array => ['id' => $skill->id, 'name' => $skill->name, 'postings' => (int) $skill->postings]),
+            'skills' => fn () => $this->skills(),
             'countries' => fn () => $this->countries(),
             'floor' => $profile->min_salary === null ? null : [
                 'amount' => $profile->min_salary,
@@ -50,6 +48,19 @@ class JobController extends Controller
                 'period' => $profile->salary_period->value,
             ],
         ]);
+    }
+
+    /**
+     * List the 100 verified skills that most live postings ask for.
+     *
+     * @return Collection<int, stdClass>
+     */
+    private function skills(): Collection
+    {
+        return Skill::query()->select(['id', 'name'])->where('is_verified', true)
+            ->withCount(['jobPostings as postings' => $this->live(...)])
+            ->whereHas('jobPostings', $this->live(...))
+            ->orderByDesc('postings')->orderBy('name')->limit(100)->toBase()->get();
     }
 
     /**
@@ -62,8 +73,18 @@ class JobController extends Controller
         $single = JobPosting::query()->live()->whereNotNull('country_code')->selectRaw('country_code as code')->toBase();
         $multiple = JobPosting::query()->live()->selectRaw('jsonb_array_elements_text(country_codes::jsonb) as code')->toBase();
 
-        return $single->union($multiple)->pluck('code')->push('ID')->unique()
-            ->map(fn (string $code): array => ['code' => $code, 'name' => Locale::getDisplayRegion('-'.$code, 'en')])
-            ->sortBy('name')->values()->all();
+        return array_values($single->union($multiple)->pluck('code')->push('ID')->unique()
+            ->map(fn (string $code): array => ['code' => $code, 'name' => Locale::getDisplayRegion('-'.$code, 'en') ?: $code])
+            ->sortBy('name')->all());
+    }
+
+    /**
+     * Keep the live postings.
+     *
+     * @param  Builder<JobPosting>  $postings
+     */
+    private function live(Builder $postings): void
+    {
+        $postings->live();
     }
 }
