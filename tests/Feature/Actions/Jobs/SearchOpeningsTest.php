@@ -114,6 +114,23 @@ test('the floor filter removes only pay that is certainly below the floor', func
     expect(collect($results->items())->pluck('id')->all())->toEqualCanonicalizing([$above->id, $undisclosed->id, $unknownCurrency->id, $unbounded->id]);
 });
 
+test('openings are listed by when the app first saw them, across cursor pages', function () {
+    $this->freezeTime();
+    $openings = collect(range(1, 21))->map(fn (int $daysAgo): Opening => Opening::factory()->create(['created_at' => now()->subDays($daysAgo)]));
+    $openings->each(fn (Opening $opening, int $index) => JobPosting::factory()->for($opening)->create([
+        'expires_at' => null, 'posted_at' => now()->subDays(21 - $index),
+    ]));
+    $profile = Profile::factory()->withoutSalary()->make();
+    $search = new JobSearch([], null, null, false);
+
+    $firstPage = app(SearchOpenings::class)->handle($search, $profile);
+    request()->query->set('cursor', $firstPage->nextCursor()->encode());
+    $secondPage = app(SearchOpenings::class)->handle($search, $profile);
+
+    $listed = collect([...$firstPage->items(), ...$secondPage->items()])->pluck('opening_id')->all();
+    expect($listed)->toBe($openings->pluck('id')->all());
+});
+
 test('the list stays at a fixed number of queries', function () {
     $this->freezeTime();
     $skill = Skill::factory()->create();
