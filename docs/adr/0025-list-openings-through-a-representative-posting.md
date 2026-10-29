@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-27
+- **Amended:** 2026-10-29 (order by the time the app first saw the opening)
 
 ## Context
 
@@ -22,7 +23,7 @@ The list filters by work arrangement, the country the user lives in, a skill, an
     - **Skill** is one verified skill, required or nice to have.
     - **Meets my minimum** applies ADR 0004, point 6, to the pay posting: the annual floor is converted once per search into each currency that has a rate, and a row is removed only when its stored annual top ([ADR 0017](0017-store-job-pay-as-posted.md)) is under 95% of it. A row with no pay, no currency, no rate, no period or no top stays.
 5. **Converted pay** is the annual pay in the floor's currency, divided by the floor's own annual factor: 13 for a monthly IDR floor, 12 for another monthly floor, 1 for a yearly floor. The row shows it with the rate and its date, and says when the rate is stale.
-6. **Cursor pages:** 20 rows a page, ordered by `posted_at` and ID, both descending. The page loads the skills of its 20 rows with one query, so the query count does not change with the number of rows. Lazy loading throws outside production.
+6. **Cursor pages:** 20 rows a page, ordered by the opening's `created_at`, then the posting ID, both descending. `created_at` is when the app first saw the opening: a merge keeps the lowest opening ID, so it keeps the earliest time. `posted_at` does not order the list, because for Himalayas it is the last update ([ADR 0016](0016-fetch-job-sources-with-bounded-retries-and-dated-expiry.md), point 5), and an edited posting would move back to the top. Inside one opening, `posted_at` still breaks the tie between two postings of the same source, because it only chooses which posting to show. The page loads the skills of its 20 rows with one query, so the query count does not change with the number of rows. Lazy loading throws outside production.
 
 ## Consequences
 

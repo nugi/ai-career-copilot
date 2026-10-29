@@ -30,6 +30,8 @@ final class SearchOpenings
     /**
      * Choose each opening's representative and pay before applying any filters.
      *
+     * The list is ordered by the time the app first saw the opening, then by ID.
+     *
      * @return CursorPaginator<int, JobPosting>
      */
     public function handle(JobSearch $search, Profile $profile): CursorPaginator
@@ -42,12 +44,13 @@ final class SearchOpenings
             ->selectRaw('row_number() over (partition by opening_id order by (salary_min is null and salary_max is null), coalesce(array_position(?::text[], source::text), 2147483647), posted_at desc, id desc) as pay_rank', [$sources]);
 
         $query = JobPosting::query()
-            ->select('job_postings.*')
+            ->select('job_postings.*', 'openings.created_at as opening_seen_at')
             ->joinSub($ranked, 'representative', fn (JoinClause $join) => $join
                 ->on('representative.id', '=', 'job_postings.id')->where('representative.representative_rank', 1))
             ->joinSub($ranked, 'pay_choice', fn (JoinClause $join) => $join
                 ->on('pay_choice.opening_id', '=', 'job_postings.opening_id')->where('pay_choice.pay_rank', 1))
             ->join('job_postings as pay', 'pay.id', '=', 'pay_choice.id')
+            ->join('openings', 'openings.id', '=', 'job_postings.opening_id')
             ->with('skills');
 
         foreach (['salary_min', 'salary_max', 'salary_currency', 'salary_period', 'annual_salary_min', 'annual_salary_max'] as $column) {
@@ -70,7 +73,7 @@ final class SearchOpenings
             $this->filterFloor($query, $profile);
         }
 
-        return $query->orderByDesc('job_postings.posted_at')->orderByDesc('job_postings.id')
+        return $query->orderByDesc('opening_seen_at')->orderByDesc('job_postings.id')
             ->cursorPaginate(20)->withQueryString();
     }
 

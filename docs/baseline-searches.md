@@ -79,3 +79,6 @@ Remote pay in USD is far above an Indonesian floor, so the floor filter removes 
 1. For a user outside the United States and Europe, the country filter removes more rows than any other filter.
 2. The floor filter removes few rows, because most remote postings either pay well above the floor or list no pay.
 3. A filter on one skill cannot rank. Search 5 returns a full page in date order, and the best fit can be on page 3.
+4. For a user in Indonesia, the limit is the supply of jobs. Searches 1 and 4 return only seeded postings, so no live source has these jobs today ([ADR 0015](adr/0015-take-jobs-only-from-sources-whose-terms-allow-it.md), note of 2026-10-29).
+
+Seeded postings (source `manual`) have generated text. They stay out of every evaluation set, such as the embedding benchmark and the retrieval golden set, so matching is never tuned against generated text.
