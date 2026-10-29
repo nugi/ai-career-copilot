@@ -1,0 +1,108 @@
+{
+    "description": "Queries for the embedding benchmark. Each relevant opening is named by one of its postings as source:external_id. No posting text is stored here (ADR 0015, point 5). Seeded postings (source manual) are never used.",
+    "labelled_on": "2026-10-29",
+    "queries": [
+        {
+            "language": "en",
+            "query": "remote backend developer PHP Laravel",
+            "relevant": [
+                "himalayas:https://himalayas.app/companies/nylon-technology/jobs/lamp-stack-senior-developer-laravel-remote-usa-only",
+                "himalayas:https://himalayas.app/companies/bemyguest/jobs/software-engineer-s-poland",
+                "himalayas:https://himalayas.app/companies/knak/jobs/senior-full-stack-developer"
+            ]
+        },
+        {
+            "language": "id",
+            "query": "programmer PHP kerja remote",
+            "relevant": [
+                "himalayas:https://himalayas.app/companies/nylon-technology/jobs/lamp-stack-senior-developer-laravel-remote-usa-only",
+                "himalayas:https://himalayas.app/companies/bemyguest/jobs/software-engineer-s-poland",
+                "himalayas:https://himalayas.app/companies/knak/jobs/senior-full-stack-developer"
+            ]
+        },
+        {
+            "language": "en",
+            "query": "senior Java backend engineer with Kafka and microservices",
+            "relevant": [
+                "himalayas:https://himalayas.app/companies/pm-consulting/jobs/senior-java-developer-8527770487",
+                "himalayas:https://himalayas.app/companies/photon-interactive-uk-limited/jobs/java-backend-engineer-az-remote",
+                "himalayas:https://himalayas.app/companies/ninjaone/jobs/senior-software-engineer-java-platform-asset-management"
+            ]
+        },
+        {
+            "language": "id",
+            "query": "lowongan machine learning engineer untuk sistem pencarian dan rekomendasi",
+            "relevant": [
+                "jobicy:156887",
+                "himalayas:https://himalayas.app/companies/prizepicks/jobs/staff-machine-learning-engineer",
+                "jobicy:156367",
+                "jobicy:156363"
+            ]
+        },
+        {
+            "language": "en",
+            "query": "React frontend engineer with TypeScript",
+            "relevant": [
+                "jobicy:156876",
+                "himalayas:https://himalayas.app/companies/nortal/jobs/1425-lead-frontend-javascript-typescript-react-engineer-work-from-home",
+                "himalayas:https://himalayas.app/companies/sigma-software-e561c036-16e4-4b2c-aa28-a33af9f3750b/jobs/senior-principal-frontend-engineer",
+                "himalayas:https://himalayas.app/companies/lamdax/jobs/senior-frontend-developer",
+                "jobicy:156500"
+            ]
+        },
+        {
+            "language": "id",
+            "query": "developer aplikasi mobile Android atau iOS",
+            "relevant": [
+                "himalayas:https://himalayas.app/companies/medium/jobs/senior-android-engineer",
+                "jobicy:156354",
+                "jobicy:156356",
+                "himalayas:https://himalayas.app/companies/prizepicks/jobs/senior-software-engineer-react-native",
+                "himalayas:https://himalayas.app/companies/imagemaker/jobs/frontend-mobile-developer-react-react-native",
+                "himalayas:https://himalayas.app/companies/koottu-inc/jobs/flutter-developer"
+            ]
+        },
+        {
+            "language": "id",
+            "query": "lowongan DevOps atau SRE, pengalaman Kubernetes dan Terraform",
+            "relevant": [
+                "jobicy:156418",
+                "jobicy:156771",
+                "jobicy:156579",
+                "jobicy:156564"
+            ]
+        },
+        {
+            "language": "en",
+            "query": "data engineer building pipelines with Python and SQL",
+            "relevant": [
+                "jobicy:156537",
+                "jobicy:156872",
+                "jobicy:154001",
+                "jobicy:154051"
+            ]
+        },
+        {
+            "language": "id",
+            "query": "dicari programmer Ruby on Rails",
+            "relevant": [
+                "himalayas:https://himalayas.app/companies/jetthoughts-llc/jobs/ruby-on-rails-developer",
+                "himalayas:https://himalayas.app/companies/magmalabs/jobs/senior-software-engineer-ruby-on-rails",
+                "himalayas:https://himalayas.app/companies/prizepicks/jobs/senior-back-end-engineer-ruby-on-rails-go",
+                "jobicy:156923",
+                "himalayas:https://himalayas.app/companies/ably/jobs/senior-software-engineer-backoffice-platform"
+            ]
+        },
+        {
+            "language": "en",
+            "query": "security engineer for offensive security and incident response",
+            "relevant": [
+                "jobicy:156386",
+                "jobicy:156851",
+                "jobicy:153887",
+                "jobicy:153861",
+                "jobicy:156385"
+            ]
+        }
+    ]
+}
