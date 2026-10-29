@@ -43,7 +43,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | The prices are USD per million tokens, at the standard rates for prompts
-    | under 100K tokens, checked on 2026-10-21. Cached-input prices are not
+    | under 100K tokens, checked on 2026-10-21 (embedding models 2026-10-29). Cached-input prices are not
     | used: a call is billed here as if every input token were uncached.
     |
     | The options are the provider-specific generation options that the model
@@ -53,6 +53,16 @@ return [
     */
 
     'models' => [
+        'text-embedding-3-small' => [
+            'input_per_million' => 0.02,
+            'output_per_million' => 0,
+            'options' => [],
+        ],
+        'text-embedding-3-large' => [
+            'input_per_million' => 0.13,
+            'output_per_million' => 0,
+            'options' => [],
+        ],
         'gpt-6-luna' => [
             'input_per_million' => 0.10,
             'output_per_million' => 0.50,
