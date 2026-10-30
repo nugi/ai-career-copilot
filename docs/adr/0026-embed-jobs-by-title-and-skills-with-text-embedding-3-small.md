@@ -16,7 +16,7 @@ The benchmark ([`docs/embedding-benchmark.md`](../embedding-benchmark.md)) compa
 1. **Model:** text-embedding-3-small, at USD 0.02 per million tokens. On the short text it scores higher than text-embedding-3-large (Recall@10 0.88 against 0.74) at 1/6.5 of the price.
 2. **Dimensions:** 1536. The benchmark shows no gain over 512, but the vectors can be shortened later by keeping the first dimensions and normalizing again, with no new call. They cannot be made longer without a new embedding. At 1536 dimensions, 20,000 live postings take about 120 MB, far under the limit in ADR 0001.
 3. **Text:** the title, then `Skills:` and the verified skill names in name order. Seniority is left out until a measurement shows a gain. The description goes to full-text search (Day 22), where a long text does not dilute a match.
-4. **Key:** a vector is current while its model and the hash of the embedded text match. A changed title, a new verified skill or a new model makes it pending.
+4. **Key:** a vector is current while its model and the hash of the embedded text match. A changed title, a new verified skill or a new model makes it pending. If a role summary joins the text (Alternatives, point 4), the hash covers it too.
 
 ## Consequences
 
@@ -38,5 +38,8 @@ The benchmark ([`docs/embedding-benchmark.md`](../embedding-benchmark.md)) compa
 1. **text-embedding-3-large:** better on the full text (Recall@10 0.63 against 0.51), but the full text is the weaker text for both models. Rejected at 6.5 times the price.
 2. **The full posting text:** about 50 times the tokens and the lowest recall in the benchmark. Rejected.
 3. **512 dimensions:** the same scores and a third of the storage, but no way back to 1536 without a new embedding. Kept as a later option.
+4. **Title, role summary and skills (not tested):** the skill extractor already reads every text once. It could also return a one-line role summary (role, domain, stack, about 25 words, no benefits or hiring process), and the vector would be made from the title, the summary and the skills. That keeps the signal that made the short text win and brings the domain back (drawback 3) for a few output tokens and no extra call. It would be part of the next extractor prompt version, with the eligibility fields. The Day 25 golden set decides.
 
 **Revisit when** the retrieval golden set (Day 25), labelled from the full postings, gives other results, or a second provider with an embedding key is available to compare.
+
+**Query side (Day 21).** The profile text must look like the job text: target roles and top skills, not the resume summary in full. A long profile against a short job text would bring back on the query side the dilution that this decision removes on the posting side. The golden set therefore includes 5 queries in the form of a profile.
