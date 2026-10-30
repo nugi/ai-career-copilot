@@ -2,6 +2,7 @@
 
 - **Status:** Accepted; partly superseded by [0023](0023-name-the-job-identity-openings.md) (the table name, and point 1)
 - **Date:** 2026-10-25
+- **Amended:** 2026-10-30 (embeddings stay on the posting, point 4)
 
 ## Context
 
@@ -34,8 +35,9 @@ If a user saves a job and its canonical row then expires, the saved job points a
     - A join keeps the lower job ID. References to the other job move to it in the same transaction, and the other job keeps `merged_into_id` so an old link still resolves.
     - A split keeps the job ID with the oldest posting. The postings that leave get a new job, and references stay on the job the user saw.
 4. **What points where:**
-    - Per-job work and user data point at `jobs.id`: embeddings, `job_matches`, saved jobs and applications.
-    - Data read from one posting's own text stays on the posting: `job_posting_skill`, `duplicate_reason` and `duplicate_similarity` (why the posting joined its job).
+    - Per-job work and user data point at `jobs.id`: `job_matches`, saved jobs and applications.
+    - Data read from one posting's own text stays on the posting: `job_posting_skill`, embeddings, `duplicate_reason` and `duplicate_similarity` (why the posting joined its job).
+    - _Amended 2026-10-30:_ embeddings were first listed as per-job work. A vector is made from the posting's own title and skills ([ADR 0026](0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)), and each board writes them differently, so the vector stays on the posting. An opening ranks as its best posting, as in the embedding benchmark. Nothing a user owns points at a vector, so a merge or a split moves no vector.
 5. **Presentation at read time:** a job's page combines its live postings:
     - The representative posting is the newest live posting from the most preferred source. Its title, description and apply link are shown, so each source's link stays its own ([ADR 0015](0015-take-jobs-only-from-sources-whose-terms-allow-it.md)).
     - Salary comes from the representative posting, or from the first live posting with a salary when it has none.
