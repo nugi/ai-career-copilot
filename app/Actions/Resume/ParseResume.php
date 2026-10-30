@@ -32,6 +32,7 @@ class ParseResume
         private CountExperienceYears $countExperienceYears,
         private CheckResumeGrounding $checkResumeGrounding,
         private SkillGrounding $skillGrounding,
+        private ChunkResume $chunkResume,
     ) {}
 
     /**
@@ -351,6 +352,8 @@ class ParseResume
                 'parse_failed_at' => null,
                 'parse_errors' => null,
             ]);
+
+            $this->chunkResume->sync($locked);
 
             if ($locked->is_primary) {
                 $this->syncResumeSkills($user, $skills->map(fn (Skill $skill): int => $skill->id)->values()->all());

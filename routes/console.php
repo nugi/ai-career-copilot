@@ -13,3 +13,4 @@ Schedule::command('exchange-rates:fetch')->dailyAt('05:30')->onOneServer();
 Schedule::command('jobs:check-source')->dailyAt('06:00');
 Schedule::command('jobs:ingest')->dailyAt('06:30')->withoutOverlapping()->onOneServer();
 Schedule::command('jobs:embed')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('resumes:embed')->hourly()->withoutOverlapping()->onOneServer();

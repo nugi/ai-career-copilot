@@ -74,6 +74,10 @@ class ParseUploadedResume implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($this->hasUsableParse($this->resume)) {
+            EmbedResumeChunks::dispatch($this->resume);
+        }
+
         foreach ($this->resume->duplicates()->get() as $pending) {
             if ($pending->parseStatus() !== ResumeParseStatus::Pending) {
                 continue;
@@ -81,6 +85,7 @@ class ParseUploadedResume implements ShouldBeUnique, ShouldQueue
 
             if ($this->hasUsableParse($this->resume)) {
                 $parseResume->copyParse($this->resume, $pending);
+                EmbedResumeChunks::dispatch($pending);
             } else {
                 $parseResume->copyFailure($this->resume, $pending);
             }

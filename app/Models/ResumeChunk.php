@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $resume_id
  * @property int $position
  * @property ResumeSection $section
+ * @property string|null $period_start
+ * @property string|null $period_end
  * @property string $content
  * @property int $token_count
  * @property string|null $embedding pgvector text form, not cast.
@@ -24,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $updated_at
  * @property-read Resume $resume
  */
-#[Fillable(['position', 'section', 'content', 'token_count', 'embedding', 'embedding_model', 'embedded_at'])]
+#[Fillable(['position', 'section', 'period_start', 'period_end', 'content', 'token_count', 'embedding', 'embedding_model', 'embedded_at'])]
 class ResumeChunk extends Model
 {
     /** @use HasFactory<ResumeChunkFactory> */
