@@ -30,6 +30,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0024](0024-extract-job-skills-once-per-posting-text.md)                   | Extract job skills once per posting text                   | Accepted                    |
 | [0025](0025-list-openings-through-a-representative-posting.md)             | List openings through a representative posting             | Accepted                    |
 | [0026](0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md) | Embed jobs by title and skills with text-embedding-3-small | Accepted                    |
+| [0027](0027-embed-postings-in-batches-keyed-on-the-embedded-text.md)       | Embed postings in batches keyed on the embedded text       | Accepted                    |
 
 ## Adding a record
 

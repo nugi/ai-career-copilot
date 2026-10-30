@@ -12,7 +12,31 @@ use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Embeddings;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Prompts\EmbeddingsPrompt;
+
+test('an embedding call writes one succeeded usage row without a user', function () {
+    Embeddings::fake(fn (EmbeddingsPrompt $prompt): array => array_map(
+        fn (string $input): array => array_fill(0, 1536, 0.1),
+        $prompt->inputs,
+    ));
+
+    Embeddings::for(['Backend Engineer'])->dimensions(1536)->generate('openai', 'text-embedding-3-small');
+
+    $usage = AiUsage::query()->sole();
+
+    expect($usage->feature)->toBe(AiFeature::Embedding)
+        ->and($usage->agent)->toBe('Embeddings')
+        ->and($usage->status)->toBe(AiUsageStatus::Succeeded)
+        ->and($usage->user_id)->toBeNull()
+        ->and($usage->tier)->toBeNull()
+        ->and($usage->prompt_version)->toBeNull()
+        ->and($usage->provider)->toBe('openai')
+        ->and($usage->model)->toBe('text-embedding-3-small')
+        ->and($usage->output_tokens)->toBe(0)
+        ->and($usage->latency_ms)->toBeGreaterThanOrEqual(0);
+});
 
 test('an advisor answer writes one succeeded usage row', function () {
     CareerAdvisor::fake(['Build one API project.']);

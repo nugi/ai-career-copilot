@@ -3,12 +3,16 @@
 namespace App\Listeners;
 
 use App\Ai\AiUsageRecorder;
+use App\Enums\AiFeature;
 use App\Enums\AiUsageStatus;
 use Illuminate\Http\Client\RequestException;
 use Laravel\Ai\Events\AgentFailed;
 use Laravel\Ai\Events\AgentFailedOver;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\AgentStreamed;
+use Laravel\Ai\Events\EmbeddingsFailed;
+use Laravel\Ai\Events\EmbeddingsGenerated;
+use Laravel\Ai\Events\GeneratingEmbeddings;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\StreamingAgent;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
@@ -90,6 +94,55 @@ class RecordAiUsage
             $event->invocationId,
             $event->prompt->provider->name(),
             $event->prompt->model,
+            0,
+            0,
+            AiUsageStatus::Failed,
+            $this->tokensAreUnknown($event->exception),
+        );
+    }
+
+    /**
+     * Start the embedding attempt's timer so its usage row includes provider latency.
+     */
+    public function handleGeneratingEmbeddings(GeneratingEmbeddings $event): void
+    {
+        $this->recorder->start($event->invocationId);
+    }
+
+    /**
+     * Record the embedding provider's billed input tokens so non-agent calls count toward spend.
+     */
+    public function handleEmbeddingsGenerated(EmbeddingsGenerated $event): void
+    {
+        $this->recorder->recordCall(
+            AiFeature::Embedding,
+            'Embeddings',
+            null,
+            null,
+            null,
+            $event->invocationId,
+            $event->provider->name(),
+            $event->model,
+            $event->response->usage->inputTokens,
+            0,
+            AiUsageStatus::Succeeded,
+        );
+    }
+
+    /**
+     * Record a failed embedding attempt with estimated tokens when its billed usage is unknown.
+     */
+    public function handleEmbeddingsFailed(EmbeddingsFailed $event): void
+    {
+        $this->recorder->recordCall(
+            AiFeature::Embedding,
+            'Embeddings',
+            null,
+            null,
+            null,
+            $event->invocationId,
+            $event->provider->name(),
+            $event->model,
             0,
             0,
             AiUsageStatus::Failed,

@@ -170,6 +170,7 @@ class JobPostingFactory extends Factory
             'embedding_model' => 'text-embedding-3-small',
             'embedded_at' => now(),
             'embedding_text_hash' => fn (array $attributes): string => hash('sha256', $attributes['title']),
+            'embedded_text' => fn (array $attributes): string => $attributes['title'],
         ]);
     }
 

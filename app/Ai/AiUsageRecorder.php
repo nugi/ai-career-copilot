@@ -4,8 +4,10 @@ namespace App\Ai;
 
 use App\Ai\Contracts\HasPromptVersion;
 use App\Ai\Contracts\TracksUsage;
+use App\Enums\AiFeature;
 use App\Enums\AiUsageStatus;
 use App\Models\AiUsage;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Contracts\Agent;
 use Throwable;
@@ -71,7 +73,47 @@ class AiUsageRecorder
         }
 
         try {
-            $task = $agent->task();
+            $tier = $this->router->tier($agent->task())->value;
+        } catch (Throwable $exception) {
+            Log::warning('ai.usage.record_failed', ['exception' => $exception::class]);
+
+            return;
+        }
+
+        $this->recordCall(
+            $agent->task(),
+            class_basename($agent),
+            $agent->usageUser(),
+            $tier,
+            $agent instanceof HasPromptVersion ? $agent->promptVersion() : null,
+            $invocationId,
+            $provider,
+            $model,
+            $inputTokens,
+            $outputTokens,
+            $status,
+            $tokensEstimated,
+        );
+    }
+
+    /**
+     * Record one provider attempt, including non-agent calls such as embeddings.
+     */
+    public function recordCall(
+        AiFeature $feature,
+        string $agent,
+        ?User $user,
+        ?string $tier,
+        ?string $promptVersion,
+        string $invocationId,
+        string $provider,
+        string $model,
+        int $inputTokens,
+        int $outputTokens,
+        AiUsageStatus $status,
+        bool $tokensEstimated = false,
+    ): void {
+        try {
             $cost = $this->router->cost($model, $inputTokens, $outputTokens);
 
             if ($cost === null) {
@@ -79,12 +121,12 @@ class AiUsageRecorder
             }
 
             AiUsage::create([
-                'user_id' => $agent->usageUser()?->getKey(),
-                'feature' => $task,
+                'user_id' => $user?->getKey(),
+                'feature' => $feature,
                 'invocation_id' => $invocationId,
-                'agent' => class_basename($agent),
-                'tier' => $this->router->tier($task)->value,
-                'prompt_version' => $agent instanceof HasPromptVersion ? $agent->promptVersion() : null,
+                'agent' => $agent,
+                'tier' => $tier,
+                'prompt_version' => $promptVersion,
                 'provider' => $provider,
                 'model' => $model,
                 'status' => $status,

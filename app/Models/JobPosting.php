@@ -66,6 +66,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property CarbonImmutable|null $skills_extracted_at
  * @property CarbonImmutable|null $skills_failed_at When the extraction failed validation twice.
  * @property string|null $embedding pgvector text form, not cast.
+ * @property string|null $embedded_text The exact text of the vector
  * @property string|null $embedding_model
  * @property CarbonImmutable|null $embedded_at
  * @property string|null $embedding_text_hash SHA-256 of the embedded text; current when this hash and the model match.
@@ -84,7 +85,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'duplicate_reason', 'duplicate_similarity',
     'extracted_skills', 'extracted_seniority', 'years_required',
     'skills_text_hash', 'skills_prompt_version', 'skills_extracted_at', 'skills_failed_at',
-    'embedding', 'embedding_model', 'embedded_at', 'embedding_text_hash',
+    'embedding', 'embedding_model', 'embedded_at', 'embedding_text_hash', 'embedded_text',
 ])]
 class JobPosting extends Model
 {
