@@ -160,6 +160,35 @@ class JobPostingFactory extends Factory
         });
     }
 
+    /**
+     * A posting with a unit embedding for its title.
+     */
+    public function withEmbedding(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'embedding' => $this->randomUnitVector(),
+            'embedding_model' => 'text-embedding-3-small',
+            'embedded_at' => now(),
+            'embedding_text_hash' => fn (array $attributes): string => hash('sha256', $attributes['title']),
+        ]);
+    }
+
+    /**
+     * Make a non-zero random vector and normalize it to unit length in pgvector text form.
+     */
+    private function randomUnitVector(): string
+    {
+        $components = [];
+
+        for ($dimension = 0; $dimension < 1536; $dimension++) {
+            $components[] = fake()->randomElement([-1, 1]) * fake()->numberBetween(1, 1_000_000);
+        }
+
+        $length = sqrt(array_sum(array_map(fn (int $component): int => $component * $component, $components)));
+
+        return '['.implode(',', array_map(fn (int $component): float => $component / $length, $components)).']';
+    }
+
     private function titleFor(string $role, SeniorityLevel $seniority): string
     {
         return match ($seniority) {

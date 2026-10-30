@@ -17,11 +17,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ResumeSection $section
  * @property string $content
  * @property int $token_count
+ * @property string|null $embedding pgvector text form, not cast.
+ * @property string|null $embedding_model
+ * @property CarbonImmutable|null $embedded_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Resume $resume
  */
-#[Fillable(['position', 'section', 'content', 'token_count'])]
+#[Fillable(['position', 'section', 'content', 'token_count', 'embedding', 'embedding_model', 'embedded_at'])]
 class ResumeChunk extends Model
 {
     /** @use HasFactory<ResumeChunkFactory> */
@@ -38,6 +41,7 @@ class ResumeChunk extends Model
             'position' => 'integer',
             'section' => ResumeSection::class,
             'token_count' => 'integer',
+            'embedded_at' => 'datetime',
         ];
     }
 

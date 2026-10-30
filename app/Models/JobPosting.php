@@ -65,6 +65,10 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property string|null $skills_prompt_version The prompt version of the extraction or the failure.
  * @property CarbonImmutable|null $skills_extracted_at
  * @property CarbonImmutable|null $skills_failed_at When the extraction failed validation twice.
+ * @property string|null $embedding pgvector text form, not cast.
+ * @property string|null $embedding_model
+ * @property CarbonImmutable|null $embedded_at
+ * @property string|null $embedding_text_hash SHA-256 of the embedded text; current when this hash and the model match.
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, Skill&object{pivot: Pivot&object{is_required: bool}}> $skills
@@ -80,6 +84,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'duplicate_reason', 'duplicate_similarity',
     'extracted_skills', 'extracted_seniority', 'years_required',
     'skills_text_hash', 'skills_prompt_version', 'skills_extracted_at', 'skills_failed_at',
+    'embedding', 'embedding_model', 'embedded_at', 'embedding_text_hash',
 ])]
 class JobPosting extends Model
 {
@@ -112,6 +117,7 @@ class JobPosting extends Model
             'years_required' => 'integer',
             'skills_extracted_at' => 'datetime',
             'skills_failed_at' => 'datetime',
+            'embedded_at' => 'datetime',
             'posted_at' => 'datetime',
             'expires_at' => 'datetime',
             'first_seen_at' => 'datetime',
