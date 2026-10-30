@@ -70,6 +70,11 @@ function nearDuplicatePostings(): array
     return [$postings[0], $postings[1]];
 }
 
+// The fixtures carry fixed post dates, and Jobicy postings expire 7 days after them, so the tests run on a fixed day.
+beforeEach(function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-24 00:00:00', 'UTC'));
+});
+
 beforeEach(function () {
     config([
         'job-sources.default_queries' => ['backend engineer'],
