@@ -185,7 +185,7 @@ erDiagram
 - **No unsigned types:** PostgreSQL has none, and Laravel's `unsigned()` modifier is silently ignored. Columns that must not go negative have a `>= 0` CHECK instead.
 - **Foreign keys** get an index only when a query needs one. PostgreSQL does not index them automatically, and each table lists the queries that justify its indexes.
 - **Deletes:** deleting a user removes their profile, resumes, chunks, skills and matches. `ai_usages.user_id` becomes `null` so cost history survives. Deleting a resume keeps its matches and sets `resume_id` to `null`.
-- **Vectors** are `vector(1536)` columns on `job_postings` and `resume_chunks` ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)), each with the model that made it and the time. A CHECK keeps the three columns all null or all set, so a vector never has an unknown model. Each has an HNSW index on cosine distance ([ADR 0001](adr/0001-use-postgresql-with-pgvector.md)).
+- **Vectors** are `vector(1536)` columns on `job_postings` and `resume_chunks` ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)), each with the model that made it and the time. A CHECK keeps the three columns all null or all set, so a vector never has an unknown model. Only `job_postings` has an HNSW index on cosine distance ([ADR 0001](adr/0001-use-postgresql-with-pgvector.md)). Chunks are searched inside one resume, so they need none.
 - **Not yet in the schema:** a full-text index for keyword search and a trigram index for skill autocomplete.
 
 ## Tables and their hot queries
@@ -213,10 +213,12 @@ One row per user with job preferences.
 
 ### resume_chunks
 
-| Query                                                                  | Index                          |
-| ---------------------------------------------------------------------- | ------------------------------ |
-| A resume's chunks in document order (rebuilding context, re-embedding) | `unique (resume_id, position)` |
-| Chunks nearest to a job posting's embedding                            | HNSW on `embedding`            |
+| Query                                                                                        | Index                                              |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| A resume's chunks in document order (rebuilding context, re-embedding)                       | `unique (resume_id, position)`                     |
+| The chunks of one resume nearest to a vector: `where resume_id = ? order by embedding <=> ?` | `unique (resume_id, position)`, then an exact sort |
+
+A resume has 6 to 15 chunks, so an exact sort of them is instant and complete. Chunks are never searched across users. An HNSW index would hold every user's chunks in one graph and filter one resume out of it afterwards, which returns too few rows.
 
 ### skills and skill_aliases
 
