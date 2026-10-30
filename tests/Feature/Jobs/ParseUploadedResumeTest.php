@@ -2,11 +2,17 @@
 
 use App\Ai\Agents\ResumeParser;
 use App\Enums\SkillSource;
+use App\Jobs\EmbedResumeChunks;
 use App\Jobs\ParseUploadedResume;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
+
+beforeEach(function () {
+    Queue::fake([EmbedResumeChunks::class]);
+});
 
 test('the job parses the resume and saves the parsed data', function () {
     ResumeParser::fake([parsedResume()])->preventStrayPrompts();
@@ -113,6 +119,22 @@ test('a failed parse is copied to a pending duplicate', function () {
         ->and($duplicate->parse_errors)->toBe($resume->parse_errors)
         ->and($duplicate->parsed_at)->toBeNull();
     ResumeParser::assertPromptedTimes(2);
+});
+
+test('a parsed resume and its pending duplicate queue embeddings and have saved chunks', function () {
+    ResumeParser::fake([parsedResume()])->preventStrayPrompts();
+    $user = User::factory()->onboarded()->create();
+    $resume = Resume::factory()->extracted()->for($user)->create();
+    $duplicate = Resume::factory()->extracted()->for($user)->create();
+
+    ParseUploadedResume::dispatchSync($resume);
+
+    Queue::assertPushed(EmbedResumeChunks::class, fn (EmbedResumeChunks $job): bool => $job->resume->is($resume));
+    Queue::assertPushed(EmbedResumeChunks::class, fn (EmbedResumeChunks $job): bool => $job->resume->is($duplicate));
+    Queue::assertPushed(EmbedResumeChunks::class, 2);
+    $this->assertDatabaseHas('resume_chunks', ['resume_id' => $resume->id, 'position' => 0, 'section' => 'summary']);
+    expect($resume->chunks()->count())->toBe(4)
+        ->and($duplicate->chunks()->count())->toBe(4);
 });
 
 test('a provider failure marks a pending duplicate as failed', function () {

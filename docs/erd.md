@@ -54,6 +54,8 @@ erDiagram
         bigint resume_id FK
         smallint position
         string section
+        string period_start
+        string period_end
         text content
         int token_count
         vector1536 embedding
@@ -218,6 +220,8 @@ One row per user with job preferences.
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | A resume's chunks in document order (rebuilding context, re-embedding)                       | `unique (resume_id, position)`                     |
 | The chunks of one resume nearest to a vector: `where resume_id = ? order by embedding <=> ?` | `unique (resume_id, position)`, then an exact sort |
+
+Chunks are built from `parsed_data` in the transaction that saves it: the summary, one chunk per experience, the skills and the education, each with a prefix that names its job or section ([ADR 0028](adr/0028-chunk-resumes-by-section-and-embed-them-after-the-parse.md)). `period_start` and `period_end` hold the parse's `YYYY` or `YYYY-MM` dates; a null end on an experience means current. `token_count` is an estimate. A rebuilt chunk with the same text as one of the user's embedded chunks copies that vector, so only changed text is embedded again.
 
 A resume has 6 to 15 chunks, so an exact sort of them is instant and complete. Chunks are never searched across users. An HNSW index would hold every user's chunks in one graph and filter one resume out of it afterwards, which returns too few rows.
 

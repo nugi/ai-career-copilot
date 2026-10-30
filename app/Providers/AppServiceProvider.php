@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Ai\AiUsageRecorder;
 use App\Jobs\EmbedJobPostings;
+use App\Jobs\EmbedResumeChunks;
 use App\Jobs\ExtractJobSkills;
 use App\Jobs\IngestJobSource;
 use App\Jobs\ParseUploadedResume;
@@ -56,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
         Queue::route(IngestJobSource::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(ExtractJobSkills::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(EmbedJobPostings::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
+        Queue::route(EmbedResumeChunks::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
     }
 
     /**

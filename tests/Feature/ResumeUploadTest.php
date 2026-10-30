@@ -68,7 +68,16 @@ test('uploading a text PDF saves only the redacted text and stores the file priv
 });
 
 test('the request to the AI provider after an upload holds no personal data', function () {
-    Http::fake(['api.openai.com/*' => Http::response(openAiAnswer(json_encode(parsedResume())))]);
+    Http::fake([
+        'api.openai.com/v1/embeddings' => fn (object $request) => Http::response([
+            'data' => collect($request['input'])->map(fn (string $input, int $index): array => [
+                'embedding' => array_fill(0, 1536, 0.1),
+                'index' => $index,
+            ])->all(),
+            'usage' => ['prompt_tokens' => 100, 'total_tokens' => 100],
+        ]),
+        'api.openai.com/*' => Http::response(openAiAnswer(json_encode(parsedResume()))),
+    ]);
     $user = User::factory()->onboarded()->create(['name' => 'Rina Wijaya']);
 
     $this->actingAs($user)
@@ -76,11 +85,15 @@ test('the request to the AI provider after an upload holds no personal data', fu
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('resumes.index'));
 
-    Http::assertSentCount(1);
-    [$request] = Http::recorded()->first();
-    expect($request->body())->toContain('Backend engineer with 6 years')
+    Http::assertSentCount(2);
+    [$parseRequest] = Http::recorded()[0];
+    expect($parseRequest->body())->toContain('Backend engineer with 6 years')
+        ->toBeRedacted('Rina', 'Wijaya', 'Kenanga', '3273012345670001', 'rina-wijaya-example');
+    [$embeddingsRequest] = Http::recorded()[1];
+    expect(json_encode(json_decode($embeddingsRequest->body(), true), JSON_UNESCAPED_UNICODE))->toContain('Experience as')
         ->toBeRedacted('Rina', 'Wijaya', 'Kenanga', '3273012345670001', 'rina-wijaya-example');
     expect($user->resumes()->sole()->parsed_at)->not->toBeNull();
+    expect($user->resumes()->sole()->chunks()->whereNotNull('embedding')->count())->toBeGreaterThan(0);
 });
 
 test('an upload with the parse queued makes no provider call', function () {
