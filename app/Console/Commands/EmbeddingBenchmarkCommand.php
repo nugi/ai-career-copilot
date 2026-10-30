@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\Jobs\PostingEmbeddingText;
 use App\Ai\ModelRouter;
 use App\Models\JobPosting;
 use Illuminate\Console\Attributes\Description;
@@ -111,11 +112,7 @@ class EmbeddingBenchmarkCommand extends Command
      */
     private function postingText(JobPosting $posting, string $variant): string
     {
-        $text = $posting->title;
-        $skills = $posting->skills->pluck('name')->sort()->values()->all();
-        if ($skills !== []) {
-            $text .= "\nSkills: ".implode(', ', $skills);
-        }
+        $text = app(PostingEmbeddingText::class)->text($posting);
         if ($variant === 'full') {
             $text .= "\n\n".mb_substr($posting->description, 0, 12000);
         }

@@ -66,7 +66,7 @@ test('the database accepts every case of an enum column and nothing else', funct
     'ai_usages.feature' => ['ai_usages', 'feature', AiFeature::class],
 ]);
 
-test('the database accepts a complete embedding and rejects one without a model', function (string $table) {
+test('the database accepts a complete embedding and rejects one without a model', function (string $table, array $extraColumns) {
     $row = rowIn($table);
     $embedding = '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']';
 
@@ -74,11 +74,15 @@ test('the database accepts a complete embedding and rejects one without a model'
         'embedding' => $embedding,
         'embedding_model' => 'text-embedding-3-small',
         'embedded_at' => now(),
+        ...$extraColumns,
     ]))->toBe(1);
 
     expect(fn () => DB::table($table)->where($row)->update(['embedding_model' => null]))
         ->toThrow(QueryException::class, "{$table}_embedding_check");
-})->with(['job_postings', 'resume_chunks']);
+})->with([
+    ['job_postings', ['embedding_text_hash' => str_repeat('a', 64), 'embedded_text' => 'Title']],
+    ['resume_chunks', []],
+]);
 
 test('the database accepts a list of known work arrangements on a profile', function (string $json) {
     $row = rowIn('profiles');

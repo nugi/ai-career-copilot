@@ -122,6 +122,7 @@ erDiagram
         vector1536 embedding
         string embedding_model
         char64 embedding_text_hash
+        text embedded_text
         timestamp embedded_at
     }
     job_posting_skill {
@@ -264,6 +265,7 @@ CHECK constraint: `merged_into_id <> id`.
 | Upsert on import without duplicates: `on conflict (source, dedup_key)`                                            | `unique (source, dedup_key)`    |
 | Reuse the skill extraction of another posting with the same text: `where text_hash = ?`                           | `(text_hash)`                   |
 | The postings nearest to a profile: `order by embedding <=> ? limit k`                                             | HNSW on `embedding`             |
+| Reuse the vector of another posting with the same embedded text: `where embedding_text_hash = ?`                  | `(embedding_text_hash)`         |
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 
@@ -273,7 +275,7 @@ CHECK constraint: `merged_into_id <> id`.
 
 `text_hash` covers the title and the description only ([ADR 0021](adr/0021-key-ai-work-on-the-posting-text.md)). A skill extraction is current while `skills_text_hash = text_hash` and `skills_prompt_version` is the extractor's version. `extracted_skills` keeps the grounded required and nice-to-have names, the unknown names for review and the dropped ungrounded names; `extracted_seniority` and `years_required` are read from the text and never overwrite the source's `seniority` ([ADR 0024](adr/0024-extract-job-skills-once-per-posting-text.md)). The table also holds `skills_extracted_at` and `skills_failed_at`.
 
-A vector is current while `embedding_model` and `embedding_text_hash` match the model in use and the hash of the embedded text. The hash is separate from `text_hash`, because a newly verified skill changes the embedded text and not the posting text ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)).
+A vector is current while `embedding_model` and `embedding_text_hash` match the model in use and the hash of the embedded text, built from the title and the skill rows at the time of the check. The hash is separate from `text_hash`, because a newly verified skill changes the embedded text and not the posting text ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)). `embedded_text` keeps the text the vector was made from. Only a posting whose skill extraction is settled for its current text is embedded, and an hourly scan finds the vectors that are out of date ([ADR 0027](adr/0027-embed-postings-in-batches-keyed-on-the-embedded-text.md)). A CHECK keeps the vector, its model, time, hash and text all null or all set.
 
 CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
 
