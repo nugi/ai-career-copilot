@@ -207,7 +207,7 @@ class ImportJobPostings
                         partition by duplicate_key, case when duplicate_key is null then id end
                     ) as head_id
                 from job_postings
-                where expires_at is null or expires_at > now()
+                where expires_at is null or expires_at > ?
             ), heads as (
                 select live.*,
                     array(
@@ -259,7 +259,7 @@ class ImportJobPostings
                 end as duplicate_similarity
             from live
             join mapped_heads on mapped_heads.id = live.head_id
-            SQL, [self::TITLE_SIMILARITY_THRESHOLD]);
+            SQL, [now(), self::TITLE_SIMILARITY_THRESHOLD]);
 
         DB::statement(<<<'SQL'
             create temporary table group_openings on commit drop as
