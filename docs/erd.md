@@ -56,6 +56,9 @@ erDiagram
         string section
         text content
         int token_count
+        vector1536 embedding
+        string embedding_model
+        timestamp embedded_at
     }
     skills {
         bigint id PK
@@ -116,6 +119,10 @@ erDiagram
         smallint years_required
         char64 skills_text_hash
         string skills_prompt_version
+        vector1536 embedding
+        string embedding_model
+        char64 embedding_text_hash
+        timestamp embedded_at
     }
     job_posting_skill {
         bigint job_posting_id PK,FK
@@ -178,7 +185,8 @@ erDiagram
 - **No unsigned types:** PostgreSQL has none, and Laravel's `unsigned()` modifier is silently ignored. Columns that must not go negative have a `>= 0` CHECK instead.
 - **Foreign keys** get an index only when a query needs one. PostgreSQL does not index them automatically, and each table lists the queries that justify its indexes.
 - **Deletes:** deleting a user removes their profile, resumes, chunks, skills and matches. `ai_usages.user_id` becomes `null` so cost history survives. Deleting a resume keeps its matches and sets `resume_id` to `null`.
-- **Not yet in the schema:** embedding columns and HNSW indexes on `resume_chunks` and `job_postings` (added with semantic search, see [ADR 0001](adr/0001-use-postgresql-with-pgvector.md)), a full-text index for keyword search, and a trigram index for skill autocomplete.
+- **Vectors** are `vector(1536)` columns on `job_postings` and `resume_chunks` ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)), each with the model that made it and the time. A CHECK keeps the three columns all null or all set, so a vector never has an unknown model. Each has an HNSW index on cosine distance ([ADR 0001](adr/0001-use-postgresql-with-pgvector.md)).
+- **Not yet in the schema:** a full-text index for keyword search and a trigram index for skill autocomplete.
 
 ## Tables and their hot queries
 
@@ -205,10 +213,10 @@ One row per user with job preferences.
 
 ### resume_chunks
 
-| Query                                                                  | Index                            |
-| ---------------------------------------------------------------------- | -------------------------------- |
-| A resume's chunks in document order (rebuilding context, re-embedding) | `unique (resume_id, position)`   |
-| Chunks nearest to a job posting's embedding                            | HNSW, added with semantic search |
+| Query                                                                  | Index                          |
+| ---------------------------------------------------------------------- | ------------------------------ |
+| A resume's chunks in document order (rebuilding context, re-embedding) | `unique (resume_id, position)` |
+| Chunks nearest to a job posting's embedding                            | HNSW on `embedding`            |
 
 ### skills and skill_aliases
 
@@ -253,6 +261,7 @@ CHECK constraint: `merged_into_id <> id`.
 | Postings that may pay the user's minimum: `where salary_currency = ? and (salary_max >= ? or salary_max is null)` | `(salary_currency, salary_max)` |
 | Upsert on import without duplicates: `on conflict (source, dedup_key)`                                            | `unique (source, dedup_key)`    |
 | Reuse the skill extraction of another posting with the same text: `where text_hash = ?`                           | `(text_hash)`                   |
+| The postings nearest to a profile: `order by embedding <=> ? limit k`                                             | HNSW on `embedding`             |
 
 `external_id` is the source's own ID, or `null` when the source has none. Postgres treats every `null` as distinct, so a unique index on `(source, external_id)` would let ID-less duplicates through. Instead, `dedup_key` is a stored generated column, `coalesce(external_id, 'url:' || md5(apply_url))`. It is computed by the database, so `insert`, `upsert` and raw SQL are all covered, and a posting without an ID is identified by its apply URL.
 
@@ -261,6 +270,8 @@ CHECK constraint: `merged_into_id <> id`.
 `first_seen_at` is set on insert and never updated; `last_seen_at` moves on every run that returns the posting; `updated_at` moves only when `content_hash` changes ([ADR 0020](adr/0020-ingest-job-sources-on-a-schedule.md)).
 
 `text_hash` covers the title and the description only ([ADR 0021](adr/0021-key-ai-work-on-the-posting-text.md)). A skill extraction is current while `skills_text_hash = text_hash` and `skills_prompt_version` is the extractor's version. `extracted_skills` keeps the grounded required and nice-to-have names, the unknown names for review and the dropped ungrounded names; `extracted_seniority` and `years_required` are read from the text and never overwrite the source's `seniority` ([ADR 0024](adr/0024-extract-job-skills-once-per-posting-text.md)). The table also holds `skills_extracted_at` and `skills_failed_at`.
+
+A vector is current while `embedding_model` and `embedding_text_hash` match the model in use and the hash of the embedded text. The hash is separate from `text_hash`, because a newly verified skill changes the embedded text and not the posting text ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)).
 
 CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
 
