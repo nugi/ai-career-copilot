@@ -11,6 +11,7 @@ use App\Jobs\ParseUploadedResume;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +70,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('advisor', fn (Request $request) => Limit::perMinute(10)
             ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
+        RateLimiter::for('resume-uploads', fn (Request $request): Limit => Limit::perHour(5)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip())
+            ->response(fn (): RedirectResponse => back()->withErrors(['file' => __('You uploaded too many resumes. Try again later.')])));
     }
 
     /**

@@ -30,7 +30,11 @@ class ChunkResume
             $chunks[] = $this->chunk(ResumeSection::Summary, 'Summary: '.$summary);
         }
 
-        foreach ($this->entries($parsedData['experiences'] ?? null) as $experience) {
+        $ungroundedBullets = $parsedData['checks']['ungrounded_bullets'] ?? null;
+        $ungroundedBullets = is_array($ungroundedBullets) ? array_filter($ungroundedBullets, is_string(...)) : [];
+        $experiences = is_array($parsedData['experiences'] ?? null) ? array_filter($parsedData['experiences'], is_array(...)) : [];
+
+        foreach ($experiences as $experienceIndex => $experience) {
             if (! is_string($experience['title'] ?? null) || ! is_string($experience['company'] ?? null) || ! is_string($experience['start'] ?? null)) {
                 continue;
             }
@@ -42,7 +46,11 @@ class ChunkResume
             $hasBullets = false;
             $bullets = is_array($experience['bullets'] ?? null) ? array_filter($experience['bullets'], is_string(...)) : [];
 
-            foreach ($bullets as $bullet) {
+            foreach ($bullets as $bulletIndex => $bullet) {
+                if (in_array("experiences.{$experienceIndex}.bullets.{$bulletIndex}", $ungroundedBullets, true)) {
+                    continue;
+                }
+
                 $next = $content."\n- ".$bullet;
 
                 if ($hasBullets && $this->tokenCount($next) > self::MAX_EXPERIENCE_TOKENS) {
