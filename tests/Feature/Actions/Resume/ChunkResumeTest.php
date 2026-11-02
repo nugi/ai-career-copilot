@@ -30,6 +30,23 @@ test('parsed sections become ordered self-contained chunks with their periods', 
     expect(array_column($withoutOptionalSections, 'section'))->toBe([ResumeSection::Experience]);
 });
 
+test('ungrounded bullets are excluded from saved resume chunks', function () {
+    $data = parsedResume();
+    $groundedBullet = $data['experiences'][0]['bullets'][0];
+    $ungroundedBullet = 'Increased revenue by 50 percent through a rewritten achievement';
+    $data['experiences'][0]['bullets'][] = $ungroundedBullet;
+    $data['checks']['ungrounded_bullets'] = ['experiences.0.bullets.1'];
+    $resume = Resume::factory()->create(['parsed_data' => $data]);
+
+    app(ChunkResume::class)->sync($resume);
+
+    $contents = $resume->chunks()->pluck('content');
+    foreach ($contents as $content) {
+        expect($content)->not->toContain($ungroundedBullet);
+    }
+    expect($contents->implode("\n"))->toContain($groundedBullet);
+});
+
 test('long experiences split consecutive bullets without losing context or exceeding the token limit', function () {
     $bullets = array_map(fn (int $index): string => "Bullet {$index}: ".str_repeat('Work ', 30), range(1, 8));
     $experience = parsedResume()['experiences'][0];

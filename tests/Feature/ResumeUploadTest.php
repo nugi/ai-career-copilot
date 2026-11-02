@@ -67,6 +67,30 @@ test('uploading a text PDF saves only the redacted text and stores the file priv
     Queue::assertPushed(ParseUploadedResume::class, fn (ParseUploadedResume $job): bool => $job->resume->is($resume));
 });
 
+test('a user can upload only five resumes per hour', function () {
+    Queue::fake([ParseUploadedResume::class]);
+    $user = User::factory()->onboarded()->create();
+    $pdf = file_get_contents(base_path('tests/Fixtures/resumes/text-resume.pdf'));
+    $this->actingAs($user)->from(route('resumes.index'));
+
+    foreach (range(1, 5) as $index) {
+        $file = UploadedFile::fake()->createWithContent("Resume {$index}.pdf", str_replace('6 years', "{$index} years", $pdf));
+
+        $this->post(route('resumes.store'), ['file' => $file])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('resumes.index'));
+    }
+
+    $sixthFile = UploadedFile::fake()->createWithContent('Resume 6.pdf', $pdf);
+
+    $this->post(route('resumes.store'), ['file' => $sixthFile])
+        ->assertRedirect(route('resumes.index'))
+        ->assertSessionHasErrors(['file' => 'You uploaded too many resumes. Try again later.']);
+
+    expect($user->resumes()->count())->toBe(5);
+    Queue::assertPushed(ParseUploadedResume::class, 5);
+});
+
 test('the request to the AI provider after an upload holds no personal data', function () {
     Http::fake([
         'api.openai.com/v1/embeddings' => fn (object $request) => Http::response([

@@ -22,7 +22,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::get('advisor', [AdvisorChatController::class, 'show'])->name('advisor.chat');
 
     Route::get('resumes', [ResumeController::class, 'index'])->name('resumes.index');
-    Route::post('resumes', [ResumeController::class, 'store'])->name('resumes.store');
+    Route::post('resumes', [ResumeController::class, 'store'])->middleware('throttle:resume-uploads')->name('resumes.store');
     Route::get('resumes/{resume}/content', [ResumeController::class, 'content'])->whereNumber('resume')->name('resumes.content');
 });
 
