@@ -31,10 +31,10 @@ class EmbedTexts
         }
 
         return [
-            'vectors' => array_map(
+            'vectors' => array_values(array_map(
                 fn (array $vector): string => '['.implode(',', $vector).']',
                 $response->embeddings,
-            ),
+            )),
             'tokens' => $response->usage->inputTokens,
         ];
     }
