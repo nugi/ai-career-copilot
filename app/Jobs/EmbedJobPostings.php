@@ -16,8 +16,9 @@ use Throwable;
 /**
  * Embed one batch of postings in the background.
  * A rate-limit release does not consume the exception allowance: the job retries until retryUntil() and fails after maxExceptions provider errors.
+ * The unique lock lasts longer than retryUntil(), so the hourly run cannot queue the same work while a batch still retries.
  */
-#[UniqueFor(1200)]
+#[UniqueFor(3900)]
 class EmbedJobPostings implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;

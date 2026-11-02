@@ -2,17 +2,23 @@
 
 namespace App\Actions\Resume;
 
+use App\Ai\EmbedTexts;
 use App\Models\Resume;
 use App\Models\ResumeChunk;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Embeddings;
 
 /**
  * Reuse the owner's current vectors and embed each distinct pending chunk text once.
  */
 class EmbedResumeChunks
 {
+    /**
+     * Share the embedding call so resume vectors use the same count check as posting vectors.
+     */
+    public function __construct(private EmbedTexts $embedTexts) {}
+
     /**
      * Embed pending chunks and reuse current vectors from the same owner.
      *
@@ -57,19 +63,17 @@ class EmbedResumeChunks
         }
 
         if ($pending !== []) {
-            $response = Embeddings::for(array_keys($pending))
-                ->dimensions(config('ai-routing.embeddings.dimensions'))
-                ->generate(config('ai-routing.embeddings.provider'), $model);
-            $tokens = $response->usage->inputTokens;
+            $result = $this->embedTexts->handle(array_keys($pending));
+            $tokens = $result['tokens'];
 
-            foreach (array_values($pending) as $index => $group) {
-                $vector = '['.implode(',', $response->embeddings[$index]).']';
-
-                foreach ($group as $chunk) {
-                    $this->save($chunk, $vector, $model);
-                    $counts['embedded']++;
+            DB::transaction(function () use ($pending, $result, $model, &$counts): void {
+                foreach (array_values($pending) as $index => $group) {
+                    foreach ($group as $chunk) {
+                        $this->save($chunk, $result['vectors'][$index], $model);
+                        $counts['embedded']++;
+                    }
                 }
-            }
+            });
         }
 
         if ($counts['embedded'] > 0 || $counts['copied'] > 0) {

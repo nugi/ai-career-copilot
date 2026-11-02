@@ -16,8 +16,9 @@ use Throwable;
 
 /**
  * Embed a resume in the background, sharing the provider rate limit with posting embeddings.
+ * The unique lock lasts longer than retryUntil(), so the hourly run cannot queue the same work while a batch still retries.
  */
-#[UniqueFor(1200)]
+#[UniqueFor(3900)]
 class EmbedResumeChunks implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
