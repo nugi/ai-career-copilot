@@ -2,9 +2,10 @@
 
 namespace App\Actions\Jobs;
 
+use App\Ai\EmbedTexts;
 use App\Models\JobPosting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Embeddings;
 
 /**
  * Embed settled postings whose vector is missing or out of date (ADR 0027).
@@ -15,7 +16,10 @@ class EmbedPostings
     /**
      * Share the benchmark's text builder so production vectors use the same input.
      */
-    public function __construct(private PostingEmbeddingText $embeddingText) {}
+    public function __construct(
+        private PostingEmbeddingText $embeddingText,
+        private EmbedTexts $embedTexts,
+    ) {}
 
     /**
      * Reuse saved vectors and group identical inputs so a batch pays once per distinct text.
@@ -73,19 +77,17 @@ class EmbedPostings
         }
 
         if ($pending !== []) {
-            $response = Embeddings::for(array_values($texts))
-                ->dimensions(config('ai-routing.embeddings.dimensions'))
-                ->generate(config('ai-routing.embeddings.provider'), $model);
-            $tokens = $response->usage->inputTokens;
+            $result = $this->embedTexts->handle(array_values($texts));
+            $tokens = $result['tokens'];
 
-            foreach (array_keys($pending) as $index => $hash) {
-                $vector = '['.implode(',', $response->embeddings[$index]).']';
-
-                foreach ($pending[$hash] as $posting) {
-                    $this->save($posting, $vector, $model, $hash, $texts[$hash]);
-                    $counts['embedded']++;
+            DB::transaction(function () use ($pending, $texts, $result, $model, &$counts): void {
+                foreach (array_keys($pending) as $index => $hash) {
+                    foreach ($pending[$hash] as $posting) {
+                        $this->save($posting, $result['vectors'][$index], $model, $hash, $texts[$hash]);
+                        $counts['embedded']++;
+                    }
                 }
-            }
+            });
         }
 
         Log::info('jobs.embeddings.batch', [...$counts, 'tokens' => $tokens]);
