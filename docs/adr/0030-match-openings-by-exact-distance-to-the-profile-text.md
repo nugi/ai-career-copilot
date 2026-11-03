@@ -45,4 +45,4 @@ The matches page ranks openings by meaning, with the hard filters still enforced
 2. **The resume summary in the text:** more of the person, but it brings the dilution of ADR 0026 to the query side, and a summary change would not change `profiles.version`. Rejected.
 3. **The HNSW index with a post-filter:** fast, but it returns fewer than 30 rows when the filter is selective. Rejected for now.
 
-**Revisit when** the retrieval golden set (Day 25), which has 5 profile-shaped queries, measures another query text or a cutoff, live postings reach about 20,000, or hybrid search changes the ranking.
+**Revisit when** the retrieval golden set, which has 5 profile-shaped queries, measures another query text or a cutoff, live postings reach about 20,000, or hybrid search changes the ranking.
