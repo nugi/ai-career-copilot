@@ -17,7 +17,7 @@ final class MatchOpenings
      */
     public function handle(Profile $profile, string $vector, ?string $country, int $limit = 30): Collection
     {
-        $search = new JobSearch($profile->work_arrangements->all(), $country, null, true);
+        $search = new JobSearch(array_values($profile->work_arrangements->all()), $country, null, true);
         $query = $this->searchOpenings->query($search, $profile)->whereNotNull('job_postings.embedding');
 
         $sql = <<<SQL
