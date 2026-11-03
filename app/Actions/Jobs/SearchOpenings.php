@@ -35,6 +35,18 @@ final class SearchOpenings
      */
     public function handle(JobSearch $search, Profile $profile): CursorPaginator
     {
+        return $this->query($search, $profile)
+            ->orderByDesc('opening_seen_at')->orderByDesc('job_postings.id')
+            ->cursorPaginate(20)->withQueryString();
+    }
+
+    /**
+     * Choose each opening's representative and pay before applying any filters.
+     *
+     * @return Builder<JobPosting>
+     */
+    public function query(JobSearch $search, Profile $profile): Builder
+    {
         $sources = '{'.implode(',', array_map(fn (string $source): string => '"'.$source.'"', array_keys($this->sources->all()))).'}';
 
         $ranked = JobPosting::query()->live()->whereNotNull('opening_id')
@@ -72,8 +84,7 @@ final class SearchOpenings
             $this->filterFloor($query, $profile);
         }
 
-        return $query->orderByDesc('opening_seen_at')->orderByDesc('job_postings.id')
-            ->cursorPaginate(20)->withQueryString();
+        return $query;
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Jobs\ListCountries;
 use App\Actions\Jobs\SearchOpenings;
 use App\Actions\Money\ExchangeRates;
 use App\Http\Requests\ListJobsRequest;
@@ -12,7 +13,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
-use Locale;
 use stdClass;
 
 class JobController extends Controller
@@ -23,7 +23,7 @@ class JobController extends Controller
      * The profile and the rates go on the attributes of the application request, not of the form request, which is a
      * copy: JobListingResource reads them there, so it converts each pay without a query.
      */
-    public function index(ListJobsRequest $request, SearchOpenings $searchOpenings, ExchangeRates $exchangeRates): Response
+    public function index(ListJobsRequest $request, SearchOpenings $searchOpenings, ExchangeRates $exchangeRates, ListCountries $listCountries): Response
     {
         $profile = $request->user()->loadMissing('profile')->profile;
         $search = $request->toSearch();
@@ -41,7 +41,7 @@ class JobController extends Controller
                 'floor' => $search->meetsFloor,
             ],
             'skills' => fn () => $this->skills(),
-            'countries' => fn () => $this->countries($search->country),
+            'countries' => fn () => $listCountries->handle($search->country),
             'floor' => $profile->min_salary === null ? null : [
                 'amount' => $profile->min_salary,
                 'currency' => $profile->salary_currency->value,
@@ -61,22 +61,6 @@ class JobController extends Controller
             ->withCount(['jobPostings as postings' => $this->live(...)])
             ->whereHas('jobPostings', $this->live(...))
             ->orderByDesc('postings')->orderBy('name')->limit(100)->toBase()->get();
-    }
-
-    /**
-     * List the countries that live postings name, Indonesia, and the selected country, by their English name.
-     *
-     * @return list<array{code: string, name: string}>
-     */
-    private function countries(?string $selected): array
-    {
-        $single = JobPosting::query()->live()->whereNotNull('country_code')->selectRaw('country_code as code')->toBase();
-        $multiple = JobPosting::query()->live()->selectRaw('jsonb_array_elements_text(country_codes::jsonb) as code')->toBase();
-
-        return array_values($single->union($multiple)->pluck('code')->push('ID')
-            ->when($selected !== null, fn (Collection $codes) => $codes->push($selected))->unique()
-            ->map(fn (string $code): array => ['code' => $code, 'name' => Locale::getDisplayRegion('-'.$code, 'en') ?: $code])
-            ->sortBy('name')->all());
     }
 
     /**

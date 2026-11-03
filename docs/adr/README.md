@@ -33,6 +33,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0027](0027-embed-postings-in-batches-keyed-on-the-embedded-text.md)       | Embed postings in batches keyed on the embedded text       | Accepted                    |
 | [0028](0028-chunk-resumes-by-section-and-embed-them-after-the-parse.md)    | Chunk resumes by section and embed them after the parse    | Accepted                    |
 | [0029](0029-read-the-countries-a-posting-accepts-from-its-text.md)         | Read the countries a posting accepts from its text         | Accepted                    |
+| [0030](0030-match-openings-by-exact-distance-to-the-profile-text.md)       | Match openings by exact distance to the profile text       | Accepted                    |
 
 ## Adding a record
 

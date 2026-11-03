@@ -1,0 +1,104 @@
+<?php
+
+use App\Actions\Jobs\MatchOpenings;
+use App\Enums\WorkArrangement;
+use App\Models\ExchangeRate;
+use App\Models\JobPosting;
+use App\Models\Opening;
+use App\Models\Profile;
+use App\Models\Skill;
+
+test('openings are ordered by cosine distance with numeric distances and descending ids for ties', function () {
+    $this->freezeTime();
+    $zeros = array_fill(0, 1534, 0);
+    $vector = '['.implode(',', [1, 0, ...$zeros]).']';
+    $postings = JobPosting::factory()->remote()->withEmbedding();
+    $farthest = $postings->create([
+        'embedding' => '['.implode(',', [0, 1, ...$zeros]).']', 'expires_at' => null,
+    ]);
+    $closest = $postings->create(['embedding' => $vector, 'expires_at' => null]);
+    $middle = $postings->create([
+        'embedding' => '['.implode(',', [3, 4, ...$zeros]).']', 'expires_at' => null,
+    ]);
+    $skill = Skill::factory()->create();
+    $tied = $postings->hasAttached($skill, ['is_required' => true])->create([
+        'embedding' => $vector, 'expires_at' => null,
+    ]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+
+    $results = app(MatchOpenings::class)->handle($profile, $vector, null);
+
+    expect($results->pluck('id')->all())->toBe([$tied->id, $closest->id, $middle->id, $farthest->id]);
+    foreach ($results as $result) {
+        expect($result)->toBeInstanceOf(JobPosting::class);
+        expect($result->getAttribute('distance'))->toBeNumeric();
+        expect($result->relationLoaded('skills'))->toBeTrue();
+    }
+    expect((float) $results[0]->getAttribute('distance'))->toBe(0.0);
+    expect((float) $results[2]->getAttribute('distance'))->toBeBetween(0.39999, 0.40001);
+    expect((float) $results[3]->getAttribute('distance'))->toBe(1.0);
+    expect($results[0]->skills->pluck('id')->all())->toBe([$skill->id]);
+});
+
+test('matching respects the profile arrangement salary floor expiry and given country', function () {
+    $this->freezeTime();
+    ExchangeRate::factory()->create(['currency' => 'USD', 'rate' => 1.1]);
+    $vector = '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']';
+    $postings = JobPosting::factory()->remote()->withEmbedding()->state([
+        'embedding' => $vector, 'expires_at' => null, 'salary_min' => 80_000, 'salary_max' => 100_000,
+        'annual_salary_min' => 80_000, 'annual_salary_max' => 100_000,
+    ]);
+    $included = $postings->create();
+    $postings->create(['work_arrangement' => WorkArrangement::Onsite]);
+    $postings->expired()->create();
+    $postings->create([
+        'salary_min' => 10_000, 'salary_max' => 20_000, 'annual_salary_min' => 10_000, 'annual_salary_max' => 20_000,
+    ]);
+    $postings->create(['country_code' => 'US', 'country_codes' => ['US']]);
+    $profile = Profile::factory()->remoteOnly()->make(['min_salary' => 60_000, 'country_code' => 'US']);
+
+    $results = app(MatchOpenings::class)->handle($profile, $vector, 'ID');
+
+    expect($results->pluck('id')->all())->toBe([$included->id]);
+    expect($results[0]->getAttribute('eligibility'))->toBe('open');
+});
+
+test('postings without vectors are excluded and an opening with two live postings appears once', function () {
+    $this->freezeTime();
+    $zeros = array_fill(0, 1534, 0);
+    $vector = '['.implode(',', [1, 0, ...$zeros]).']';
+    JobPosting::factory()->remote()->create(['embedding' => null, 'expires_at' => null]);
+    $opening = Opening::factory()->create();
+    $representative = JobPosting::factory()->for($opening)->remote()->withoutSalary()->withEmbedding()->create([
+        'source' => 'himalayas', 'embedding' => '['.implode(',', [0, 1, ...$zeros]).']',
+        'expires_at' => null, 'posted_at' => now()->subDays(2),
+    ]);
+    $pay = JobPosting::factory()->for($opening)->remote()->withEmbedding()->create([
+        'source' => 'jobicy', 'embedding' => $vector, 'expires_at' => null, 'posted_at' => now()->subDay(),
+    ]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+
+    $results = app(MatchOpenings::class)->handle($profile, $vector, null);
+
+    expect($results->pluck('id')->all())->toBe([$representative->id]);
+    expect((float) $results[0]->getAttribute('distance'))->toBe(1.0);
+    foreach (['salary_min', 'salary_max', 'salary_currency', 'salary_period', 'annual_salary_min', 'annual_salary_max'] as $column) {
+        expect($results[0]->getAttribute('pay_'.$column))->toEqual($pay->getRawOriginal($column));
+    }
+});
+
+test('matching returns at most thirty openings by default and respects a custom limit', function () {
+    $this->freezeTime();
+    $vector = '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']';
+    $postings = JobPosting::factory()->remote()->withEmbedding()->count(31)->create([
+        'embedding' => $vector, 'expires_at' => null,
+    ]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+    $action = app(MatchOpenings::class);
+
+    $defaultResults = $action->handle($profile, $vector, null);
+    $limitedResults = $action->handle($profile, $vector, null, 2);
+
+    expect($defaultResults)->toHaveCount(30);
+    expect($limitedResults->pluck('id')->all())->toBe($postings->reverse()->take(2)->pluck('id')->all());
+});

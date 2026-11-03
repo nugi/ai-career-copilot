@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdvisorChatController;
 use App\Http\Controllers\AdvisorController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\MatchController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ResumeController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
     Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
+    Route::get('matches', [MatchController::class, 'index'])->name('matches.index');
 
     Route::get('advisor', [AdvisorChatController::class, 'show'])->name('advisor.chat');
 

@@ -8,6 +8,7 @@ use App\Enums\WorkArrangement;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,12 +27,16 @@ use Illuminate\Support\Collection;
  * @property Currency|null $salary_currency
  * @property SalaryPeriod|null $salary_period
  * @property int $version Increases whenever preferences or skills change, so caches keyed on it go stale.
+ * @property string|null $match_embedding
+ * @property string|null $match_embedding_model
+ * @property string|null $match_embedding_hash
  * @property CarbonImmutable|null $completed_at When the user finished onboarding.
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  */
 #[Fillable(['headline', 'target_roles', 'preferred_locations', 'work_arrangements', 'min_salary', 'country_code', 'salary_currency', 'salary_period'])]
+#[Hidden(['match_embedding'])]
 class Profile extends Model
 {
     /** @use HasFactory<ProfileFactory> */
