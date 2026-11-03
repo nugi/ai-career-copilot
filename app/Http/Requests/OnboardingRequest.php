@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Actions\Profile\CountryList;
 use App\Enums\Currency;
 use App\Enums\SalaryPeriod;
 use App\Enums\SkillProficiency;
 use App\Enums\WorkArrangement;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -28,6 +30,11 @@ class OnboardingRequest extends FormRequest
             'preferred_locations.*' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
             'work_arrangements' => ['required', 'array'],
             'work_arrangements.*' => ['required', Rule::enum(WorkArrangement::class), 'distinct'],
+            'country_code' => ['nullable', 'string', function (string $attribute, mixed $value, Closure $fail): void {
+                if (! is_string($value) || ! app(CountryList::class)->isValid($value)) {
+                    $fail('Choose a country from the list.');
+                }
+            }],
             'min_salary' => ['nullable', 'integer', 'min:1', 'max:100000000000'],
             'salary_currency' => ['nullable', 'required_with:min_salary', Rule::enum(Currency::class)],
             'salary_period' => ['nullable', 'required_with:min_salary', Rule::enum(SalaryPeriod::class)->only(SalaryPeriod::profileCases())],
@@ -60,7 +67,7 @@ class OnboardingRequest extends FormRequest
     /**
      * The profile attributes to save.
      *
-     * @return array{headline: string|null, target_roles: list<string>, preferred_locations: list<string>, work_arrangements: list<string>, min_salary: int|null, salary_currency: string|null, salary_period: string|null}
+     * @return array{headline: string|null, target_roles: list<string>, preferred_locations: list<string>, work_arrangements: list<string>, country_code: string|null, min_salary: int|null, salary_currency: string|null, salary_period: string|null}
      */
     public function preferences(): array
     {
@@ -71,6 +78,7 @@ class OnboardingRequest extends FormRequest
             'target_roles' => $this->validated('target_roles'),
             'preferred_locations' => $this->validated('preferred_locations') ?? [],
             'work_arrangements' => $this->validated('work_arrangements'),
+            'country_code' => $this->validated('country_code'),
             'min_salary' => $hasSalary ? $this->integer('min_salary') : null,
             'salary_currency' => $hasSalary ? $this->validated('salary_currency') : null,
             'salary_period' => $hasSalary ? $this->validated('salary_period') : null,
@@ -94,10 +102,25 @@ class OnboardingRequest extends FormRequest
     {
         $this->merge([
             'headline' => $this->filled('headline') ? Str::squish($this->string('headline')) : null,
+            'country_code' => $this->cleanCountryCode($this->input('country_code')),
             'target_roles' => $this->cleanList($this->input('target_roles')),
             'preferred_locations' => $this->cleanList($this->input('preferred_locations')),
             'skills' => $this->cleanSkills($this->input('skills')),
         ]);
+    }
+
+    /**
+     * @return mixed The code in capital letters, null when blank, or the original input when it is not a string.
+     */
+    private function cleanCountryCode(mixed $code): mixed
+    {
+        if (! is_string($code)) {
+            return $code;
+        }
+
+        $code = trim($code);
+
+        return $code === '' ? null : Str::upper($code);
     }
 
     /**

@@ -41,7 +41,7 @@ class JobController extends Controller
                 'floor' => $search->meetsFloor,
             ],
             'skills' => fn () => $this->skills(),
-            'countries' => fn () => $this->countries(),
+            'countries' => fn () => $this->countries($search->country),
             'floor' => $profile->min_salary === null ? null : [
                 'amount' => $profile->min_salary,
                 'currency' => $profile->salary_currency->value,
@@ -64,16 +64,17 @@ class JobController extends Controller
     }
 
     /**
-     * List the countries that live postings name, and Indonesia, by their English name.
+     * List the countries that live postings name, Indonesia, and the selected country, by their English name.
      *
      * @return list<array{code: string, name: string}>
      */
-    private function countries(): array
+    private function countries(?string $selected): array
     {
         $single = JobPosting::query()->live()->whereNotNull('country_code')->selectRaw('country_code as code')->toBase();
         $multiple = JobPosting::query()->live()->selectRaw('jsonb_array_elements_text(country_codes::jsonb) as code')->toBase();
 
-        return array_values($single->union($multiple)->pluck('code')->push('ID')->unique()
+        return array_values($single->union($multiple)->pluck('code')->push('ID')
+            ->when($selected !== null, fn (Collection $codes) => $codes->push($selected))->unique()
             ->map(fn (string $code): array => ['code' => $code, 'name' => Locale::getDisplayRegion('-'.$code, 'en') ?: $code])
             ->sortBy('name')->all());
     }

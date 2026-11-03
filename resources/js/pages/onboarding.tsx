@@ -58,6 +58,7 @@ type OnboardingForm = {
     target_roles: string[];
     preferred_locations: string[];
     work_arrangements: string[];
+    country_code: string;
     min_salary: string;
     salary_currency: string;
     salary_period: string;
@@ -70,6 +71,7 @@ type OnboardingProps = {
         target_roles: string[];
         preferred_locations: string[];
         work_arrangements: string[];
+        country_code: string | null;
         min_salary: number | null;
         salary_currency: string;
         salary_period: string;
@@ -79,6 +81,7 @@ type OnboardingProps = {
     skillSuggestions: string[];
     options: {
         workArrangements: Option[];
+        countries: Option[];
         currencies: Option[];
         salaryPeriods: Option[];
         proficiencies: Option[];
@@ -86,6 +89,8 @@ type OnboardingProps = {
 };
 
 const DEFAULT_PROFICIENCY = 'intermediate';
+
+const NO_COUNTRY = 'none';
 
 const MAX_SUGGESTIONS = 8;
 
@@ -122,6 +127,7 @@ export default function Onboarding({
         target_roles: profile.target_roles,
         preferred_locations: profile.preferred_locations,
         work_arrangements: profile.work_arrangements,
+        country_code: profile.country_code ?? '',
         min_salary: profile.min_salary?.toString() ?? '',
         salary_currency: profile.salary_currency,
         salary_period: profile.salary_period,
@@ -268,6 +274,53 @@ export default function Onboarding({
                                     ))}
                                 </ToggleGroup>
                                 <FieldError>{arrangementsError}</FieldError>
+                            </Field>
+
+                            <Field
+                                data-invalid={
+                                    form.errors.country_code !== undefined
+                                }
+                            >
+                                <FieldLabel htmlFor="country_code">
+                                    Country
+                                </FieldLabel>
+                                <Select
+                                    value={form.data.country_code || NO_COUNTRY}
+                                    onValueChange={(value) =>
+                                        form.setData(
+                                            'country_code',
+                                            value === NO_COUNTRY ? '' : value,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="country_code"
+                                        aria-invalid={
+                                            form.errors.country_code !==
+                                            undefined
+                                        }
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectItem value={NO_COUNTRY}>
+                                                Not set
+                                            </SelectItem>
+                                            {options.countries.map((option) => (
+                                                <SelectItem
+                                                    key={option.value}
+                                                    value={option.value}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <FieldError>
+                                    {form.errors.country_code}
+                                </FieldError>
                             </Field>
 
                             <Field data-invalid={locationsError !== undefined}>

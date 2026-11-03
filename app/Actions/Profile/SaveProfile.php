@@ -19,7 +19,7 @@ class SaveProfile
      * a first save has no profile row to lock), so two saves never share a version.
      * The profile form lists every skill of the user, so each save turns every listed skill into a profile skill.
      *
-     * @param  array{headline: string|null, target_roles: list<string>, preferred_locations: list<string>, work_arrangements: list<string>, min_salary: int|null, salary_currency: string|null, salary_period: string|null}  $preferences
+     * @param  array{headline: string|null, target_roles: list<string>, preferred_locations: list<string>, work_arrangements: list<string>, country_code: string|null, min_salary: int|null, salary_currency: string|null, salary_period: string|null}  $preferences
      * @param  list<array{name: string, proficiency: string}>  $skills
      */
     public function handle(User $user, array $preferences, array $skills): Profile

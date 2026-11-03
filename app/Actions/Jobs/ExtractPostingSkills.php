@@ -2,13 +2,16 @@
 
 namespace App\Actions\Jobs;
 
+use App\Actions\Skills\QuoteGrounding;
 use App\Actions\Skills\SkillGrounding;
 use App\Ai\Agents\JobSkillExtractor;
+use App\Enums\JobRegion;
 use App\Models\JobPosting;
 use App\Models\Skill;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator as ValidatorContract;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 
@@ -24,7 +27,7 @@ use Laravel\Ai\Responses\StructuredAgentResponse;
  */
 class ExtractPostingSkills
 {
-    public function __construct(private SkillGrounding $skillGrounding) {}
+    public function __construct(private SkillGrounding $skillGrounding, private QuoteGrounding $quoteGrounding) {}
 
     /**
      * Extract the skills of the posting and save them, or copy them from a posting with the same text, or record the failure.
@@ -131,6 +134,11 @@ class ExtractPostingSkills
             'nice_to_have_skills.*' => ['required', 'string', 'max:100'],
             'seniority' => ['present', 'nullable', 'in:junior,mid,senior,lead'],
             'years_required' => ['present', 'nullable', 'integer', 'min:0', 'max:40'],
+            'eligible_countries' => ['present', 'array'],
+            'eligible_countries.*' => ['required', 'string', 'regex:/^[A-Z]{2}$/'],
+            'eligible_regions' => ['present', 'array'],
+            'eligible_regions.*' => ['required', 'string', Rule::enum(JobRegion::class)],
+            'evidence' => ['present', 'nullable', 'string', 'max:300'],
         ]);
     }
 
@@ -246,12 +254,18 @@ class ExtractPostingSkills
             'ungrounded' => $ungrounded,
         ];
 
+        $eligibilityIsGrounded = $output['evidence'] !== null
+            && $this->quoteGrounding->appearsIn($text, $output['evidence']);
+
         $saved = $this->save(
             $posting,
             $extractedSkills,
             $output['seniority'] === null ? null : (string) $output['seniority'],
             $output['years_required'] === null ? null : (int) $output['years_required'],
             $pivot,
+            $eligibilityIsGrounded ? array_values(array_unique($output['eligible_countries'])) : [],
+            $eligibilityIsGrounded ? array_values(array_unique($output['eligible_regions'])) : [],
+            $eligibilityIsGrounded ? $output['evidence'] : null,
         );
 
         if ($unknown !== []) {
@@ -285,6 +299,9 @@ class ExtractPostingSkills
             $source->extracted_seniority?->value,
             $source->years_required,
             $pivot,
+            $source->eligible_countries,
+            $source->eligible_regions,
+            $source->eligibility_evidence,
         );
     }
 
@@ -293,10 +310,12 @@ class ExtractPostingSkills
      *
      * @param  array<string, mixed>  $extractedSkills
      * @param  array<int, array{is_required: bool}>  $pivot
+     * @param  list<string>  $eligibleCountries
+     * @param  list<string>  $eligibleRegions
      */
-    private function save(JobPosting $posting, array $extractedSkills, ?string $seniority, ?int $yearsRequired, array $pivot): JobPosting
+    private function save(JobPosting $posting, array $extractedSkills, ?string $seniority, ?int $yearsRequired, array $pivot, array $eligibleCountries, array $eligibleRegions, ?string $eligibilityEvidence): JobPosting
     {
-        return DB::transaction(function () use ($posting, $extractedSkills, $seniority, $yearsRequired, $pivot): JobPosting {
+        return DB::transaction(function () use ($posting, $extractedSkills, $seniority, $yearsRequired, $pivot, $eligibleCountries, $eligibleRegions, $eligibilityEvidence): JobPosting {
             $locked = JobPosting::query()->whereKey($posting->getKey())->lockForUpdate()->first();
 
             if ($locked === null) {
@@ -309,6 +328,9 @@ class ExtractPostingSkills
                 'extracted_skills' => $extractedSkills,
                 'extracted_seniority' => $seniority,
                 'years_required' => $yearsRequired,
+                'eligible_countries' => $eligibleCountries,
+                'eligible_regions' => $eligibleRegions,
+                'eligibility_evidence' => $eligibilityEvidence,
                 'skills_text_hash' => $locked->text_hash,
                 'skills_prompt_version' => JobSkillExtractor::PROMPT_VERSION,
                 'skills_extracted_at' => now(),

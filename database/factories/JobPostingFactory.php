@@ -70,6 +70,9 @@ class JobPostingFactory extends Factory
             'country_code' => 'ID',
             'country_codes' => ['ID'],
             'region' => null,
+            'eligible_countries' => [],
+            'eligible_regions' => [],
+            'eligibility_evidence' => null,
             'normalized_company' => fn (array $attributes): string => DuplicateKey::company($attributes['company_name']),
             'normalized_title' => fn (array $attributes): string => DuplicateKey::title($attributes['title']),
             'location_key' => function (array $attributes): string {

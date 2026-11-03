@@ -31,7 +31,7 @@ class JobSkillExtractor implements Agent, HasPromptVersion, HasProviderOptions, 
 {
     use Promptable;
 
-    public const PROMPT_VERSION = 'v2';
+    public const PROMPT_VERSION = 'v3';
 
     /**
      * The most characters of the description that the model reads. Longer descriptions are cut, so one posting
@@ -108,6 +108,9 @@ class JobSkillExtractor implements Agent, HasPromptVersion, HasProviderOptions, 
             'nice_to_have_skills' => $schema->array()->items($schema->string())->required(),
             'seniority' => $schema->string()->enum(['junior', 'mid', 'senior', 'lead'])->nullable()->required(),
             'years_required' => $schema->integer()->nullable()->required(),
+            'eligible_countries' => $schema->array()->items($schema->string())->required(),
+            'eligible_regions' => $schema->array()->items($schema->string())->required(),
+            'evidence' => $schema->string()->nullable()->required(),
         ];
     }
 

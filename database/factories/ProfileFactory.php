@@ -32,6 +32,7 @@ class ProfileFactory extends Factory
             'preferred_locations' => fake()->randomElements(['Jakarta', 'Bandung', 'Yogyakarta', 'Surabaya'], 2),
             'work_arrangements' => [WorkArrangement::Remote, WorkArrangement::Hybrid],
             'min_salary' => fake()->numberBetween(15, 30) * 1_000_000,
+            'country_code' => null,
             'salary_currency' => Currency::Idr,
             'salary_period' => SalaryPeriod::Monthly,
             'completed_at' => now(),

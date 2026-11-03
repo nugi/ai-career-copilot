@@ -22,6 +22,7 @@ use Illuminate\Support\Collection;
  * @property list<string> $preferred_locations
  * @property Collection<int, WorkArrangement> $work_arrangements
  * @property int|null $min_salary Whole currency units, not cents.
+ * @property string|null $country_code ISO 3166-1 alpha-2, uppercase.
  * @property Currency|null $salary_currency
  * @property SalaryPeriod|null $salary_period
  * @property int $version Increases whenever preferences or skills change, so caches keyed on it go stale.
@@ -30,7 +31,7 @@ use Illuminate\Support\Collection;
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  */
-#[Fillable(['headline', 'target_roles', 'preferred_locations', 'work_arrangements', 'min_salary', 'salary_currency', 'salary_period'])]
+#[Fillable(['headline', 'target_roles', 'preferred_locations', 'work_arrangements', 'min_salary', 'country_code', 'salary_currency', 'salary_period'])]
 class Profile extends Model
 {
     /** @use HasFactory<ProfileFactory> */

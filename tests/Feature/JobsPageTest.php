@@ -40,6 +40,42 @@ test('the jobs page lists open openings with converted pay', function () {
         );
 });
 
+test('the jobs page uses the profile country unless the query string has a country', function () {
+    $user = User::factory()->onboarded()->create();
+    $user->profile()->update(['country_code' => 'ID']);
+    $indonesian = JobPosting::factory()->create(['expires_at' => null]);
+    JobPosting::factory()->create([
+        'expires_at' => null, 'country_code' => 'US', 'country_codes' => ['US'], 'location' => 'San Francisco',
+    ]);
+
+    $this->actingAs($user)->get(route('jobs.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('jobs.data', 1)
+            ->where('jobs.data.0.opening_id', $indonesian->opening_id)
+            ->where('filters.country', 'ID')
+        );
+
+    $this->actingAs($user)->get(route('jobs.index', ['country' => '']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('jobs.data', 2)
+            ->where('filters.country', null)
+        );
+});
+
+test('the jobs page marks a source silent remote posting as unclear for Indonesia', function () {
+    $this->freezeTime();
+    $user = User::factory()->onboarded()->create();
+    $posting = JobPosting::factory()->remote()->create(['location' => null, 'expires_at' => null]);
+
+    $this->actingAs($user)->get(route('jobs.index', ['country' => 'ID']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('jobs.data', 1)
+            ->where('jobs.data.0.opening_id', $posting->opening_id)
+            ->where('jobs.data.0.eligibility', 'unclear')
+        );
+});
+
 test('an invalid filter is rejected', function () {
     $user = User::factory()->onboarded()->create();
 

@@ -47,3 +47,7 @@ The list filters by work arrangement, the country the user lives in, a skill, an
 2. **Offset pages:** page numbers and a total, but repeated or skipped rows when ingestion adds postings, and a cost that grows with the page number. Rejected for infinite scroll.
 
 **Revisit when** live postings reach about 20,000, or the list query takes more than 100 ms at the 95th percentile. Then store the two IDs on `openings` (alternative 1).
+
+## Amendment (2026-11-03)
+
+[ADR 0029](0029-read-the-countries-a-posting-accepts-from-its-text.md) changes drawback 5. A remote posting with no country and no location text is no longer treated as worldwide, whatever its region says. The country filter keeps it as "unclear", or reads its countries from the posting text when the extractor found a restriction. The rest of this record is unchanged.
