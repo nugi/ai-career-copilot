@@ -174,6 +174,14 @@ test('skill suggestions include only verified skills', function () {
     $response->assertInertia(fn (Assert $page) => $page->where('skillSuggestions', ['Laravel']));
 });
 
+test('the country is saved in capital letters', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->put(route('onboarding.update'), onboardingInput(['country_code' => 'id']));
+
+    expect($user->profile()->first()->country_code)->toBe('ID');
+});
+
 test('invalid preferences are rejected with a message and nothing is saved', function (array $overrides, string $field, string $message) {
     $user = User::factory()->create();
 
@@ -195,6 +203,8 @@ test('invalid preferences are rejected with a message and nothing is saved', fun
     'hourly salary floor' => [['salary_period' => 'hourly'], 'salary_period', 'The selected salary period is invalid.'],
     'unsupported currency' => [['salary_currency' => 'EUR'], 'salary_currency', 'The selected salary currency is invalid.'],
     'salary that is not a number' => [['min_salary' => '20 juta'], 'min_salary', 'The min salary field must be an integer.'],
+    'a code that is not a country' => [['country_code' => 'ZZ'], 'country_code', 'Choose a country from the list.'],
+    'a three-letter country code' => [['country_code' => 'IDN'], 'country_code', 'Choose a country from the list.'],
     'no skills' => [['skills' => []], 'skills', 'Add at least one skill.'],
     'the same skill twice' => [['skills' => [['name' => 'Laravel', 'proficiency' => 'expert'], ['name' => 'laravel', 'proficiency' => 'beginner']]], 'skills.1.name', 'This skill is already in your list.'],
     'unknown proficiency' => [['skills' => [['name' => 'Laravel', 'proficiency' => 'guru']]], 'skills.0.proficiency', 'The selected skills.0.proficiency is invalid.'],

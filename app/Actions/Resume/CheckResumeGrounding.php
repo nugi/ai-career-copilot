@@ -2,8 +2,12 @@
 
 namespace App\Actions\Resume;
 
+use App\Actions\Skills\QuoteGrounding;
+
 class CheckResumeGrounding
 {
+    public function __construct(private QuoteGrounding $quoteGrounding) {}
+
     /**
      * List the paths of the bullets that the resume text does not contain word for word.
      *
@@ -15,32 +19,16 @@ class CheckResumeGrounding
      */
     public function bullets(string $content, array $experiences): array
     {
-        $normalizedContent = $this->normalizeText($content);
         $ungrounded = [];
 
         foreach ($experiences as $experienceIndex => $experience) {
             foreach ($experience['bullets'] as $bulletIndex => $bullet) {
-                $normalizedBullet = $this->normalizeText($bullet);
-
-                if ($normalizedBullet !== '' && ! str_contains($normalizedContent, $normalizedBullet)) {
+                if ($this->quoteGrounding->normalizeText($bullet) !== '' && ! $this->quoteGrounding->appearsIn($content, $bullet)) {
                     $ungrounded[] = "experiences.{$experienceIndex}.bullets.{$bulletIndex}";
                 }
             }
         }
 
         return $ungrounded;
-    }
-
-    /**
-     * Normalize a text for the bullet check: plain quotes and dashes, no bullet characters at the start of a line,
-     * one space for each run of whitespace, lowercase, and trimmed.
-     */
-    private function normalizeText(string $text): string
-    {
-        $text = strtr($text, ['‘' => "'", '’' => "'", '“' => '"', '”' => '"', '–' => '-', '—' => '-']);
-        $text = preg_replace('/^[ \t]*[•·▪●◦-][ \t]*/mu', '', $text) ?? $text;
-        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
-
-        return trim(mb_strtolower($text));
     }
 }

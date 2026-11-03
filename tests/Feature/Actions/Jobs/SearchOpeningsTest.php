@@ -6,6 +6,7 @@ use App\Enums\Currency;
 use App\Enums\JobRegion;
 use App\Enums\SalaryPeriod;
 use App\Enums\WorkArrangement;
+use App\Http\Resources\JobListingResource;
 use App\Models\ExchangeRate;
 use App\Models\JobPosting;
 use App\Models\Opening;
@@ -62,6 +63,79 @@ test('the country filter keeps postings open to that country', function () {
     $results = app(SearchOpenings::class)->handle(new JobSearch([], 'ID', null, false), $profile);
 
     expect(collect($results->items())->pluck('id')->all())->toEqualCanonicalizing([$indonesia->id, $worldwide->id, $apac->id]);
+});
+
+test('a source silent remote posting without a reading is kept as unclear for Indonesia', function () {
+    $this->freezeTime();
+    $posting = JobPosting::factory()->remote()->create(['location' => null, 'expires_at' => null]);
+    $profile = Profile::factory()->withoutSalary()->make();
+
+    $results = app(SearchOpenings::class)->handle(new JobSearch([], 'ID', null, false), $profile);
+
+    expect($results->items())->toHaveCount(1);
+    expect($results->items()[0]->id)->toBe($posting->id);
+    expect($results->items()[0]->getAttribute('eligibility'))->toBe('unclear');
+});
+
+test('a source silent remote posting is open only when its reading includes Indonesia', function () {
+    $this->freezeTime();
+    $postings = JobPosting::factory()->remote()->count(4)->sequence(
+        ['eligible_countries' => ['US']],
+        ['eligible_regions' => ['worldwide']],
+        ['eligible_regions' => ['apac']],
+        ['eligible_regions' => ['europe']],
+    )->create(['location' => '   ', 'expires_at' => null]);
+    $profile = Profile::factory()->withoutSalary()->make();
+
+    $results = app(SearchOpenings::class)->handle(new JobSearch([], 'ID', null, false), $profile);
+
+    expect(collect($results->items())->pluck('id')->all())->toEqualCanonicalizing($postings->slice(1, 2)->pluck('id')->all());
+    expect(collect($results->items())->pluck('eligibility')->all())->toBe(['open', 'open']);
+});
+
+test('source countries win over a reading that includes Indonesia', function () {
+    $this->freezeTime();
+    JobPosting::factory()->remote()->create([
+        'country_codes' => ['CA'], 'eligible_countries' => ['ID'], 'location' => null, 'expires_at' => null,
+    ]);
+    $profile = Profile::factory()->withoutSalary()->make();
+
+    $results = app(SearchOpenings::class)->handle(new JobSearch([], 'ID', null, false), $profile);
+
+    expect($results->items())->toBeEmpty();
+});
+
+test('a remote posting with a stated location and no region stays open under the legacy rule', function () {
+    $this->freezeTime();
+    $posting = JobPosting::factory()->remote()->create([
+        'location' => 'Remote', 'region' => null, 'expires_at' => null,
+    ]);
+    $profile = Profile::factory()->withoutSalary()->make();
+
+    $results = app(SearchOpenings::class)->handle(new JobSearch([], 'ID', null, false), $profile);
+
+    expect($results->items())->toHaveCount(1);
+    expect($results->items()[0]->id)->toBe($posting->id);
+    expect($results->items()[0]->getAttribute('eligibility'))->toBe('open');
+});
+
+test('every row has null eligibility without a country filter', function () {
+    $this->freezeTime();
+    JobPosting::factory()->remote()->count(2)->sequence(
+        ['location' => null],
+        ['location' => null, 'eligible_countries' => ['US']],
+    )->create(['expires_at' => null]);
+    JobPosting::factory()->create(['expires_at' => null]);
+    $profile = Profile::factory()->withoutSalary()->make();
+    request()->attributes->set('jobs.profile', $profile);
+
+    $results = app(SearchOpenings::class)->handle(new JobSearch([], null, null, false), $profile);
+    $rows = collect($results->items())->map(fn (JobPosting $posting): array => (new JobListingResource($posting))->resolve(request()));
+
+    expect($rows->pluck('eligibility')->all())->toBe([null, null, null]);
+    foreach ($rows as $row) {
+        expect($row)->toHaveKey('eligibility');
+    }
 });
 
 test('the skill filter keeps postings that ask for the skill', function () {

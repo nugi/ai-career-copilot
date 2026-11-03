@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Profile\CountryList;
 use App\Actions\Profile\SaveProfile;
 use App\Enums\Currency;
 use App\Enums\SalaryPeriod;
@@ -30,6 +31,7 @@ class OnboardingController extends Controller
                 'target_roles' => $profile->target_roles ?? [],
                 'preferred_locations' => $profile->preferred_locations ?? [],
                 'work_arrangements' => $profile?->work_arrangements->map(fn (WorkArrangement $arrangement) => $arrangement->value)->all() ?? [],
+                'country_code' => $profile?->country_code,
                 'min_salary' => $profile?->min_salary,
                 'salary_currency' => $profile?->salary_currency->value ?? Currency::Idr->value,
                 'salary_period' => $profile?->salary_period->value ?? SalaryPeriod::Monthly->value,
@@ -45,6 +47,10 @@ class OnboardingController extends Controller
                 'currencies' => $this->options(Currency::cases()),
                 'salaryPeriods' => $this->options(SalaryPeriod::profileCases()),
                 'proficiencies' => $this->options(SkillProficiency::cases()),
+                'countries' => collect(app(CountryList::class)->names())
+                    ->map(fn (string $name, string $code): array => ['value' => $code, 'label' => $name])
+                    ->values()
+                    ->all(),
             ],
         ]);
     }

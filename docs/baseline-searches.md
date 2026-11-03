@@ -82,3 +82,21 @@ Remote pay in USD is far above an Indonesian floor, so the floor filter removes 
 4. For a user in Indonesia, the limit is the supply of jobs. Searches 1 and 4 return only seeded postings, so no live source has these jobs today ([ADR 0015](adr/0015-take-jobs-only-from-sources-whose-terms-allow-it.md), note of 2026-10-29).
 
 Seeded postings (source `manual`) have generated text. They stay out of every evaluation set, such as the embedding benchmark and the retrieval golden set, so matching is never tuned against generated text.
+
+## Country states
+
+Searches 1 to 3 run again on 2026-11-03 for a user in Indonesia, after the country filter got three states ([ADR 0029](adr/0029-read-the-countries-a-posting-accepts-from-its-text.md)). The floor is the same, Rp20 juta per month. The live set is now 190 postings, not 335: the Jobicy postings of the first run expired between 2026-10-27 and 2026-11-01. Skills and country readings were extracted again under prompt v3: 191 requests, USD 0.041.
+
+| Search                               | Without the country filter | Open | Unclear | Not open   |
+| ------------------------------------ | -------------------------- | ---- | ------- | ---------- |
+| 1. Remote, Laravel, meets my minimum | 4                          | 1    | 0       | 3          |
+| 2. Remote, Laravel (no floor)        | 4                          | 1    | 0       | 3          |
+| 3. Remote, Python, meets my minimum  | 20 or more (a full page)   | 2    | 0       | 18 or more |
+
+1. Searches 1 and 2 return the same rows as before. The one open row is the seeded Harris Group posting, and the three removed rows are Canada, the United States and Poland.
+2. Search 3 returned 8 rows before and 2 now. All six missing rows (Canonical, Supabase, Nebius) have an `expires_at` in the past. The country states did not remove them.
+3. No row is unclear in these searches. The live set has four postings with no source country and no location text, all from Himalayas:
+    - One is open from its reading: "Applicants from all geographies and backgrounds are welcome." (Mixrank, in search 3).
+    - Two have no reading, so they are unclear. They do not ask for Laravel or Python.
+    - One is read as Latin America only, from the sentence "Join our close-knit LATAM remote team". That sentence describes the team and does not restrict who can apply, so a user in Indonesia would wrongly lose this posting. It asks for neither Laravel nor Python, so it is not in these three searches. ADR 0029, drawback 1.
+4. None of the four states a country restriction, so the "not open" path from a text reading is covered by tests only.

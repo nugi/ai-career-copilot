@@ -35,9 +35,23 @@ class ListJobsRequest extends FormRequest
 
         return new JobSearch(
             array_values(array_map(fn (string $value): WorkArrangement => WorkArrangement::from($value), $data['arrangement'] ?? [])),
-            isset($data['country']) ? strtoupper($data['country']) : null,
+            $this->searchCountry($data),
             isset($data['skill']) ? Skill::query()->where('is_verified', true)->findOrFail($this->integer('skill')) : null,
             (bool) ($data['floor'] ?? false),
         );
+    }
+
+    /**
+     * The country to filter by. A country in the query string wins, and an empty one means any country. Without the key, the profile country applies.
+     *
+     * @param  array<string, mixed>  $data  The validated filters.
+     */
+    private function searchCountry(array $data): ?string
+    {
+        if (! $this->has('country')) {
+            return $this->user()?->profile?->country_code;
+        }
+
+        return isset($data['country']) ? strtoupper($data['country']) : null;
     }
 }

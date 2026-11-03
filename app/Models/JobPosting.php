@@ -61,6 +61,9 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property array{required: list<string>, nice_to_have: list<string>, unknown: list<array{name: string, normalized: string, required: bool}>, ungrounded: list<string>}|null $extracted_skills The saved extraction: required, nice_to_have and ungrounded are lists of names; unknown keeps each name, normalized name and required group.
  * @property SeniorityLevel|null $extracted_seniority The seniority that the posting text asks for; the source seniority stays in seniority.
  * @property int|null $years_required The minimum years of experience that the posting text asks for.
+ * @property list<string> $eligible_countries
+ * @property list<string> $eligible_regions
+ * @property string|null $eligibility_evidence
  * @property string|null $skills_text_hash The text_hash that the extraction or the failure is for.
  * @property string|null $skills_prompt_version The prompt version of the extraction or the failure.
  * @property CarbonImmutable|null $skills_extracted_at
@@ -84,6 +87,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'normalized_company', 'normalized_title', 'location_key', 'duplicate_key', 'opening_id',
     'duplicate_reason', 'duplicate_similarity',
     'extracted_skills', 'extracted_seniority', 'years_required',
+    'eligible_countries', 'eligible_regions', 'eligibility_evidence',
     'skills_text_hash', 'skills_prompt_version', 'skills_extracted_at', 'skills_failed_at',
     'embedding', 'embedding_model', 'embedded_at', 'embedding_text_hash', 'embedded_text',
 ])]
@@ -116,6 +120,8 @@ class JobPosting extends Model
             'extracted_skills' => 'array',
             'extracted_seniority' => SeniorityLevel::class,
             'years_required' => 'integer',
+            'eligible_countries' => 'array',
+            'eligible_regions' => 'array',
             'skills_extracted_at' => 'datetime',
             'skills_failed_at' => 'datetime',
             'embedded_at' => 'datetime',

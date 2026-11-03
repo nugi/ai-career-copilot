@@ -13,6 +13,7 @@ const PUBLISHED_PROMPT_HASHES = [
     'resume-parser/v1.md' => 'b808ce53957921398795497ebfcb3836bc512bb60795b4d25d50ee173d5faae7',
     'job-skill-extractor/v1.md' => '6ad48d3ee721f1c246e7648a18a39e4195f29bf0ba8ab416f5cdabea66640603',
     'job-skill-extractor/v2.md' => 'a3ea6c1559b456905b23b493a6adfbcff69d4094e304923d1e85cadeb1cce1eb',
+    'job-skill-extractor/v3.md' => 'c83e4abd652b3b17670254fd1e0c139f6bdb0649de83c8a3623fac6186c85eaf',
 ];
 
 test('published prompts have not changed', function () {

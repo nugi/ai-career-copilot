@@ -32,6 +32,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0026](0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md) | Embed jobs by title and skills with text-embedding-3-small | Accepted                    |
 | [0027](0027-embed-postings-in-batches-keyed-on-the-embedded-text.md)       | Embed postings in batches keyed on the embedded text       | Accepted                    |
 | [0028](0028-chunk-resumes-by-section-and-embed-them-after-the-parse.md)    | Chunk resumes by section and embed them after the parse    | Accepted                    |
+| [0029](0029-read-the-countries-a-posting-accepts-from-its-text.md)         | Read the countries a posting accepts from its text         | Accepted                    |
 
 ## Adding a record
 

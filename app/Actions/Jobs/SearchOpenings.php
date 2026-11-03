@@ -4,8 +4,6 @@ namespace App\Actions\Jobs;
 
 use App\Actions\Money\ExchangeRates;
 use App\Enums\Currency;
-use App\Enums\JobRegion;
-use App\Enums\WorkArrangement;
 use App\JobSources\JobSourceRegistry;
 use App\Models\JobPosting;
 use App\Models\Profile;
@@ -25,6 +23,7 @@ final class SearchOpenings
     public function __construct(
         private JobSourceRegistry $sources,
         private ExchangeRates $exchangeRates,
+        private CountryEligibility $countryEligibility,
     ) {}
 
     /**
@@ -78,24 +77,13 @@ final class SearchOpenings
     }
 
     /**
-     * Keep the postings open to a person who lives in the country: the posting names the country, or it is remote and
-     * open worldwide or to a region that includes the country.
+     * Keep postings that are open or unclear for a person who lives in the country.
      *
      * @param  Builder<JobPosting>  $query
      */
     private function filterCountry(Builder $query, string $code): void
     {
-        $regions = array_filter(JobRegion::cases(), fn (JobRegion $region): bool => $region->includes($code));
-
-        $query->where(fn (Builder $countries) => $countries
-            ->where('job_postings.country_code', $code)
-            ->orWhereJsonContains('job_postings.country_codes', $code)
-            ->orWhere(fn (Builder $remote) => $remote
-                ->where('job_postings.work_arrangement', WorkArrangement::Remote)
-                ->whereJsonLength('job_postings.country_codes', 0)
-                ->where(fn (Builder $region) => $region
-                    ->whereNull('job_postings.region')
-                    ->orWhereIn('job_postings.region', array_map(fn (JobRegion $region): string => $region->value, $regions)))));
+        $this->countryEligibility->apply($query, $code);
     }
 
     /**

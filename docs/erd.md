@@ -30,6 +30,7 @@ erDiagram
         jsonb target_roles
         jsonb preferred_locations
         jsonb work_arrangements
+        char2 country_code
         bigint min_salary
         char3 salary_currency
         string salary_period
@@ -121,6 +122,9 @@ erDiagram
         smallint years_required
         char64 skills_text_hash
         string skills_prompt_version
+        jsonb eligible_countries
+        jsonb eligible_regions
+        text eligibility_evidence
         vector1536 embedding
         string embedding_model
         char64 embedding_text_hash
@@ -281,7 +285,7 @@ CHECK constraint: `merged_into_id <> id`.
 
 A vector is current while `embedding_model` and `embedding_text_hash` match the model in use and the hash of the embedded text, built from the title and the skill rows at the time of the check. The hash is separate from `text_hash`, because a newly verified skill changes the embedded text and not the posting text ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)). `embedded_text` keeps the text the vector was made from. Only a posting whose skill extraction is settled for its current text is embedded, and an hourly scan finds the vectors that are out of date ([ADR 0027](adr/0027-embed-postings-in-batches-keyed-on-the-embedded-text.md)). A CHECK keeps the vector, its model, time, hash and text all null or all set.
 
-CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide.
+CHECK constraints: `salary_min <= salary_max` and `annual_salary_min <= annual_salary_max`, with amounts non-negative; currency is three uppercase letters, and a currency or period requires an amount ([ADR 0017](adr/0017-store-job-pay-as-posted.md)). Allowed values constrain `work_arrangement`, nullable `employment_type`, `seniority`, `salary_period` and `region`. `country_codes` is a `jsonb` array of countries a candidate may live in; an empty list means unknown or worldwide. `eligible_countries` and `eligible_regions` hold the same kind of reading from the posting text, and `eligibility_evidence` the quote that grounds it; they are separate columns because an import overwrites `country_codes` and `region` ([ADR 0029](adr/0029-read-the-countries-a-posting-accepts-from-its-text.md)). `profiles.country_code` is the user's country, an uppercase two-letter code or null.
 
 ### job_posting_skill
 

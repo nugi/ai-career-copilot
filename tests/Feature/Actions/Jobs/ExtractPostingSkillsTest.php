@@ -7,6 +7,7 @@ use App\JobSources\Normalization\NormalizedPosting;
 use App\Models\JobPosting;
 use App\Models\Skill;
 use App\Models\SkillAlias;
+use Laravel\Ai\Prompts\AgentPrompt;
 
 /**
  * A live posting whose text hash is the hash of its own title and description, as an import stores it.
@@ -37,6 +38,9 @@ function extractedJobSkills(array $overrides = []): array
         'nice_to_have_skills' => [],
         'seniority' => null,
         'years_required' => null,
+        'eligible_countries' => [],
+        'eligible_regions' => [],
+        'evidence' => null,
         ...$overrides,
     ];
 }
@@ -124,6 +128,86 @@ test('postings with the same text share one call', function () {
         ->and($requirements($saved))->toBe(['Laravel' => true, 'Redis' => false])
         ->and($second->skills_extracted_at)->not->toBeNull()
         ->and($second->skills_failed_at)->toBeNull();
+    JobSkillExtractor::assertPromptedTimes(1);
+});
+
+test('a grounded eligibility quote is saved with deduplicated lists', function () {
+    $quote = 'Open to candidates in Canada or Europe only.';
+    JobSkillExtractor::fake([extractedJobSkills([
+        'eligible_countries' => ['CA', 'CA'],
+        'eligible_regions' => ['europe', 'europe'],
+        'evidence' => $quote,
+    ])])->preventStrayPrompts();
+    $posting = extractablePosting('Backend Engineer', $quote);
+
+    app(ExtractPostingSkills::class)->handle($posting);
+
+    $posting->refresh();
+    expect($posting->eligible_countries)->toBe(['CA'])
+        ->and($posting->eligible_regions)->toBe(['europe'])
+        ->and($posting->eligibility_evidence)->toBe($quote);
+    JobSkillExtractor::assertPromptedTimes(1);
+});
+
+test('an ungrounded or missing eligibility quote clears the reading', function (?string $evidence) {
+    JobSkillExtractor::fake([extractedJobSkills([
+        'eligible_countries' => ['CA'],
+        'eligible_regions' => ['europe'],
+        'evidence' => $evidence,
+    ])])->preventStrayPrompts();
+    $posting = extractablePosting('Backend Engineer', 'You will work with Laravel.', [
+        'eligible_countries' => ['US'],
+        'eligible_regions' => ['north_america'],
+        'eligibility_evidence' => 'Old reading',
+    ]);
+
+    app(ExtractPostingSkills::class)->handle($posting);
+
+    $posting->refresh();
+    expect($posting->eligible_countries)->toBe([])
+        ->and($posting->eligible_regions)->toBe([])
+        ->and($posting->eligibility_evidence)->toBeNull();
+    JobSkillExtractor::assertPromptedTimes(1);
+})->with(['invented quote' => 'Open to candidates in Canada or Europe only.', 'missing quote' => null]);
+
+test('a lowercase eligibility country fails validation and is retried', function () {
+    $quote = 'Must be based in Canada.';
+    JobSkillExtractor::fake([
+        extractedJobSkills(['eligible_countries' => ['ca'], 'evidence' => $quote]),
+        extractedJobSkills(['eligible_countries' => ['CA'], 'evidence' => $quote]),
+    ])->preventStrayPrompts();
+    $posting = extractablePosting('Backend Engineer', $quote);
+
+    app(ExtractPostingSkills::class)->handle($posting);
+
+    $posting->refresh();
+    expect($posting->eligible_countries)->toBe(['CA'])
+        ->and($posting->eligibility_evidence)->toBe($quote)
+        ->and($posting->skills_failed_at)->toBeNull();
+    JobSkillExtractor::assertPromptedTimes(2);
+    JobSkillExtractor::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->contains('eligible_countries.0'));
+});
+
+test('siblings with the same text receive the eligibility reading without another call', function () {
+    $quote = 'Open to candidates in Canada or Europe only.';
+    JobSkillExtractor::fake([extractedJobSkills([
+        'eligible_countries' => ['CA'],
+        'eligible_regions' => ['europe'],
+        'evidence' => $quote,
+    ])])->preventStrayPrompts();
+    $source = extractablePosting('Backend Engineer', $quote, ['source' => 'board-a']);
+    $sibling = extractablePosting('Backend Engineer', $quote, ['source' => 'board-b']);
+    $extract = app(ExtractPostingSkills::class);
+
+    $extract->handle($source);
+    $lateSibling = extractablePosting('Backend Engineer', $quote, ['source' => 'board-c']);
+    $extract->handle($lateSibling);
+
+    foreach ([$sibling->refresh(), $lateSibling->refresh()] as $posting) {
+        expect($posting->eligible_countries)->toBe(['CA'])
+            ->and($posting->eligible_regions)->toBe(['europe'])
+            ->and($posting->eligibility_evidence)->toBe($quote);
+    }
     JobSkillExtractor::assertPromptedTimes(1);
 });
 

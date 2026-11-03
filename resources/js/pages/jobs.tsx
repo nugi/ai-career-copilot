@@ -38,6 +38,7 @@ type Job = {
     company: string;
     location: string;
     work_arrangement: { value: Arrangement; label: string };
+    eligibility: 'open' | 'unclear' | null;
     posted_at: string;
     apply_url: string;
     pay: Pay | null;
@@ -156,9 +157,14 @@ function JobItem({ job }: { job: Job }) {
                             {job.title}
                         </a>
                     </CardTitle>
-                    <Badge variant="secondary">
-                        {job.work_arrangement.label}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary">
+                            {job.work_arrangement.label}
+                        </Badge>
+                        {job.eligibility === 'unclear' && (
+                            <Badge variant="outline">Country not stated</Badge>
+                        )}
+                    </div>
                 </div>
                 <p className="text-sm">{job.company}</p>
                 {job.location && (
@@ -213,7 +219,7 @@ export default function Jobs({
             ...(next.arrangement.length > 0
                 ? { arrangement: next.arrangement }
                 : {}),
-            ...(next.country ? { country: next.country } : {}),
+            country: next.country ?? '',
             ...(next.skill !== null ? { skill: next.skill } : {}),
             ...(next.floor ? { floor: 1 } : {}),
         };

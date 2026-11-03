@@ -17,6 +17,7 @@ use Locale;
  *
  * @mixin JobPosting
  *
+ * @property 'open'|'unclear'|null $eligibility Country eligibility, absent when no country filter was applied.
  * @property int|null $pay_salary_min
  * @property int|null $pay_salary_max
  * @property string|null $pay_salary_currency
@@ -46,6 +47,7 @@ class JobListingResource extends JsonResource
             'company' => $this->company_name,
             'location' => $this->displayLocation(),
             'work_arrangement' => ['value' => $this->work_arrangement->value, 'label' => $this->work_arrangement->label()],
+            'eligibility' => $this->eligibility ?? null,
             'posted_at' => $this->posted_at->toIso8601String(),
             'apply_url' => $this->apply_url,
             'pay' => $pay,
