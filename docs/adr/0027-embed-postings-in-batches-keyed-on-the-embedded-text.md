@@ -5,7 +5,7 @@
 
 ## Context
 
-[ADR 0026](0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md) chose the text of a posting's vector: the title and the verified skill names. Every live posting needs that vector before semantic matching (Day 21), and a posting that has not changed must not pay for a second call.
+[ADR 0026](0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md) chose the text of a posting's vector: the title and the verified skill names. Every live posting needs that vector before semantic matching, and a posting that has not changed must not pay for a second call.
 
 The text depends on two things that change at different times:
 
@@ -54,6 +54,6 @@ The text depends on two things that change at different times:
 - **For:** it brings the product, the domain and the team back into the vector, for a few output tokens and no extra call.
 - **Against:** it is model-written text, so it can drift between prompt versions. A new prompt version would re-embed every posting. It also adds back some of the dilution that made the short text win.
 
-The Day 25 golden set measures it: title + skills against title + summary + skills, on the same pooled, blind labels. It joins the text only on a measured gain in Recall@10 above the noise of the set.
+The retrieval golden set measures it: title + skills against title + summary + skills, on the same pooled, blind labels. It joins the text only on a measured gain in Recall@10 above the noise of the set.
 
 **Revisit when** the scan takes more than a few seconds, matching needs a vector sooner than the hourly run, or the golden set favours another text.
