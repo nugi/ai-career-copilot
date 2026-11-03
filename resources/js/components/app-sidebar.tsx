@@ -6,6 +6,7 @@ import {
     FolderGit2,
     LayoutGrid,
     MessageSquare,
+    Sparkles,
     SlidersHorizontal,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -24,6 +25,7 @@ import {
 import { dashboard } from '@/routes';
 import { chat as advisorChat } from '@/routes/advisor';
 import { index as jobsIndex } from '@/routes/jobs';
+import { index as matchesIndex } from '@/routes/matches';
 import { edit as editOnboarding } from '@/routes/onboarding';
 import { index as resumesIndex } from '@/routes/resumes';
 import type { NavItem } from '@/types';
@@ -38,6 +40,11 @@ const mainNavItems: NavItem[] = [
         title: 'Jobs',
         href: jobsIndex(),
         icon: Briefcase,
+    },
+    {
+        title: 'Matches',
+        href: matchesIndex(),
+        icon: Sparkles,
     },
     {
         title: 'Job preferences',

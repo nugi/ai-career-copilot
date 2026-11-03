@@ -100,3 +100,37 @@ Searches 1 to 3 run again on 2026-11-03 for a user in Indonesia, after the count
     - Two have no reading, so they are unclear. They do not ask for Laravel or Python.
     - One is read as Latin America only, from the sentence "Join our close-knit LATAM remote team". That sentence describes the team and does not restrict who can apply, so a user in Indonesia would wrongly lose this posting. It asks for neither Laravel nor Python, so it is not in these three searches. ADR 0029, drawback 1.
 4. None of the four states a country restriction, so the "not open" path from a text reading is covered by tests only.
+
+## Semantic ranking
+
+The same five searches ranked by meaning ([ADR 0030](adr/0030-match-openings-by-exact-distance-to-the-profile-text.md)), on 2026-11-03 against 190 live postings. The query is the profile of the local test user, not a search phrase:
+
+```
+Backend Engineer, Full Stack Developer
+Skills: Docker, Laravel, PHP, PostgreSQL, React, Redis
+```
+
+The floor is that profile's Rp28 juta per month, not the Rp20 juta of the filter baseline above. The arrangement and the country come from each search. The skill filter does not exist in matching, so the skill of each search is only counted in the results. Every list is the top 10. Match is the cosine similarity of the profile text and the posting text, times 100.
+
+| Search                                  | Postings that pass the filters | Top 10 with the searched skill | Match range of the top 10 |
+| --------------------------------------- | ------------------------------ | ------------------------------ | ------------------------- |
+| 1. Remote, Indonesia (Laravel)          | 14                             | 1 of 10                        | 56–82%                    |
+| 2. Remote, any country (Laravel)        | 158                            | 1 of 10                        | 73–82%                    |
+| 3. Remote, Indonesia (Python)           | 14                             | 1 of 10                        | 56–82%                    |
+| 4. On-site and hybrid, Indonesia        | not counted                    | not applicable                 | 59–82%                    |
+| 5. Any arrangement, any country (React) | not counted                    | 5 of 10                        | 74–82%                    |
+
+Across the five lists, the match runs from 56% to 82% with a median of 73%. Searches 1 and 3 have the same filters, so they give the same list.
+
+### Where semantic ranking won
+
+1. **Search 4 puts the fitting jobs first.** The top five on-site and hybrid roles in Indonesia are Laravel, PHP and full-stack jobs (82, 81, 74, 68 and 67%). The keyword baseline shows a date-ordered page that starts with a platform role and puts the Laravel role third. All ten rows here are seeded postings, so this shows that the ranking works, not that it works on real text.
+2. **Search 5 orders the React jobs.** Five of the top 10 ask for React, and the real ones lead with full-stack titles (79%, 79%, 77%, 75%). The keyword baseline gave a full page in date order, where "the best fit can be on page 3" (observation 3 above).
+3. **Search 1 finds the one Laravel job first.** The Harris Group posting is rank 1 at 82%, as in the keyword list.
+
+### Where it lost
+
+1. **A posting that names the skill can rank low.** In search 2, "LAMP Stack Senior Developer + Laravel" (Nylon) is rank 35 of 158 at 67%, "Software Engineer(s) - Poland" (BeMyGuest) is rank 42, and Knak is rank 12. "Principal Full Stack Engineer" is at 79%, above all three. The vector holds the title and the skill names, and a "Full Stack" title sits near the target role "Full Stack Developer". The keyword filter returned all three. This is the case for hybrid search.
+2. **It cannot answer "Python jobs" from a Laravel profile.** In search 3, the two Python postings rank 4 and 11 of 14, behind the Laravel, Go, DevOps and platform roles. The query is the profile, not the words of a search. This is by design, and the architect question of ADR 0030 is the same effect.
+3. **It always fills the list.** Only 14 remote postings pass the Indonesia filters, so the top 10 of searches 1 and 3 ends with DevOps and front-end roles at 56–58%. The keyword search returned 1 row. There is no minimum match yet.
+4. **Indonesia is mostly seeded.** Of the ten rows of search 1, seven are seeded postings, so the Indonesian lists say little about real text. The golden set excludes them ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)).
