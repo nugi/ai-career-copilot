@@ -36,6 +36,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0030](0030-match-openings-by-exact-distance-to-the-profile-text.md)          | Match openings by exact distance to the profile text          | Accepted, partly superseded |
 | [0031](0031-fuse-keyword-and-semantic-ranks-with-reciprocal-rank-fusion.md)   | Fuse keyword and semantic ranks with Reciprocal Rank Fusion   | Accepted, partly superseded |
 | [0032](0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) | Rank the whole filtered set and label text-based restrictions | Accepted                    |
+| [0033](0033-rerank-the-hybrid-top-30-with-cohere-behind-a-flag.md)            | Rerank the hybrid top 30 with Cohere behind a flag            | Accepted                    |
 
 ## Adding a record
 

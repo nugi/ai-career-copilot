@@ -21,6 +21,7 @@ type MatchesProps = {
     };
     countries: { code: string; name: string }[];
     failed: boolean;
+    reranked: boolean;
 };
 
 export default function Matches({
@@ -28,6 +29,7 @@ export default function Matches({
     filters,
     countries,
     failed,
+    reranked,
 }: MatchesProps) {
     const changeCountry = (value: string) => {
         router.get(
@@ -110,6 +112,12 @@ export default function Matches({
                     </Card>
                 ) : (
                     <div className="flex flex-col gap-4">
+                        {reranked && (
+                            <p className="text-sm text-muted-foreground">
+                                Ordered by an AI reranker that reads your roles
+                                and skills against each posting.
+                            </p>
+                        )}
                         {matches.data.map((job) => (
                             <JobItem key={job.opening_id} job={job} />
                         ))}

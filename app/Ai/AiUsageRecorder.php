@@ -97,7 +97,8 @@ class AiUsageRecorder
     }
 
     /**
-     * Record one provider attempt, including non-agent calls such as embeddings.
+     * Record one provider attempt, including non-agent calls such as embeddings and reranking. A reranking call is
+     * billed by search units, which add to the cost but have no column of their own.
      */
     public function recordCall(
         AiFeature $feature,
@@ -112,9 +113,10 @@ class AiUsageRecorder
         int $outputTokens,
         AiUsageStatus $status,
         bool $tokensEstimated = false,
+        ?float $searchUnits = null,
     ): void {
         try {
-            $cost = $this->router->cost($model, $inputTokens, $outputTokens);
+            $cost = $this->router->cost($model, $inputTokens, $outputTokens, $searchUnits);
 
             if ($cost === null) {
                 Log::warning('ai.usage.unpriced_model', ['model' => $model]);

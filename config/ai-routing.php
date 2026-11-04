@@ -46,6 +46,11 @@ return [
     | under 100K tokens, checked on 2026-10-21 (embedding models 2026-10-29). Cached-input prices are not
     | used: a call is billed here as if every input token were uncached.
     |
+    | A reranking model is billed per search unit instead: one query with up
+    | to 100 documents. Its price is per 1,000 search units, taken from
+    | third-party listings on 2026-11-04 because cohere.com was not reachable;
+    | confirm it on Cohere's pricing page.
+    |
     | The options are the provider-specific generation options that the model
     | accepts. Some models reject an option that another model of the same
     | provider takes, such as reasoning effort "none" on gpt-6.1-sol.
@@ -83,6 +88,12 @@ return [
             'output_per_million' => 10.00,
             'options' => ['thinking' => ['type' => 'between_tools']],
         ],
+        'rerank-v4.0-pro' => [
+            'input_per_million' => 0,
+            'output_per_million' => 0,
+            'per_thousand_search_units' => 2.50,
+            'options' => [],
+        ],
     ],
 
     /*
@@ -99,6 +110,31 @@ return [
         'model' => 'text-embedding-3-small',
         'dimensions' => 1536,
         'batch_size' => 100,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reranking
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the matches page sends the first `candidates` openings of
+    | the hybrid ranking to the reranking model and shows them in its order
+    | (ADR 0033). One search unit covers up to 100 documents, so all 30 are
+    | reordered for the price of one. A result is cached for `cache_hours`
+    | under the hash of the query and the documents, so a repeat visit with the
+    | same profile and the same openings pays nothing. A failure, a timeout or
+    | a spent global budget keeps the hybrid order.
+    |
+    */
+
+    'reranking' => [
+        'enabled' => (bool) env('AI_RERANKING_ENABLED', false),
+        'provider' => 'cohere',
+        'model' => 'rerank-v4.0-pro',
+        'candidates' => 30,
+        'timeout_seconds' => 3,
+        'cache_hours' => 24,
+        'description_characters' => 2000,
     ],
 
     /*

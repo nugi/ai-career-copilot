@@ -55,6 +55,13 @@ test('the cost of a model is the price of its tokens in USD', function () {
         ->and($router->cost('claude-haiku-5-5', 10, 5))->toBe('0.000004');
 });
 
+test('a reranking model costs its price per 1,000 search units', function () {
+    $router = app(ModelRouter::class);
+
+    expect($router->cost('rerank-v4.0-pro', 500, 0, 1.0))->toBe('0.002500')
+        ->and($router->cost('gpt-6-luna', 0, 0, 3.0))->toBe('0.000000');
+});
+
 test('a model without a price has no cost', function () {
     expect(app(ModelRouter::class)->cost('unknown-model', 1_000, 1_000))->toBeNull();
 });

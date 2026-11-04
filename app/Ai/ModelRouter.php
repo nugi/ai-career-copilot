@@ -70,21 +70,24 @@ class ModelRouter
     }
 
     /**
-     * Get the cost of the tokens in USD, with 6 decimals, or null when the model has no price in the config.
+     * Get the cost of the tokens and search units in USD, with 6 decimals, or null when the model has no price in the config.
      *
-     * The price is linear in the token counts, so the same model always costs the same for the same tokens.
+     * The price is linear in the token counts and the search units, so the same model always costs the same for the
+     * same usage. A model without a search-unit price pays nothing for search units.
      */
-    public function cost(string $model, int $inputTokens, int $outputTokens): ?string
+    public function cost(string $model, int $inputTokens, int $outputTokens, ?float $searchUnits = null): ?string
     {
         $price = $this->pricesAndOptions()[$model] ?? [];
         $inputPrice = $price['input_per_million'] ?? null;
         $outputPrice = $price['output_per_million'] ?? null;
+        $searchPrice = $price['per_thousand_search_units'] ?? 0;
 
-        if (! is_numeric($inputPrice) || ! is_numeric($outputPrice)) {
+        if (! is_numeric($inputPrice) || ! is_numeric($outputPrice) || ! is_numeric($searchPrice)) {
             return null;
         }
 
-        $cost = ($inputTokens * (float) $inputPrice + $outputTokens * (float) $outputPrice) / 1_000_000;
+        $cost = ($inputTokens * (float) $inputPrice + $outputTokens * (float) $outputPrice) / 1_000_000
+            + ($searchUnits ?? 0) * (float) $searchPrice / 1_000;
 
         return number_format($cost, 6, '.', '');
     }
