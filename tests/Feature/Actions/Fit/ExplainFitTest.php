@@ -180,7 +180,8 @@ test('an unfit job gets an honest weak fit with its requirements listed as missi
 });
 
 test('an answer is cached and a changed posting asks again', function () {
-    FitExplainer::fake([fitOutput(), fitOutput(['verdict' => 'partial_fit'])]);
+    $reason = ['claim' => 'You built Laravel APIs.', 'excerpt_ids' => [1]];
+    FitExplainer::fake([fitOutput(['reasons' => [$reason]]), fitOutput(['verdict' => 'partial_fit', 'reasons' => [$reason]])]);
     [$user] = userWithChunks(['Built Laravel APIs.' => fitVector([1])]);
     $posting = fitPosting();
     $explain = app(ExplainFit::class);
