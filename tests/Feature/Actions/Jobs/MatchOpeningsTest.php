@@ -102,3 +102,79 @@ test('matching returns at most thirty openings by default and respects a custom 
     expect($defaultResults)->toHaveCount(30);
     expect($limitedResults->pluck('id')->all())->toBe($postings->reverse()->take(2)->pluck('id')->all());
 });
+
+test('keyword matching orders postings by distinct matched terms', function () {
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Nothing else', 'expires_at' => null]);
+    $one = $postings->create(['title' => 'Laravel developer']);
+    $two = $postings->create(['title' => 'Laravel PHP developer']);
+    $postings->create(['title' => 'Designer']);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+
+    $results = app(MatchOpenings::class)->handle($profile, null, null, 30, ['Laravel', 'PHP', 'Laravel']);
+
+    expect($results->pluck('id')->all())->toBe([$two->id, $one->id]);
+    expect($results->pluck('distance')->all())->toBe([null, null]);
+});
+
+test('hybrid fusion promotes postings found by both legs and retains low semantic ranks', function () {
+    $zeros = array_fill(0, 1534, 0);
+    $vector = '['.implode(',', [1, 0, ...$zeros]).']';
+    $postings = JobPosting::factory()->remote()->withEmbedding()->state(['description' => 'Other', 'expires_at' => null]);
+    $both = $postings->create(['title' => 'Laravel developer', 'embedding' => $vector]);
+    $postings->count(50)->create(['title' => 'Designer', 'embedding' => '['.implode(',', [3, 4, ...$zeros]).']']);
+    $keyword = $postings->create(['title' => 'Laravel developer', 'embedding' => '['.implode(',', [0, 1, ...$zeros]).']']);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+    $action = app(MatchOpenings::class);
+
+    $semantic = $action->handle($profile, $vector, null, 60);
+    $hybrid = $action->handle($profile, $vector, null, 30, ['Laravel']);
+
+    expect($semantic->pluck('id')->last())->toBe($keyword->id);
+    expect($hybrid->first()->id)->toBe($both->id);
+    expect($hybrid->pluck('id')->all())->toContain($keyword->id);
+});
+
+test('keyword matching applies expiry arrangement and country filters', function () {
+    $postings = JobPosting::factory()->remote()->state(['title' => 'Laravel developer', 'expires_at' => null]);
+    $included = $postings->create();
+    $postings->expired()->create();
+    $postings->create(['work_arrangement' => WorkArrangement::Onsite]);
+    $postings->create(['country_code' => 'US', 'country_codes' => ['US']]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+
+    $results = app(MatchOpenings::class)->handle($profile, null, 'ID', 30, ['Laravel']);
+
+    expect($results->pluck('id')->all())->toBe([$included->id]);
+});
+
+test('postings without vectors are eligible for keyword and hybrid but not semantic matching', function () {
+    $vector = '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']';
+    $posting = JobPosting::factory()->remote()->create(['title' => 'Laravel developer', 'embedding' => null, 'expires_at' => null]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+    $action = app(MatchOpenings::class);
+
+    expect($action->handle($profile, null, null, 30, ['Laravel'])->pluck('id')->all())->toBe([$posting->id]);
+    expect($action->handle($profile, $vector, null, 30, ['Laravel'])->pluck('id')->all())->toBe([$posting->id]);
+    expect($action->handle($profile, $vector, null)->pluck('id')->all())->toBe([]);
+});
+
+test('punctuation and empty terms are safe and an empty list preserves semantic matching', function () {
+    $vector = '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']';
+    $posting = JobPosting::factory()->remote()->withEmbedding()->create(['title' => 'C developer', 'embedding' => $vector, 'expires_at' => null]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+    $action = app(MatchOpenings::class);
+
+    expect($action->handle($profile, null, null, 30, ['C++', '   ', '!!!'])->pluck('id')->all())->toBe([$posting->id]);
+    expect($action->handle($profile, $vector, null, 30, [])->pluck('id')->all())->toBe($action->handle($profile, $vector, null)->pluck('id')->all());
+});
+
+test('generated search vectors include embedded skills and tolerate missing embedded text', function () {
+    $skills = JobPosting::factory()->withEmbedding()->create(['title' => 'Engineer', 'description' => 'Work', 'embedded_text' => "Title\nSkills: Laravel, PHP"]);
+    $title = JobPosting::factory()->create(['title' => 'Laravel engineer', 'description' => 'Work', 'embedding' => null]);
+    $description = JobPosting::factory()->create(['title' => 'Engineer', 'description' => 'Laravel work', 'embedding' => null]);
+
+    $ids = JobPosting::query()->whereKey([$skills->id, $title->id, $description->id])
+        ->whereRaw("search_vector @@ phraseto_tsquery('simple', 'laravel')")->orderBy('id')->pluck('id')->all();
+
+    expect($ids)->toBe([$skills->id, $title->id, $description->id]);
+});

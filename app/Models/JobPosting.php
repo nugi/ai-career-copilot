@@ -11,6 +11,7 @@ use App\Enums\WorkArrangement;
 use Carbon\CarbonImmutable;
 use Database\Factories\JobPostingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -69,6 +70,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property CarbonImmutable|null $skills_extracted_at
  * @property CarbonImmutable|null $skills_failed_at When the extraction failed validation twice.
  * @property string|null $embedding pgvector text form, not cast.
+ * @property string $search_vector PostgreSQL full-text search vector.
  * @property string|null $embedded_text The exact text of the vector
  * @property string|null $embedding_model
  * @property CarbonImmutable|null $embedded_at
@@ -91,6 +93,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'skills_text_hash', 'skills_prompt_version', 'skills_extracted_at', 'skills_failed_at',
     'embedding', 'embedding_model', 'embedded_at', 'embedding_text_hash', 'embedded_text',
 ])]
+#[Hidden(['embedding', 'search_vector'])]
 class JobPosting extends Model
 {
     /** @use HasFactory<JobPostingFactory> */

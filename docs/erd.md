@@ -133,6 +133,7 @@ erDiagram
         char64 embedding_text_hash
         text embedded_text
         timestamp embedded_at
+        tsvector search_vector
     }
     job_posting_skill {
         bigint job_posting_id PK,FK
@@ -196,7 +197,8 @@ erDiagram
 - **Foreign keys** get an index only when a query needs one. PostgreSQL does not index them automatically, and each table lists the queries that justify its indexes.
 - **Deletes:** deleting a user removes their profile, resumes, chunks, skills and matches. `ai_usages.user_id` becomes `null` so cost history survives. Deleting a resume keeps its matches and sets `resume_id` to `null`.
 - **Vectors** are `vector(1536)` columns on `job_postings` and `resume_chunks` ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)), each with the model that made it and the time. A CHECK keeps the three columns all null or all set, so a vector never has an unknown model. Only `job_postings` has an HNSW index on cosine distance ([ADR 0001](adr/0001-use-postgresql-with-pgvector.md)). Chunks are searched inside one resume, so they need none.
-- **Not yet in the schema:** a full-text index for keyword search and a trigram index for skill autocomplete.
+- **Full-text search:** `job_postings.search_vector` is a stored generated column: the title (weight A), the skill names from the `Skills:` line of `embedded_text` (B) and the description (C), in the `simple` configuration. It has no index yet, because the hybrid query reads a materialized set of filtered rows ([ADR 0031](adr/0031-fuse-keyword-and-semantic-ranks-with-reciprocal-rank-fusion.md)).
+- **Not yet in the schema:** a trigram index for skill autocomplete.
 
 ## Tables and their hot queries
 

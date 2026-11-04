@@ -134,3 +134,35 @@ Across the five lists, the match runs from 56% to 82% with a median of 73%. Sear
 2. **It cannot answer "Python jobs" from a Laravel profile.** In search 3, the two Python postings rank 4 and 11 of 14, behind the Laravel, Go, DevOps and platform roles. The query is the profile, not the words of a search. This is by design, and the architect question of ADR 0030 is the same effect.
 3. **It always fills the list.** Only 14 remote postings pass the Indonesia filters, so the top 10 of searches 1 and 3 ends with DevOps and front-end roles at 56–58%. The keyword search returned 1 row. There is no minimum match yet.
 4. **Indonesia is mostly seeded.** Of the ten rows of search 1, seven are seeded postings, so the Indonesian lists say little about real text. The golden set excludes them ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)).
+
+## Hybrid ranking
+
+The same searches in three modes ([ADR 0031](adr/0031-fuse-keyword-and-semantic-ranks-with-reciprocal-rank-fusion.md)), on 2026-11-04 against 190 live postings. The profile and the floor are those of the semantic run above. The keyword terms are the profile's roles and skills: Backend Engineer, Full Stack Developer, Docker, Laravel, PHP, PostgreSQL, React and Redis. Keyword mode ranks by the number of distinct terms a posting contains, semantic mode by distance, and hybrid mode fuses both ranks.
+
+Two marks count each top 10. They are mechanical, not a judgement of relevance:
+
+- **Role:** the title names a backend, full-stack, PHP, Laravel or developer role.
+- **Skill:** the posting's verified skills include one of the six profile skills.
+
+| Search                           | Keyword (role / skill) | Semantic (role / skill) | Hybrid (role / skill) |
+| -------------------------------- | ---------------------- | ----------------------- | --------------------- |
+| 1. Remote, Indonesia (Laravel)   | 4 / 9                  | 4 / 8                   | 4 / 9                 |
+| 2. Remote, any country (Laravel) | 10 / 10                | 10 / 10                 | 10 / 10               |
+| 4. On-site and hybrid, Indonesia | 7 / 10                 | 7 / 9                   | 7 / 10                |
+| 5. Any arrangement (React)       | 10 / 10                | 10 / 10                 | 10 / 10               |
+
+Search 3 has the same filters as search 1, so it gives the same lists. Hybrid is equal to or better than the better single mode on both marks in all four searches. In searches 2 and 5 every list scores 10 of 10, so the marks cannot tell the modes apart there, and the comparison is by order alone.
+
+### Where hybrid won
+
+1. **A posting that names the skill rises.** In search 2, "LAMP Stack Senior Developer + Laravel" (Nylon) is rank 35 of 158 in semantic mode and rank 6 in keyword mode. In hybrid mode it is rank 13. Knak moves from rank 12 to rank 11.
+2. **Search 4 keeps the semantic top and fills the end with skill matches.** The first five rows are the semantic ones (82, 81, 74, 68 and 67%). Places 8 to 10 go to postings that name profile skills, not to a platform role that names none. All ten rows are seeded postings, so this shows how the fusion works, not how it works on real text.
+3. **Search 1 moves the backend roles up.** The Mixrank posting goes from rank 4 to rank 3 and the Ajaib backend posting from rank 9 to rank 6.
+
+### Where it did not help
+
+1. **A posting that names the skill can still miss the list.** "Software Engineer(s) - Poland" (BeMyGuest) asks for Laravel and PHP. It is rank 42 in semantic mode and rank 51 in keyword mode, one past the 50-posting leg, so hybrid mode gives it no keyword credit and keeps it outside the first 50 rows. Of the 50 postings ahead of it in the keyword leg, 27 name more of the eight terms and 23 name the same two and rank higher on `ts_rank`. All terms weigh the same.
+2. **The marks are too coarse for searches 2 and 5.** The retrieval golden set, with graded labels, has to settle those two.
+3. **A Laravel profile cannot ask for Python.** Search 3 is search 1 in every mode.
+4. **Keyword mode returns a short list.** In search 1 only 9 of the 14 postings contain a term. Hybrid mode fills the rest from the semantic leg, and the list is full, with 56–58% matches at the end as before.
+5. **Indonesia is mostly seeded postings.** The lists of searches 1 and 4 say little about real text.

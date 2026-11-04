@@ -36,12 +36,13 @@ test('the matches page lists eligible openings nearest first with match percenta
     $postings->create(['country_code' => 'US', 'country_codes' => ['US']]);
     $postings->create(['work_arrangement' => WorkArrangement::Onsite]);
 
-    $this->actingAs($user)->get(route('matches.index'))
+    $this->actingAs($user)->get(route('matches.index', ['mode' => 'semantic']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('matches', false)
             ->where('failed', false)
             ->where('filters.country', 'ID')
+            ->where('filters.mode', 'semantic')
             ->has('countries')
             ->has('matches.data', 3)
             ->where('matches.data.0.opening_id', $closest->opening_id)
@@ -52,6 +53,66 @@ test('the matches page lists eligible openings nearest first with match percenta
             ->where('matches.data.2.opening_id', $farthest->opening_id)
             ->where('matches.data.2.match_percent', 0)
         );
+});
+
+test('an invalid search mode fails validation', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user)->get(route('matches.index', ['mode' => 'invalid']))
+        ->assertSessionHasErrors('mode');
+});
+
+test('keyword mode returns matching postings without generating embeddings', function () {
+    $calls = 0;
+    Embeddings::fake(function (EmbeddingsPrompt $prompt) use (&$calls): array {
+        $calls++;
+
+        return [array_fill(0, 1536, 0.1)];
+    });
+    $user = User::factory()->onboarded()->create();
+    $user->profile()->update([
+        'target_roles' => ['Laravel'], 'country_code' => null, 'work_arrangements' => [WorkArrangement::Remote],
+        'min_salary' => null, 'salary_currency' => null, 'salary_period' => null,
+    ]);
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Other', 'embedding' => null, 'expires_at' => null]);
+    $matching = $postings->create(['title' => 'Laravel developer']);
+    $postings->create(['title' => 'Designer']);
+
+    $this->actingAs($user)->get(route('matches.index', ['mode' => 'keyword']))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('matches', false)
+            ->where('failed', false)
+            ->has('matches.data', 1)
+            ->where('matches.data.0.opening_id', $matching->opening_id)
+        );
+    expect($calls)->toBe(0);
+});
+
+test('hybrid mode falls back to keyword results when embedding fails', function () {
+    config(['ai-routing.global_daily_budget_usd' => null]);
+    $exception = new RuntimeException('Embedding provider unavailable.');
+    Embeddings::fake(function (EmbeddingsPrompt $prompt) use ($exception): array {
+        throw $exception;
+    });
+    Exceptions::fake();
+    $user = User::factory()->onboarded()->create();
+    $user->profile()->update([
+        'target_roles' => ['Laravel'], 'country_code' => null, 'work_arrangements' => [WorkArrangement::Remote],
+        'min_salary' => null, 'salary_currency' => null, 'salary_period' => null,
+    ]);
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Other', 'embedding' => null, 'expires_at' => null]);
+    $matching = $postings->create(['title' => 'Laravel developer']);
+    $postings->create(['title' => 'Designer']);
+
+    $this->actingAs($user)->get(route('matches.index', ['mode' => 'hybrid']))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('matches', false)
+            ->where('filters.mode', 'hybrid')
+            ->where('failed', false)
+            ->has('matches.data', 1)
+            ->where('matches.data.0.opening_id', $matching->opening_id)
+        );
+    Exceptions::assertReported(fn (RuntimeException $reported): bool => $reported === $exception);
 });
 
 test('a second visit with the same profile makes no provider call even when the budget is spent', function () {
@@ -65,7 +126,7 @@ test('a second visit with the same profile makes no provider call even when the 
     $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user)->get(route('matches.index'))->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('matches', false)->where('failed', false));
+        ->assertInertia(fn (Assert $page) => $page->component('matches', false)->where('failed', false)->where('filters.mode', 'hybrid'));
     expect($calls)->toBe(1);
 
     config(['ai-routing.global_daily_budget_usd' => 0]);
@@ -74,7 +135,7 @@ test('a second visit with the same profile makes no provider call even when the 
     expect($calls)->toBe(1);
 });
 
-test('a provider exception returns 200 with failed true and no matches', function () {
+test('a provider exception in semantic mode returns 200 with failed true and no matches', function () {
     config(['ai-routing.global_daily_budget_usd' => null]);
     $exception = new RuntimeException('Embedding provider unavailable.');
     Embeddings::fake(function (EmbeddingsPrompt $prompt) use ($exception): array {
@@ -83,7 +144,7 @@ test('a provider exception returns 200 with failed true and no matches', functio
     Exceptions::fake();
     $user = User::factory()->onboarded()->create();
 
-    $this->actingAs($user)->get(route('matches.index'))->assertOk()
+    $this->actingAs($user)->get(route('matches.index', ['mode' => 'semantic']))->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('matches', false)
             ->where('failed', true)

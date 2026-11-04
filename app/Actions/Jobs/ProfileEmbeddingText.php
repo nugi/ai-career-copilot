@@ -16,8 +16,31 @@ final class ProfileEmbeddingText
      */
     public function text(Profile $profile): string
     {
+        $skills = $this->skillNames($profile);
+
+        return implode(', ', $profile->target_roles).($skills === [] ? '' : "\nSkills: ".implode(', ', $skills));
+    }
+
+    /**
+     * Return non-empty target roles followed by the same skills used in the vector text.
+     *
+     * @return list<string>
+     */
+    public function keywordTerms(Profile $profile): array
+    {
+        $roles = array_values(array_filter(array_map(trim(...), $profile->target_roles), fn (string $role): bool => $role !== ''));
+
+        return [...$roles, ...$this->skillNames($profile)];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function skillNames(Profile $profile): array
+    {
         $profile->loadMissing('user.skills');
-        $skills = $profile->user->skills
+
+        return array_values($profile->user->skills
             ->sortBy(fn (Skill $skill): array => [
                 match ($skill->pivot->proficiency) {
                     SkillProficiency::Expert => 0,
@@ -28,9 +51,7 @@ final class ProfileEmbeddingText
                 },
                 $skill->name,
             ])
-            ->take(10)->pluck('name')->sort()->values()->all();
-
-        return implode(', ', $profile->target_roles).($skills === [] ? '' : "\nSkills: ".implode(', ', $skills));
+            ->take(10)->map(fn (Skill $skill): string => $skill->name)->sort()->values()->all());
     }
 
     /**
