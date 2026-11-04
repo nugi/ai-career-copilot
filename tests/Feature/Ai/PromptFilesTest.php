@@ -14,6 +14,8 @@ const PUBLISHED_PROMPT_HASHES = [
     'job-skill-extractor/v1.md' => '6ad48d3ee721f1c246e7648a18a39e4195f29bf0ba8ab416f5cdabea66640603',
     'job-skill-extractor/v2.md' => 'a3ea6c1559b456905b23b493a6adfbcff69d4094e304923d1e85cadeb1cce1eb',
     'job-skill-extractor/v3.md' => 'c83e4abd652b3b17670254fd1e0c139f6bdb0649de83c8a3623fac6186c85eaf',
+    'fit-explainer/v1.md' => '8e7678111b663b05840f3e44ae6ae435e163e286b7ad08158b315487e6378026',
+    'faithfulness-judge/v1.md' => '92f1643ac696ed0ab61e15c96a4fc42dc2f2d14e24c85408e4525c2b42a98e0a',
 ];
 
 test('published prompts have not changed', function () {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -20,6 +21,7 @@ type ConvertedPay = Amounts & {
 };
 export type Job = {
     opening_id: number;
+    posting_id: number;
     title: string;
     company: string;
     location: string;
@@ -112,7 +114,7 @@ function ConvertedAmount({
     );
 }
 
-export function JobItem({ job }: { job: Job }) {
+export function JobItem({ job, footer }: { job: Job; footer?: ReactNode }) {
     return (
         <Card className="gap-4 py-5">
             <CardHeader className="gap-2">
@@ -183,6 +185,7 @@ export function JobItem({ job }: { job: Job }) {
                     )}
                 </CardContent>
             )}
+            {footer && <CardContent>{footer}</CardContent>}
         </Card>
     );
 }

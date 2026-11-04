@@ -19,6 +19,7 @@ return [
         'resume_parsing' => 'cheap',
         'skill_extraction' => 'cheap',
         'chat' => 'cheap',
+        'fit_explanation' => 'cheap',
     ],
 
     /*
@@ -135,6 +136,26 @@ return [
         'timeout_seconds' => 3,
         'cache_hours' => 24,
         'description_characters' => 2000,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fit Explanations
+    |--------------------------------------------------------------------------
+    |
+    | "Why is this job a fit?" reads the `excerpts` resume chunks nearest to
+    | the posting and cites them (ADR 0034). An answer is cached for
+    | `cache_hours` under the hash of the posting text, the excerpts and the
+    | prompt version. `faithfulness_sample_rate` is the share of new answers
+    | that a second model call checks claim by claim; 0 turns the check off.
+    |
+    */
+
+    'fit_explanations' => [
+        'excerpts' => 5,
+        'description_characters' => 6000,
+        'cache_hours' => 24,
+        'faithfulness_sample_rate' => (float) env('AI_FAITHFULNESS_SAMPLE_RATE', 0.1),
     ],
 
     /*

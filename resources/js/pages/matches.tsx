@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import Heading from '@/components/heading';
 import { type Job, JobItem } from '@/components/job-item';
 import { Card } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { index as matchesIndex } from '@/routes/matches';
+import { fit, index as matchesIndex } from '@/routes/matches';
 
 type MatchesProps = {
     matches: { data: Job[] };
@@ -119,7 +119,18 @@ export default function Matches({
                             </p>
                         )}
                         {matches.data.map((job) => (
-                            <JobItem key={job.opening_id} job={job} />
+                            <JobItem
+                                key={job.opening_id}
+                                job={job}
+                                footer={
+                                    <Link
+                                        href={fit.url(job.posting_id)}
+                                        className="text-sm font-medium underline-offset-4 hover:underline"
+                                    >
+                                        Why is this a fit?
+                                    </Link>
+                                }
+                            />
                         ))}
                     </div>
                 )}

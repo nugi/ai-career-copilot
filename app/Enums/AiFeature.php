@@ -12,6 +12,7 @@ enum AiFeature: string
     case ResumeParsing = 'resume_parsing';
     case SkillExtraction = 'skill_extraction';
     case Reranking = 'reranking';
+    case FitExplanation = 'fit_explanation';
 
     /**
      * Determine whether the feature runs as background work that no user waits for, which the batch budget limits.
@@ -27,6 +28,7 @@ enum AiFeature: string
             self::Chat => false,
             self::ResumeParsing => false,
             self::Reranking => false,
+            self::FitExplanation => false,
         };
     }
 }
