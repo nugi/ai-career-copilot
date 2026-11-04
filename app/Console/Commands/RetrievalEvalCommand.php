@@ -341,7 +341,7 @@ class RetrievalEvalCommand extends Command
             'labels' => ['graded' => $judged, 'live_share' => round($coverage, 3)],
             'summary' => $summary,
             'cases' => $perCase,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR)."\n");
 
         $this->info('Saved '.str_replace(base_path().'/', '', $file));
     }
