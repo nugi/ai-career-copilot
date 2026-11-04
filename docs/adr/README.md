@@ -37,6 +37,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0031](0031-fuse-keyword-and-semantic-ranks-with-reciprocal-rank-fusion.md)   | Fuse keyword and semantic ranks with Reciprocal Rank Fusion   | Accepted, partly superseded |
 | [0032](0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) | Rank the whole filtered set and label text-based restrictions | Accepted                    |
 | [0033](0033-rerank-the-hybrid-top-30-with-cohere-behind-a-flag.md)            | Rerank the hybrid top 30 with Cohere behind a flag            | Accepted                    |
+| [0034](0034-explain-fit-with-citations-checked-in-php.md)                     | Explain fit with citations checked in PHP                     | Accepted                    |
 
 ## Adding a record
 

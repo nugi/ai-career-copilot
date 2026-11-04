@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Ai\AiUsageRecorder;
+use App\Jobs\CheckFitFaithfulness;
 use App\Jobs\EmbedJobPostings;
 use App\Jobs\EmbedResumeChunks;
 use App\Jobs\ExtractJobSkills;
@@ -59,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
         Queue::route(ExtractJobSkills::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(EmbedJobPostings::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(EmbedResumeChunks::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
+        Queue::route(CheckFitFaithfulness::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
     }
 
     /**

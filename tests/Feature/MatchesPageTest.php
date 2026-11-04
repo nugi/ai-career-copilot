@@ -48,6 +48,7 @@ test('the matches page lists eligible openings nearest first without a match per
             ->has('countries')
             ->has('matches.data', 3)
             ->where('matches.data.0.opening_id', $closest->opening_id)
+            ->where('matches.data.0.posting_id', $closest->id)
             ->missing('matches.data.0.match_percent')
             ->where('matches.data.0.eligibility', 'open')
             ->where('matches.data.1.opening_id', $middle->opening_id)

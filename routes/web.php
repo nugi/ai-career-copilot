@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdvisorChatController;
 use App\Http\Controllers\AdvisorController;
+use App\Http\Controllers\FitController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\OnboardingController;
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('matches', [MatchController::class, 'index'])->name('matches.index');
+    Route::get('matches/{posting}/fit', [FitController::class, 'show'])->whereNumber('posting')->middleware('throttle:advisor')->name('matches.fit');
 
     Route::get('advisor', [AdvisorChatController::class, 'show'])->name('advisor.chat');
 

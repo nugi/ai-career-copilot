@@ -43,6 +43,7 @@ class JobListingResource extends JsonResource
 
         return [
             'opening_id' => $this->opening_id,
+            'posting_id' => $this->id,
             'title' => $this->title,
             'company' => $this->company_name,
             'location' => $this->displayLocation(),
