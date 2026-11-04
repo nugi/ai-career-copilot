@@ -2,6 +2,7 @@
 
 namespace App\JobSources\Normalization;
 
+use App\Actions\Profile\CountryList;
 use Locale;
 use RuntimeException;
 use Transliterator;
@@ -28,7 +29,7 @@ final class CountryResolver
     }
 
     /**
-     * Build the localized country map once, excluding non-country ICU regions.
+     * Build the localized name map once, for the countries in CountryList.
      *
      * @return array<string, string>
      */
@@ -36,23 +37,14 @@ final class CountryResolver
     {
         $names = [];
 
-        foreach (range('A', 'Z') as $first) {
-            foreach (range('A', 'Z') as $second) {
-                $code = $first.$second;
-                $english = Locale::getDisplayRegion('-'.$code, 'en');
+        foreach (array_keys((new CountryList)->names()) as $code) {
+            $names[self::key($code)] = $code;
 
-                if ($english === false || $english === $code || in_array($code, ['EU', 'EZ', 'UN', 'QO', 'XA', 'XB', 'ZZ'], true)) {
-                    continue;
-                }
+            foreach (['en', 'id', 'es', 'de', 'fr', 'pt'] as $locale) {
+                $name = Locale::getDisplayRegion('-'.$code, $locale);
 
-                $names[self::key($code)] = $code;
-
-                foreach (['en', 'id', 'es', 'de', 'fr', 'pt'] as $locale) {
-                    $name = Locale::getDisplayRegion('-'.$code, $locale);
-
-                    if ($name !== false) {
-                        $names[self::key($name)] = $code;
-                    }
+                if ($name !== false) {
+                    $names[self::key($name)] = $code;
                 }
             }
         }

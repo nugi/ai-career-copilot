@@ -1,6 +1,8 @@
 <?php
 
+use App\Actions\Profile\CountryList;
 use App\Enums\JobRegion;
+use App\JobSources\Normalization\CountryResolver;
 use App\JobSources\Normalization\LocationParser;
 
 /**
@@ -30,3 +32,16 @@ test('locations resolve to countries, a region and an unambiguous city', functio
     'Indonesian country name' => ['Jerman', ['DE']],
     'unknown city' => ['Hamburg', []],
 ]);
+
+test('every country name resolves to its own code, never to a retired one', function () {
+    $resolver = new CountryResolver;
+    $wrong = [];
+
+    foreach ((new CountryList)->names() as $code => $name) {
+        if ($resolver->code($name) !== $code) {
+            $wrong[$code] = $resolver->code($name);
+        }
+    }
+
+    expect($wrong)->toBe([]);
+});
