@@ -38,6 +38,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0032](0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) | Rank the whole filtered set and label text-based restrictions | Accepted                    |
 | [0033](0033-rerank-the-hybrid-top-30-with-cohere-behind-a-flag.md)            | Rerank the hybrid top 30 with Cohere behind a flag            | Accepted                    |
 | [0034](0034-explain-fit-with-citations-checked-in-php.md)                     | Explain fit with citations checked in PHP                     | Accepted                    |
+| [0035](0035-measure-retrieval-on-a-graded-golden-set-of-profiles.md)          | Measure retrieval on a graded golden set of profiles          | Accepted                    |
 
 ## Adding a record
 

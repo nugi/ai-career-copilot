@@ -127,3 +127,22 @@ test('the query vector is hidden from profile arrays', function () {
 
     expect($profile->toArray())->not->toHaveKey('match_embedding');
 });
+
+test('keyword multipliers give roles 1.0 and each skill its proficiency weight', function () {
+    $profile = Profile::factory()->create(['target_roles' => ['Backend Engineer', ' ']]);
+
+    foreach (['Laravel' => SkillProficiency::Expert, 'Redis' => SkillProficiency::Advanced, 'Docker' => SkillProficiency::Intermediate, 'Rust' => SkillProficiency::Beginner] as $name => $proficiency) {
+        $profile->user->skills()->attach(Skill::factory()->create(['name' => $name]), [
+            'proficiency' => $proficiency,
+            'source' => SkillSource::Profile,
+        ]);
+    }
+
+    expect(app(ProfileEmbeddingText::class)->keywordMultipliers($profile))->toEqual([
+        'Backend Engineer' => 1.0,
+        'Laravel' => 1.0,
+        'Redis' => 0.85,
+        'Docker' => 0.7,
+        'Rust' => 0.5,
+    ]);
+});

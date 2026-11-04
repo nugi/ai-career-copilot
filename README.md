@@ -69,6 +69,12 @@ Tests run against a real PostgreSQL database, `career_copilot_testing`, so vecto
 composer test
 ```
 
+## Retrieval quality
+
+`php artisan eval:retrieval` scores the matches ranking on 20 graded fixture profiles: recall@10, MRR and nDCG@10 for each mode, with bootstrap intervals ([ADR 0035](docs/adr/0035-measure-retrieval-on-a-graded-golden-set-of-profiles.md), [workflow](docs/learning/retrieval-eval.md)). Saved runs are in [`docs/evals/retrieval`](docs/evals/retrieval).
+
+The baseline table goes here after the first graded run. Until then the default mode is hybrid with the `count` weighting.
+
 ## Contributing
 
 `main` is protected. Create a branch, open a pull request, and merge after the `ci` check passes. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).

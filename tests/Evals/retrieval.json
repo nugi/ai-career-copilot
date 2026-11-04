@@ -1,0 +1,398 @@
+{
+    "description": "Golden set for eval:retrieval (ADR 0035). Each case is a fixture profile that runs through the real filters and ranking. A label names a posting by source:external_id and grades it 0 (not relevant), 1 (partly relevant) or 2 (clearly relevant). A null grade is not judged yet. Fill the labels with eval:retrieval --pool, then grade them by hand.",
+    "labelled_on": null,
+    "labelled_by": null,
+    "cases": [
+        {
+            "id": "baseline-1-remote-id-laravel",
+            "description": "Baseline search 1: remote, open to Indonesia, Rp20 juta a month.",
+            "profile": {
+                "target_roles": ["Backend Engineer", "Full Stack Developer"],
+                "skills": {
+                    "Laravel": "expert",
+                    "PHP": "expert",
+                    "PostgreSQL": "advanced",
+                    "Redis": "intermediate",
+                    "Docker": "intermediate",
+                    "React": "beginner"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": "ID",
+                "min_salary": 20000000,
+                "salary_currency": "IDR",
+                "salary_period": "monthly"
+            },
+            "labels": []
+        },
+        {
+            "id": "baseline-2-remote-any-laravel",
+            "description": "Baseline search 2: remote anywhere, no floor.",
+            "profile": {
+                "target_roles": ["Backend Engineer", "Full Stack Developer"],
+                "skills": {
+                    "Laravel": "expert",
+                    "PHP": "expert",
+                    "PostgreSQL": "advanced",
+                    "Redis": "intermediate",
+                    "Docker": "intermediate",
+                    "React": "beginner"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "baseline-3-remote-id-python",
+            "description": "Baseline search 3: a Python backend profile, remote, open to Indonesia, Rp20 juta a month.",
+            "profile": {
+                "target_roles": ["Backend Engineer", "Python Developer"],
+                "skills": {
+                    "Python": "expert",
+                    "Django": "advanced",
+                    "FastAPI": "intermediate",
+                    "PostgreSQL": "advanced",
+                    "AWS": "intermediate"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": "ID",
+                "min_salary": 20000000,
+                "salary_currency": "IDR",
+                "salary_period": "monthly"
+            },
+            "labels": []
+        },
+        {
+            "id": "baseline-4-onsite-hybrid-id",
+            "description": "Baseline search 4: on-site or hybrid in Indonesia, Rp20 juta a month.",
+            "profile": {
+                "target_roles": ["Backend Engineer", "Full Stack Developer"],
+                "skills": {
+                    "Laravel": "expert",
+                    "PHP": "expert",
+                    "PostgreSQL": "advanced",
+                    "Redis": "intermediate",
+                    "Docker": "intermediate",
+                    "React": "beginner"
+                },
+                "work_arrangements": ["onsite", "hybrid"],
+                "country_code": "ID",
+                "min_salary": 20000000,
+                "salary_currency": "IDR",
+                "salary_period": "monthly"
+            },
+            "labels": []
+        },
+        {
+            "id": "baseline-5-react-any",
+            "description": "Baseline search 5: a React profile, any arrangement and country, Rp20 juta a month.",
+            "profile": {
+                "target_roles": ["Frontend Engineer", "Full Stack Developer"],
+                "skills": {
+                    "React": "expert",
+                    "TypeScript": "expert",
+                    "Next.js": "advanced",
+                    "Node.js": "intermediate",
+                    "GraphQL": "intermediate"
+                },
+                "work_arrangements": ["remote", "hybrid", "onsite"],
+                "country_code": null,
+                "min_salary": 20000000,
+                "salary_currency": "IDR",
+                "salary_period": "monthly"
+            },
+            "labels": []
+        },
+        {
+            "id": "java-kafka-remote",
+            "description": "A senior Java backend profile with Kafka and microservices, remote anywhere.",
+            "profile": {
+                "target_roles": ["Senior Backend Engineer", "Java Developer"],
+                "skills": {
+                    "Java": "expert",
+                    "Spring Boot": "expert",
+                    "Kafka": "advanced",
+                    "Kubernetes": "intermediate",
+                    "PostgreSQL": "advanced"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "ml-search-remote",
+            "description": "A machine learning engineer for search and recommendation, remote anywhere.",
+            "profile": {
+                "target_roles": ["Machine Learning Engineer"],
+                "skills": {
+                    "Python": "expert",
+                    "PyTorch": "advanced",
+                    "Elasticsearch": "intermediate",
+                    "SQL": "advanced",
+                    "MLOps": "beginner"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "mobile-id",
+            "description": "A mobile developer for Android and iOS, any arrangement, open to Indonesia.",
+            "profile": {
+                "target_roles": ["Mobile Developer", "Android Developer"],
+                "skills": {
+                    "Kotlin": "expert",
+                    "Swift": "advanced",
+                    "Flutter": "intermediate",
+                    "Firebase": "intermediate"
+                },
+                "work_arrangements": ["remote", "hybrid", "onsite"],
+                "country_code": "ID",
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "devops-sre-remote",
+            "description": "A DevOps or SRE profile with Kubernetes and Terraform, remote anywhere.",
+            "profile": {
+                "target_roles": [
+                    "DevOps Engineer",
+                    "Site Reliability Engineer"
+                ],
+                "skills": {
+                    "Kubernetes": "expert",
+                    "Terraform": "expert",
+                    "AWS": "advanced",
+                    "Go": "intermediate",
+                    "Prometheus": "advanced"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "data-engineer-remote",
+            "description": "A data engineer building pipelines with Python and SQL, remote anywhere.",
+            "profile": {
+                "target_roles": ["Data Engineer"],
+                "skills": {
+                    "Python": "expert",
+                    "SQL": "expert",
+                    "Airflow": "advanced",
+                    "dbt": "intermediate",
+                    "Spark": "intermediate"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "rails-remote",
+            "description": "A Ruby on Rails developer, remote anywhere.",
+            "profile": {
+                "target_roles": ["Ruby on Rails Developer", "Backend Engineer"],
+                "skills": {
+                    "Ruby": "expert",
+                    "Ruby on Rails": "expert",
+                    "PostgreSQL": "advanced",
+                    "Sidekiq": "intermediate"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "security-remote",
+            "description": "A security engineer for offensive security and incident response, remote anywhere.",
+            "profile": {
+                "target_roles": ["Security Engineer"],
+                "skills": {
+                    "Penetration Testing": "expert",
+                    "Incident Response": "advanced",
+                    "Python": "intermediate",
+                    "SIEM": "intermediate"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "dotnet-csharp-remote",
+            "description": "A C# and .NET backend profile, remote anywhere. Checks that C# and .NET do not collide with C (ADR 0032).",
+            "profile": {
+                "target_roles": ["Backend Engineer", ".NET Developer"],
+                "skills": {
+                    "C#": "expert",
+                    ".NET": "expert",
+                    "Azure": "advanced",
+                    "SQL Server": "advanced"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "node-typescript-remote-id",
+            "description": "A Node.js and TypeScript backend profile, remote, open to Indonesia.",
+            "profile": {
+                "target_roles": ["Backend Engineer", "Node.js Developer"],
+                "skills": {
+                    "Node.js": "expert",
+                    "TypeScript": "expert",
+                    "NestJS": "advanced",
+                    "MongoDB": "intermediate",
+                    "PostgreSQL": "intermediate"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": "ID",
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "go-backend-remote",
+            "description": "A Go backend profile, remote anywhere.",
+            "profile": {
+                "target_roles": ["Backend Engineer", "Golang Developer"],
+                "skills": {
+                    "Go": "expert",
+                    "gRPC": "advanced",
+                    "PostgreSQL": "advanced",
+                    "Kubernetes": "intermediate"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "qa-automation-id",
+            "description": "A QA automation engineer, any arrangement in Indonesia.",
+            "profile": {
+                "target_roles": ["QA Engineer", "QA Automation Engineer"],
+                "skills": {
+                    "Selenium": "expert",
+                    "Cypress": "advanced",
+                    "Playwright": "intermediate",
+                    "JavaScript": "intermediate"
+                },
+                "work_arrangements": ["remote", "hybrid", "onsite"],
+                "country_code": "ID",
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "product-designer-remote",
+            "description": "A product designer, remote anywhere. Few postings should fit a design profile.",
+            "profile": {
+                "target_roles": ["Product Designer", "UI/UX Designer"],
+                "skills": {
+                    "Figma": "expert",
+                    "User Research": "advanced",
+                    "Prototyping": "advanced"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "junior-laravel-id",
+            "description": "A junior Laravel profile in Indonesia with mostly beginner skills. Checks the proficiency multiplier.",
+            "profile": {
+                "target_roles": ["Junior Web Developer", "Backend Engineer"],
+                "skills": {
+                    "Laravel": "intermediate",
+                    "PHP": "intermediate",
+                    "MySQL": "beginner",
+                    "JavaScript": "beginner",
+                    "Git": "beginner"
+                },
+                "work_arrangements": ["remote", "hybrid", "onsite"],
+                "country_code": "ID",
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "lead-engineer-remote",
+            "description": "An engineering lead profile across stacks, remote anywhere.",
+            "profile": {
+                "target_roles": ["Engineering Manager", "Tech Lead"],
+                "skills": {
+                    "Laravel": "advanced",
+                    "React": "advanced",
+                    "AWS": "intermediate",
+                    "Team Leadership": "expert"
+                },
+                "work_arrangements": ["remote"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        },
+        {
+            "id": "sparse-profile-any",
+            "description": "A near-empty profile: one role and no skills, any arrangement. Checks that the modes still rank something sensible.",
+            "profile": {
+                "target_roles": ["Software Engineer"],
+                "skills": {},
+                "work_arrangements": ["remote", "hybrid", "onsite"],
+                "country_code": null,
+                "min_salary": null,
+                "salary_currency": null,
+                "salary_period": null
+            },
+            "labels": []
+        }
+    ]
+}
