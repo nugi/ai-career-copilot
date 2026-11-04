@@ -35,7 +35,7 @@ The matches page ranks openings by meaning, with the hard filters still enforced
 2. **A query can find a neighbour of the wanted skill.** A "Python developer" query can return a PHP developer. The two are backend roles with the same neighbours (SQL, REST, Docker, a web framework), and a vector expresses nearness, not a must-have. Hybrid search adds a keyword leg on the skills, and rank fusion lets a posting that has the word rise above one that is only near. In the baseline, the Python postings are at rank 4 and 11 of 14 for a Laravel profile.
 3. **The list is always full.** With 14 postings passing the filters, the top 10 ends at 56–58% with front-end and DevOps roles. There is no minimum match. The golden set decides whether a cutoff helps.
 4. **The first visit after a change waits for one embedding call**, and a provider failure shows an error state.
-5. **The sort reads every filtered row.** That is cheap at this size. Revisit at about 20,000 live postings, with an iterative index scan or an over-fetch of the nearest rows before filtering, and measure the recall change.
+5. **The sort reads every filtered row.** That is cheap at this size. Revisit at about 20,000 live postings, with the iterative index scan that the measurement below favors.
 6. **Only 10 skills reach the text.** A profile with a long list of skills loses its less proficient ones.
 7. **The Indonesian results are mostly seeded postings** (7 of 10 in search 1), which say little about real text.
 
@@ -43,6 +43,27 @@ The matches page ranks openings by meaning, with the hard filters still enforced
 
 1. **A queued job on profile save:** it matches the resume pipeline, but it needs a pending state and polling on the page, and a path for the visit that comes before the job runs. Rejected for one embedding call.
 2. **The resume summary in the text:** more of the person, but it brings the dilution of ADR 0026 to the query side, and a summary change would not change `profiles.version`. Rejected.
-3. **The HNSW index with a post-filter:** fast, but it returns fewer than 30 rows when the filter is selective. Rejected for now.
+3. **The HNSW index with a post-filter:** fast, but it returns too few of the true nearest rows when the filter is selective (measured below). Rejected for now.
+
+**Measured recall of the approximate alternatives**
+
+Recall is the share of the exact top 30 (or of all passing openings, when fewer than 30 pass) that a method returns. The profile and the filters are those of the baseline searches ([`docs/baseline-searches.md`](../baseline-searches.md)), on 263 vectors, 190 of them live, with pgvector 0.8.7. Three methods:
+
+- **A:** take the nearest 30 postings from the HNSW index (`ef_search` 40), then apply the filters.
+- **B:** the same with the nearest 120 (`ef_search` 120), an over-fetch of 4 times.
+- **C:** one query with the filter and the order together, with `hnsw.iterative_scan` off, and with `strict_order` and `relaxed_order`.
+
+| Search                           | Pass | A   | B    | C, scan off | C, scan on |
+| -------------------------------- | ---- | --- | ---- | ----------- | ---------- |
+| 1. Remote, Indonesia             | 14   | 7%  | 14%  | 7%          | 100%       |
+| 2. Remote, any country           | 158  | 73% | 100% | 93%         | 100%       |
+| 4. On-site and hybrid, Indonesia | 16   | 19% | 44%  | 19%         | 100%       |
+| 5. Any arrangement, any country  | 174  | 83% | 100% | 100%        | 100%       |
+
+1. A filter after the index scan loses most of the rows when the filter is selective: 7% and 19% for the Indonesian searches.
+2. An over-fetch of 4 times repairs the broad filters (100%) and not the selective ones (14% and 44%). The fetch would have to grow with the inverse of the share that passes, and that share is not known in advance.
+3. An iterative scan recovered every row in all four searches, in strict and in relaxed order. It is the method to try when the exact sort gets slow.
+
+The numbers come with limits. The set is small, so the exact sort is faster than any of these today. For C, the real filter is a join that the planner does not run through the index, so its passing postings were given to the query as an id list. The planner settings `enable_seqscan`, `enable_bitmapscan` and `enable_sort` were off, to make every method use the index. At about 20,000 postings the graph is larger and `ef_search` 40 covers a smaller share, so measure again before the switch.
 
 **Revisit when** the retrieval golden set, which has 5 profile-shaped queries, measures another query text or a cutoff, live postings reach about 20,000, or hybrid search changes the ranking.
