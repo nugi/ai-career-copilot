@@ -248,7 +248,7 @@ class RetrievalEvalCommand extends Command
 
         foreach ($perCase as $variant => $cases) {
             $ndcg = array_values(array_filter(array_column($cases, 'ndcg_at_10'), fn (?float $value): bool => $value !== null));
-            $summary[$variant] = [
+            $row = [
                 'recall_at_10' => $this->mean(array_column($cases, 'recall_at_10')),
                 'mrr' => $this->mean(array_column($cases, 'mrr')),
                 'ndcg_at_10' => $this->mean(array_column($cases, 'ndcg_at_10')),
@@ -257,18 +257,18 @@ class RetrievalEvalCommand extends Command
             ];
 
             if ($samples > 0 && $ndcg !== []) {
-                $summary[$variant]['ndcg_interval'] = RetrievalMetrics::bootstrap($ndcg, $samples, self::SEED);
+                $row['ndcg_interval'] = RetrievalMetrics::bootstrap($ndcg, $samples, self::SEED);
             }
-        }
 
-        if ($samples > 0 && isset($perCase[self::BASELINE])) {
-            foreach ($perCase as $variant => $cases) {
+            if ($samples > 0 && $variant !== self::BASELINE && isset($perCase[self::BASELINE])) {
                 [$values, $baseline] = $this->paired($cases, $perCase[self::BASELINE]);
 
-                if ($variant !== self::BASELINE && $values !== []) {
-                    $summary[$variant]['ndcg_vs_baseline'] = RetrievalMetrics::pairedBootstrap($values, $baseline, $samples, self::SEED);
+                if ($values !== []) {
+                    $row['ndcg_vs_baseline'] = RetrievalMetrics::pairedBootstrap($values, $baseline, $samples, self::SEED);
                 }
             }
+
+            $summary[$variant] = $row;
         }
 
         $scored = max(array_column($summary, 'cases') ?: [0]);
