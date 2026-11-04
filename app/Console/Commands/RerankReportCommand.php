@@ -97,9 +97,9 @@ class RerankReportCommand extends Command
         $this->table(['#', 'Hybrid', 'Reranked', 'Hybrid rank', 'Rerank score'], $rows);
         $this->table(['Mode', 'Latency (ms)', 'Cost (USD)'], [
             ['Hybrid', $hybridMs, '0.000000'],
-            ['Hybrid + rerank', $hybridMs + $rerankMs, $usage?->cost_usd ?? 'not recorded'],
+            ['Hybrid + rerank', $hybridMs + $rerankMs, $usage->cost_usd ?? 'not recorded'],
         ]);
-        $this->line('Rerank call latency recorded in ai_usages: '.($usage?->latency_ms ?? 'not recorded').' ms');
+        $this->line('Rerank call latency recorded in ai_usages: '.($usage->latency_ms ?? 'not recorded').' ms');
 
         return self::SUCCESS;
     }

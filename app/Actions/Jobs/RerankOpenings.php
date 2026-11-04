@@ -71,10 +71,10 @@ final class RerankOpenings
                 return new RerankResult($openings, false);
             }
 
-            $order = array_map(
+            $order = array_values(array_map(
                 fn (RankedDocument $result): array => [$result->index, $result->score],
                 $response->results,
-            );
+            ));
             $this->cache->put($key, $order, now()->addHours($config['cache_hours']));
         }
 
