@@ -65,7 +65,7 @@ final class ExplainFit
         $posting->loadMissing('skills');
         $skills = $posting->skills->map(fn (Skill $skill): string => $skill->name)->sort()->implode(', ');
         $description = mb_substr((string) $posting->description, 0, $config['description_characters']);
-        $excerpts = $chunks->map(fn (ResumeChunk $chunk): string => $chunk->content)->all();
+        $excerpts = array_values($chunks->map(fn (ResumeChunk $chunk): string => $chunk->content)->all());
         $key = 'fit:'.hash('sha256', json_encode([
             $user->getKey(), $posting->title, $posting->company_name, $skills, $description,
             $chunks->map(fn (ResumeChunk $chunk): array => [$chunk->id, $chunk->content])->all(),
@@ -107,7 +107,7 @@ final class ExplainFit
             return FitExplanation::unavailable('failed');
         }
 
-        $explanation = $this->ground($validator->validated(), $chunks->all());
+        $explanation = $this->ground($validator->validated(), array_values($chunks->all()));
         $this->cache->put($key, $explanation->toArray(), now()->addHours($config['cache_hours']));
 
         Log::info('fit.explained', [
