@@ -7,14 +7,15 @@ use Illuminate\Support\Facades\DB;
  * The `simple` parser turns "C#", "C++" and "C" into the token `c` and ".NET" into `net`. Rewrite those names before
  * the text is parsed, in the column and in the query (ADR 0031). A SQL function and not a custom text search
  * dictionary, because RDS does not install dictionary files. Each replacement is padded with spaces, so "C/C++" and
- * "C#/.NET" split into two tokens and are not read as a file path.
+ * "C#/.NET" split into two tokens and are not read as a file path. The function is created with "or replace",
+ * because migrate:fresh drops tables and not functions, so the function outlives a fresh run.
  */
 return new class extends Migration
 {
     public function up(): void
     {
         DB::statement(<<<'SQL'
-            create function normalize_search_text(input text) returns text
+            create or replace function normalize_search_text(input text) returns text
             language sql immutable strict parallel safe
             return regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(input,
                 '\mc#', ' csharp ', 'gi'),
@@ -44,6 +45,6 @@ return new class extends Migration
                 || setweight(to_tsvector('simple'::regconfig, coalesce(description, '')), 'C')
             ) stored
             SQL);
-        DB::statement('drop function normalize_search_text(text)');
+        DB::statement('drop function if exists normalize_search_text(text)');
     }
 };
