@@ -17,8 +17,7 @@ use Locale;
  *
  * @mixin JobPosting
  *
- * @property 'open'|'unclear'|null $eligibility Country eligibility, absent when no country filter was applied.
- * @property float|null $distance Cosine distance, absent when the opening was not matched.
+ * @property 'open'|'unclear'|'restricted'|null $eligibility Country eligibility, absent when no country filter was applied.
  * @property int|null $pay_salary_min
  * @property int|null $pay_salary_max
  * @property string|null $pay_salary_currency
@@ -49,7 +48,7 @@ class JobListingResource extends JsonResource
             'location' => $this->displayLocation(),
             'work_arrangement' => ['value' => $this->work_arrangement->value, 'label' => $this->work_arrangement->label()],
             'eligibility' => $this->eligibility ?? null,
-            'match_percent' => isset($this->distance) ? max(0, min(100, (int) round(100 * (1 - $this->distance)))) : null,
+            'eligibility_evidence' => ($this->eligibility ?? null) === 'restricted' ? $this->eligibility_evidence : null,
             'posted_at' => $this->posted_at->toIso8601String(),
             'apply_url' => $this->apply_url,
             'pay' => $pay,

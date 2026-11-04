@@ -88,7 +88,7 @@ final class SearchOpenings
     }
 
     /**
-     * Keep postings that are open or unclear for a person who lives in the country.
+     * Keep postings that are open, unclear or restricted by their text for a person who lives in the country.
      *
      * @param  Builder<JobPosting>  $query
      */

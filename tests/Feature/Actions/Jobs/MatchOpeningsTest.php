@@ -7,6 +7,7 @@ use App\Models\JobPosting;
 use App\Models\Opening;
 use App\Models\Profile;
 use App\Models\Skill;
+use Illuminate\Support\Facades\DB;
 
 test('openings are ordered by cosine distance with numeric distances and descending ids for ties', function () {
     $this->freezeTime();
@@ -160,12 +161,54 @@ test('postings without vectors are eligible for keyword and hybrid but not seman
 
 test('punctuation and empty terms are safe and an empty list preserves semantic matching', function () {
     $vector = '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']';
-    $posting = JobPosting::factory()->remote()->withEmbedding()->create(['title' => 'C developer', 'embedding' => $vector, 'expires_at' => null]);
+    $postings = JobPosting::factory()->remote()->withEmbedding()->state(['description' => 'Work', 'embedding' => $vector, 'expires_at' => null]);
+    $postings->create(['title' => 'C developer']);
+    $cpp = $postings->create(['title' => 'C++ developer']);
     $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
     $action = app(MatchOpenings::class);
 
-    expect($action->handle($profile, null, null, 30, ['C++', '   ', '!!!'])->pluck('id')->all())->toBe([$posting->id]);
+    expect($action->handle($profile, null, null, 30, ['C++', '   ', '!!!'])->pluck('id')->all())->toBe([$cpp->id]);
     expect($action->handle($profile, $vector, null, 30, [])->pluck('id')->all())->toBe($action->handle($profile, $vector, null)->pluck('id')->all());
+});
+
+test('technical names keep their own token in the column and in the terms', function (string $term, string $title) {
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Work', 'embedding' => null, 'expires_at' => null]);
+    $titles = ['C developer', 'C# developer', 'C++ developer', '.NET developer', 'Node.js developer', 'Network engineer'];
+    $ids = collect($titles)->mapWithKeys(fn (string $title): array => [$title => $postings->create(['title' => $title])->id]);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+
+    $results = app(MatchOpenings::class)->handle($profile, null, null, 30, [$term]);
+
+    expect($results->pluck('id')->all())->toBe([$ids[$title]]);
+})->with([
+    'C' => ['C', 'C developer'],
+    'C#' => ['c#', 'C# developer'],
+    'C++' => ['C++', 'C++ developer'],
+    '.NET' => ['.net', '.NET developer'],
+    'Node.js' => ['NodeJS', 'Node.js developer'],
+]);
+
+test('the search vector splits technical names joined by a slash and keeps host names', function () {
+    $posting = JobPosting::factory()->create([
+        'title' => 'C/C++ and C#/.NET', 'description' => 'ASP.NET at example.net', 'embedding' => null,
+    ]);
+
+    $vector = DB::table('job_postings')->where('id', $posting->id)->value(DB::raw('strip(search_vector)::text'));
+
+    expect($vector)->toBe("'and' 'asp' 'at' 'c' 'cpp' 'csharp' 'dotnet' 'example.net'");
+});
+
+test('every filtered posting keeps its keyword rank without a cap on the leg', function () {
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Work', 'embedding' => null, 'expires_at' => null]);
+    $postings->count(55)->create(['title' => 'Laravel PHP developer']);
+    $target = $postings->create(['title' => 'Laravel developer']);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+
+    $results = app(MatchOpenings::class)->handle($profile, null, null, 100, ['Laravel', 'PHP']);
+
+    expect($results)->toHaveCount(56);
+    expect($results->last()->id)->toBe($target->id);
+    expect((int) $results->last()->getAttribute('keyword_rank'))->toBe(56);
 });
 
 test('generated search vectors include embedded skills and tolerate missing embedded text', function () {

@@ -27,7 +27,11 @@ use Laravel\Ai\Responses\StructuredAgentResponse;
  */
 class ExtractPostingSkills
 {
-    public function __construct(private SkillGrounding $skillGrounding, private QuoteGrounding $quoteGrounding) {}
+    public function __construct(
+        private SkillGrounding $skillGrounding,
+        private QuoteGrounding $quoteGrounding,
+        private RestrictionWording $restrictionWording,
+    ) {}
 
     /**
      * Extract the skills of the posting and save them, or copy them from a posting with the same text, or record the failure.
@@ -203,6 +207,7 @@ class ExtractPostingSkills
     /**
      * Run the checks on a valid output and save it in one transaction.
      *
+     * The eligibility reading is kept only when its quote appears in the text and uses a restricting word (ADR 0029).
      * A name that the posting text does not contain is dropped and kept as ungrounded. A name whose catalogue skill is
      * missing or unverified is kept as unknown, and no skill is created from a posting. A skill that both lists name is required.
      *
@@ -255,7 +260,8 @@ class ExtractPostingSkills
         ];
 
         $eligibilityIsGrounded = $output['evidence'] !== null
-            && $this->quoteGrounding->appearsIn($text, $output['evidence']);
+            && $this->quoteGrounding->appearsIn($text, $output['evidence'])
+            && $this->restrictionWording->restricts($output['evidence']);
 
         $saved = $this->save(
             $posting,

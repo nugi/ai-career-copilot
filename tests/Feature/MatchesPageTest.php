@@ -19,7 +19,7 @@ test('guests are redirected to the login page', function () {
     $this->get(route('matches.index'))->assertRedirect(route('login'));
 });
 
-test('the matches page lists eligible openings nearest first with match percentages and profile filters', function () {
+test('the matches page lists eligible openings nearest first without a match percent and with profile filters', function () {
     $this->freezeTime();
     config(['ai-routing.global_daily_budget_usd' => null]);
     $vector = [1, 0, ...array_fill(0, 1534, 0)];
@@ -46,12 +46,10 @@ test('the matches page lists eligible openings nearest first with match percenta
             ->has('countries')
             ->has('matches.data', 3)
             ->where('matches.data.0.opening_id', $closest->opening_id)
-            ->where('matches.data.0.match_percent', 100)
+            ->missing('matches.data.0.match_percent')
             ->where('matches.data.0.eligibility', 'open')
             ->where('matches.data.1.opening_id', $middle->opening_id)
-            ->where('matches.data.1.match_percent', 60)
             ->where('matches.data.2.opening_id', $farthest->opening_id)
-            ->where('matches.data.2.match_percent', 0)
         );
 });
 

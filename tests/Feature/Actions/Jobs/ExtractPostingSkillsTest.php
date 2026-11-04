@@ -170,6 +170,24 @@ test('an ungrounded or missing eligibility quote clears the reading', function (
     JobSkillExtractor::assertPromptedTimes(1);
 })->with(['invented quote' => 'Open to candidates in Canada or Europe only.', 'missing quote' => null]);
 
+test('a grounded quote without a restricting word clears the reading', function () {
+    $quote = 'Join our close-knit LATAM remote team';
+    JobSkillExtractor::fake([extractedJobSkills([
+        'eligible_regions' => ['latam'],
+        'evidence' => $quote,
+    ])])->preventStrayPrompts();
+    $posting = extractablePosting('Backend Engineer', "{$quote} and build with Laravel.");
+
+    app(ExtractPostingSkills::class)->handle($posting);
+
+    $posting->refresh();
+    expect($posting->eligible_countries)->toBe([])
+        ->and($posting->eligible_regions)->toBe([])
+        ->and($posting->eligibility_evidence)->toBeNull()
+        ->and($posting->skills_extracted_at)->not->toBeNull();
+    JobSkillExtractor::assertPromptedTimes(1);
+});
+
 test('a lowercase eligibility country fails validation and is retried', function () {
     $quote = 'Must be based in Canada.';
     JobSkillExtractor::fake([

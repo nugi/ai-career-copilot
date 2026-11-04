@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Builder;
 final class CountryEligibility
 {
     /**
-     * Select country eligibility on the representative posting and remove only postings that are not open.
+     * Select country eligibility on the representative posting and remove only postings whose source excludes the country.
      *
      * The legacy rule is preserved exactly for every posting that is not source silent; only source silent postings
-     * use the grounded reading, or remain unclear when neither eligibility list has a value.
+     * use the grounded reading, or remain unclear when neither eligibility list has a value. A reading that excludes
+     * the country labels the posting as restricted and does not hide it: the reading comes from a model and can be
+     * wrong, and a hidden job is a loss the user never sees (ADR 0029, drawback 1).
      *
      * @param  Builder<JobPosting>  $query
      */
@@ -45,7 +47,7 @@ final class CountryEligibility
                         and jsonb_array_length(job_postings.eligible_regions) = 0 then 'unclear'
                     when job_postings.eligible_countries @> ?::jsonb
                         or jsonb_exists_any(job_postings.eligible_regions, array[{$regionPlaceholders}]::text[]) then 'open'
-                    else 'not_open'
+                    else 'restricted'
                 end
                 when ({$legacyPredicate}) then 'open'
                 else 'not_open'

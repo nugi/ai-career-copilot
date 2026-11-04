@@ -1,6 +1,6 @@
 # 29. Read the countries a posting accepts from its text
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0032](0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) (points 2 and 5: the quote also needs a restricting word, and a reading that excludes the country labels the posting as restricted instead of hiding it)
 - **Date:** 2026-11-03
 
 ## Context
