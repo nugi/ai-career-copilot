@@ -24,13 +24,13 @@ export type Job = {
     company: string;
     location: string;
     work_arrangement: { value: Arrangement; label: string };
-    eligibility: 'open' | 'unclear' | null;
+    eligibility: 'open' | 'unclear' | 'restricted' | null;
+    eligibility_evidence: string | null;
     posted_at: string;
     apply_url: string;
     pay: Pay | null;
     converted: ConvertedPay | null;
     skills: { name: string; required: boolean }[];
-    match_percent: number | null;
 };
 
 const periods: Record<PayPeriod, string> = {
@@ -128,16 +128,16 @@ export function JobItem({ job }: { job: Job }) {
                         </a>
                     </CardTitle>
                     <div className="flex flex-wrap items-center gap-2">
-                        {job.match_percent !== null && (
-                            <Badge variant="default">
-                                {job.match_percent}%
-                            </Badge>
-                        )}
                         <Badge variant="secondary">
                             {job.work_arrangement.label}
                         </Badge>
                         {job.eligibility === 'unclear' && (
                             <Badge variant="outline">Country not stated</Badge>
+                        )}
+                        {job.eligibility === 'restricted' && (
+                            <Badge variant="outline">
+                                May not accept your country
+                            </Badge>
                         )}
                     </div>
                 </div>
@@ -147,6 +147,12 @@ export function JobItem({ job }: { job: Job }) {
                         {job.location}
                     </p>
                 )}
+                {job.eligibility === 'restricted' &&
+                    job.eligibility_evidence && (
+                        <p className="text-sm text-muted-foreground">
+                            The posting says: “{job.eligibility_evidence}”
+                        </p>
+                    )}
             </CardHeader>
             {(job.pay !== null || job.skills.length > 0) && (
                 <CardContent className="flex flex-col gap-3">

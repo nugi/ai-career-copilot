@@ -1,6 +1,6 @@
 # 31. Fuse keyword and semantic ranks with Reciprocal Rank Fusion
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0032](0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) (points 3, 6 and 10: technical names are normalized, each leg ranks the whole filtered set, and no match percent is shown)
 - **Date:** 2026-11-04
 
 ## Context

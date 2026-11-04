@@ -98,7 +98,7 @@ Searches 1 to 3 run again on 2026-11-03 for a user in Indonesia, after the count
 3. No row is unclear in these searches. The live set has four postings with no source country and no location text, all from Himalayas:
     - One is open from its reading: "Applicants from all geographies and backgrounds are welcome." (Mixrank, in search 3).
     - Two have no reading, so they are unclear. They do not ask for Laravel or Python.
-    - One is read as Latin America only, from the sentence "Join our close-knit LATAM remote team". That sentence describes the team and does not restrict who can apply, so a user in Indonesia would wrongly lose this posting. It asks for neither Laravel nor Python, so it is not in these three searches. ADR 0029, drawback 1.
+    - One is read as Latin America only, from the sentence "Join our close-knit LATAM remote team". That sentence describes the team and does not restrict who can apply, so a user in Indonesia would wrongly lose this posting. [ADR 0032](adr/0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) drops a reading whose quote has no restricting word, so this posting is unclear again. It asks for neither Laravel nor Python, so it is not in these three searches. ADR 0029, drawback 1.
 4. None of the four states a country restriction, so the "not open" path from a text reading is covered by tests only.
 
 ## Semantic ranking
@@ -161,7 +161,7 @@ Search 3 has the same filters as search 1, so it gives the same lists. Hybrid is
 
 ### Where it did not help
 
-1. **A posting that names the skill can still miss the list.** "Software Engineer(s) - Poland" (BeMyGuest) asks for Laravel and PHP. It is rank 42 in semantic mode and rank 51 in keyword mode, one past the 50-posting leg, so hybrid mode gives it no keyword credit and keeps it outside the first 50 rows. Of the 50 postings ahead of it in the keyword leg, 27 name more of the eight terms and 23 name the same two and rank higher on `ts_rank`. All terms weigh the same.
+1. **A posting that names the skill can still miss the list.** "Software Engineer(s) - Poland" (BeMyGuest) asks for Laravel and PHP. It is rank 42 in semantic mode and rank 51 in keyword mode, one past the 50-posting leg, so hybrid mode gives it no keyword credit and keeps it outside the first 50 rows. [ADR 0032](adr/0032-rank-the-whole-filtered-set-and-label-text-based-restrictions.md) removes the cap, so it now gets `1 / (60 + 51)`; the searches were not run again for that change. Of the 50 postings ahead of it in the keyword leg, 27 name more of the eight terms and 23 name the same two and rank higher on `ts_rank`. All terms weigh the same.
 2. **The marks are too coarse for searches 2 and 5.** The retrieval golden set, with graded labels, has to settle those two.
 3. **A Laravel profile cannot ask for Python.** Search 3 is search 1 in every mode.
 4. **Keyword mode returns a short list.** In search 1 only 9 of the 14 postings contain a term. Hybrid mode fills the rest from the semantic leg, and the list is full, with 56–58% matches at the end as before.

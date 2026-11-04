@@ -77,7 +77,7 @@ test('a source silent remote posting without a reading is kept as unclear for In
     expect($results->items()[0]->getAttribute('eligibility'))->toBe('unclear');
 });
 
-test('a source silent remote posting is open only when its reading includes Indonesia', function () {
+test('a source silent remote posting is open when its reading includes Indonesia and restricted otherwise', function () {
     $this->freezeTime();
     $postings = JobPosting::factory()->remote()->count(4)->sequence(
         ['eligible_countries' => ['US']],
@@ -88,9 +88,16 @@ test('a source silent remote posting is open only when its reading includes Indo
     $profile = Profile::factory()->withoutSalary()->make();
 
     $results = app(SearchOpenings::class)->handle(new JobSearch([], 'ID', null, false), $profile);
+    $states = collect($results->items())
+        ->mapWithKeys(fn (JobPosting $posting): array => [$posting->id => $posting->getAttribute('eligibility')])
+        ->sortKeys()->all();
 
-    expect(collect($results->items())->pluck('id')->all())->toEqualCanonicalizing($postings->slice(1, 2)->pluck('id')->all());
-    expect(collect($results->items())->pluck('eligibility')->all())->toBe(['open', 'open']);
+    expect($states)->toBe([
+        $postings[0]->id => 'restricted',
+        $postings[1]->id => 'open',
+        $postings[2]->id => 'open',
+        $postings[3]->id => 'restricted',
+    ]);
 });
 
 test('source countries win over a reading that includes Indonesia', function () {

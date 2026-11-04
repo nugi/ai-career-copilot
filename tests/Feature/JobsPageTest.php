@@ -76,6 +76,30 @@ test('the jobs page marks a source silent remote posting as unclear for Indonesi
         );
 });
 
+test('the jobs page labels a source silent posting whose reading excludes Indonesia and shows the quote', function () {
+    $this->freezeTime();
+    $user = User::factory()->onboarded()->create();
+    $quote = 'Remote USA Only';
+    $posting = JobPosting::factory()->remote()->create([
+        'location' => null, 'expires_at' => null, 'eligible_countries' => ['US'], 'eligibility_evidence' => $quote,
+    ]);
+
+    $this->actingAs($user)->get(route('jobs.index', ['country' => 'ID']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('jobs.data', 1)
+            ->where('jobs.data.0.opening_id', $posting->opening_id)
+            ->where('jobs.data.0.eligibility', 'restricted')
+            ->where('jobs.data.0.eligibility_evidence', $quote)
+        );
+
+    $this->actingAs($user)->get(route('jobs.index', ['country' => 'US']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('jobs.data.0.eligibility', 'open')
+            ->where('jobs.data.0.eligibility_evidence', null)
+        );
+});
+
 test('an invalid filter is rejected', function () {
     $user = User::factory()->onboarded()->create();
 
