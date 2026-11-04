@@ -14,6 +14,9 @@ use Laravel\Ai\Events\EmbeddingsFailed;
 use Laravel\Ai\Events\EmbeddingsGenerated;
 use Laravel\Ai\Events\GeneratingEmbeddings;
 use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\Reranked;
+use Laravel\Ai\Events\Reranking;
+use Laravel\Ai\Events\RerankingFailed;
 use Laravel\Ai\Events\StreamingAgent;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
@@ -137,6 +140,57 @@ class RecordAiUsage
         $this->recorder->recordCall(
             AiFeature::Embedding,
             'Embeddings',
+            null,
+            null,
+            null,
+            $event->invocationId,
+            $event->provider->name(),
+            $event->model,
+            0,
+            0,
+            AiUsageStatus::Failed,
+            $this->tokensAreUnknown($event->exception),
+        );
+    }
+
+    /**
+     * Start the reranking attempt's timer so its usage row includes provider latency.
+     */
+    public function handleReranking(Reranking $event): void
+    {
+        $this->recorder->start($event->invocationId);
+    }
+
+    /**
+     * Record a reranking call with its search units. A provider that reports no units is billed one unit for each
+     * 100 documents, which is how a search unit is defined.
+     */
+    public function handleReranked(Reranked $event): void
+    {
+        $this->recorder->recordCall(
+            AiFeature::Reranking,
+            'Reranking',
+            null,
+            null,
+            null,
+            $event->invocationId,
+            $event->provider->name(),
+            $event->model,
+            $event->response->usage->inputTokens,
+            0,
+            AiUsageStatus::Succeeded,
+            searchUnits: $event->response->usage->searchUnits ?? (float) max(1, (int) ceil(count($event->prompt->documents) / 100)),
+        );
+    }
+
+    /**
+     * Record a failed reranking attempt. Its search units are unknown, so the row costs nothing and is marked when the provider may have billed it.
+     */
+    public function handleRerankingFailed(RerankingFailed $event): void
+    {
+        $this->recorder->recordCall(
+            AiFeature::Reranking,
+            'Reranking',
             null,
             null,
             null,

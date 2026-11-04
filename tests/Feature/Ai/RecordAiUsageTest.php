@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Embeddings;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Prompts\EmbeddingsPrompt;
+use Laravel\Ai\Reranking;
+use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\RankedDocument;
+use Laravel\Ai\Responses\Data\RerankingUsage;
+use Laravel\Ai\Responses\RerankingResponse;
 
 test('an embedding call writes one succeeded usage row without a user', function () {
     Embeddings::fake(fn (EmbeddingsPrompt $prompt): array => array_map(
@@ -174,4 +179,48 @@ test('the recorded cost of a call is the cost of its model and tokens', function
         ->and($usage->input_tokens)->toBe(10)
         ->and($usage->output_tokens)->toBe(5)
         ->and($usage->cost_usd)->toBe(app(ModelRouter::class)->cost('gpt-6-luna', 10, 5));
+});
+
+test('a reranking call writes one succeeded usage row priced by its search units', function () {
+    Reranking::fake([new RerankingResponse(
+        [new RankedDocument(1, 'Laravel developer', 0.9), new RankedDocument(0, 'Designer', 0.1)],
+        new RerankingUsage(120, 2.0),
+        new Meta('cohere', 'rerank-v4.0-pro'),
+    )]);
+
+    Reranking::of(['Designer', 'Laravel developer'])->rerank('Backend Engineer', 'cohere', 'rerank-v4.0-pro');
+
+    $usage = AiUsage::query()->sole();
+
+    expect($usage->feature)->toBe(AiFeature::Reranking)
+        ->and($usage->agent)->toBe('Reranking')
+        ->and($usage->user_id)->toBeNull()
+        ->and($usage->status)->toBe(AiUsageStatus::Succeeded)
+        ->and($usage->provider)->toBe('cohere')
+        ->and($usage->model)->toBe('rerank-v4.0-pro')
+        ->and($usage->input_tokens)->toBe(120)
+        ->and($usage->cost_usd)->toBe('0.005000')
+        ->and($usage->latency_ms)->not->toBeNull();
+});
+
+test('a reranking call without reported search units is billed one unit for each 100 documents', function () {
+    Reranking::fake();
+
+    Reranking::of(array_map(fn (int $index): string => "Posting {$index}", range(1, 101)))->rerank('Backend Engineer', 'cohere', 'rerank-v4.0-pro');
+
+    expect(AiUsage::query()->sole()->cost_usd)->toBe('0.005000');
+});
+
+test('a failed reranking call writes one failed usage row without cost', function () {
+    Reranking::fake(fn (): never => throw new RuntimeException('Connection reset'));
+
+    expect(fn () => Reranking::of(['Designer'])->rerank('Backend Engineer', 'cohere', 'rerank-v4.0-pro'))
+        ->toThrow(RuntimeException::class);
+
+    $usage = AiUsage::query()->sole();
+
+    expect($usage->feature)->toBe(AiFeature::Reranking)
+        ->and($usage->status)->toBe(AiUsageStatus::Failed)
+        ->and($usage->cost_usd)->toBe('0.000000')
+        ->and($usage->tokens_estimated)->toBeTrue();
 });

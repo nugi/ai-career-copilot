@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Exceptions;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Ai\Embeddings;
 use Laravel\Ai\Prompts\EmbeddingsPrompt;
+use Laravel\Ai\Reranking;
+use Laravel\Ai\Responses\Data\RankedDocument;
 
 /**
  * The React page is a separate task, so backend responses must not require its Vite asset.
@@ -131,6 +133,35 @@ test('a second visit with the same profile makes no provider call even when the 
     $this->get(route('matches.index'))->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('matches', false)->where('failed', false));
     expect($calls)->toBe(1);
+});
+
+test('hybrid mode shows the reranked order when the flag is on, and keyword mode stays unreranked', function () {
+    config(['ai-routing.global_daily_budget_usd' => null, 'ai-routing.reranking.enabled' => true]);
+    Embeddings::fake(fn (EmbeddingsPrompt $prompt): array => [array_fill(0, 1536, 0.1)]);
+    Reranking::fake([[new RankedDocument(1, 'second', 0.9), new RankedDocument(0, 'first', 0.2)]]);
+    $user = User::factory()->onboarded()->create();
+    $user->profile()->update([
+        'target_roles' => ['Laravel', 'PHP'], 'country_code' => null, 'work_arrangements' => [WorkArrangement::Remote],
+        'min_salary' => null, 'salary_currency' => null, 'salary_period' => null,
+    ]);
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Other', 'embedding' => null, 'expires_at' => null]);
+    $first = $postings->create(['title' => 'Laravel PHP developer']);
+    $second = $postings->create(['title' => 'Laravel developer']);
+
+    $this->actingAs($user)->get(route('matches.index', ['mode' => 'keyword']))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('reranked', false)
+            ->where('matches.data.0.opening_id', $first->opening_id)
+        );
+    Reranking::assertNothingReranked();
+
+    $this->get(route('matches.index', ['mode' => 'hybrid']))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('reranked', true)
+            ->where('matches.data.0.opening_id', $second->opening_id)
+            ->where('matches.data.1.opening_id', $first->opening_id)
+            ->missing('matches.data.0.rerank_score')
+        );
 });
 
 test('a provider exception in semantic mode returns 200 with failed true and no matches', function () {

@@ -6,7 +6,9 @@ use App\Actions\Jobs\EmbedProfile;
 use App\Actions\Jobs\ListCountries;
 use App\Actions\Jobs\MatchOpenings;
 use App\Actions\Jobs\ProfileEmbeddingText;
+use App\Actions\Jobs\RerankOpenings;
 use App\Actions\Money\ExchangeRates;
+use App\Enums\SearchMode;
 use App\Http\Requests\ListMatchesRequest;
 use App\Http\Resources\JobListingResource;
 use Inertia\Inertia;
@@ -17,12 +19,16 @@ class MatchController extends Controller
 {
     /**
      * Rank eligible openings by keyword, semantic similarity, or both, falling back to keywords in hybrid mode.
+     *
+     * Hybrid mode then reranks its first openings when the reranking flag is on (ADR 0033). Keyword and semantic mode
+     * stay unreranked, so they remain the baselines that the reranked order is compared with.
      */
     public function index(
         ListMatchesRequest $request,
         EmbedProfile $embedProfile,
         ProfileEmbeddingText $profileEmbeddingText,
         MatchOpenings $matchOpenings,
+        RerankOpenings $rerankOpenings,
         ExchangeRates $exchangeRates,
         ListCountries $listCountries,
     ): Response {
@@ -35,6 +41,7 @@ class MatchController extends Controller
             ? [] : $exchangeRates->latestFrom($profile->salary_currency->value));
 
         $failed = false;
+        $reranked = false;
         $matches = [];
         $vector = null;
 
@@ -56,6 +63,12 @@ class MatchController extends Controller
                 $failed = true;
             } elseif (! $failed) {
                 $matches = $matchOpenings->handle($profile, $vector, $country, terms: $terms);
+
+                if ($mode === SearchMode::Hybrid) {
+                    $result = $rerankOpenings->handle($profile, $matches);
+                    $matches = $result->openings;
+                    $reranked = $result->reranked;
+                }
             }
         } catch (Throwable $exception) {
             report($exception);
@@ -67,6 +80,7 @@ class MatchController extends Controller
             'filters' => ['country' => $country, 'mode' => $mode->value],
             'countries' => $listCountries->handle($country),
             'failed' => $failed,
+            'reranked' => $reranked,
         ]);
     }
 }
