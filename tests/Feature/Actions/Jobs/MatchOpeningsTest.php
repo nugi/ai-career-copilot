@@ -193,7 +193,7 @@ test('the search vector splits technical names joined by a slash and keeps host 
         'title' => 'C/C++ and C#/.NET', 'description' => 'ASP.NET at example.net', 'embedding' => null,
     ]);
 
-    $vector = DB::table('job_postings')->whereKey($posting->id)->value(DB::raw('strip(search_vector)::text'));
+    $vector = DB::table('job_postings')->where('id', $posting->id)->value(DB::raw('strip(search_vector)::text'));
 
     expect($vector)->toBe("'and' 'asp' 'at' 'c' 'cpp' 'csharp' 'dotnet' 'example.net'");
 });
