@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Jobs\EmbedProfile;
 use App\Actions\Jobs\ListCountries;
 use App\Actions\Jobs\MatchOpenings;
+use App\Actions\Jobs\ProfileEmbeddingText;
 use App\Actions\Money\ExchangeRates;
 use App\Http\Requests\ListMatchesRequest;
 use App\Http\Resources\JobListingResource;
@@ -15,11 +16,12 @@ use Throwable;
 class MatchController extends Controller
 {
     /**
-     * Show the nearest eligible openings, keeping resource context on the application request.
+     * Rank eligible openings by keyword, semantic similarity, or both, falling back to keywords in hybrid mode.
      */
     public function index(
         ListMatchesRequest $request,
         EmbedProfile $embedProfile,
+        ProfileEmbeddingText $profileEmbeddingText,
         MatchOpenings $matchOpenings,
         ExchangeRates $exchangeRates,
         ListCountries $listCountries,
@@ -27,24 +29,42 @@ class MatchController extends Controller
         $profile = $request->user()->loadMissing('profile')->profile;
         $profile->makeHidden(['match_embedding', 'match_embedding_model', 'match_embedding_hash']);
         $country = $request->country();
+        $mode = $request->mode();
         request()->attributes->set('jobs.profile', $profile);
         request()->attributes->set('jobs.rates', $profile->salary_currency === null
             ? [] : $exchangeRates->latestFrom($profile->salary_currency->value));
 
         $failed = false;
+        $matches = [];
+        $vector = null;
 
         try {
-            $vector = $embedProfile->handle($profile);
-            $matches = $matchOpenings->handle($profile, $vector, $country);
+            $terms = $mode->usesKeywords() ? $profileEmbeddingText->keywordTerms($profile) : [];
+
+            if ($mode->usesVector()) {
+                try {
+                    $vector = $embedProfile->handle($profile);
+                } catch (Throwable $exception) {
+                    report($exception);
+                    if (! $mode->usesKeywords()) {
+                        $failed = true;
+                    }
+                }
+            }
+
+            if ($vector === null && $terms === []) {
+                $failed = true;
+            } elseif (! $failed) {
+                $matches = $matchOpenings->handle($profile, $vector, $country, terms: $terms);
+            }
         } catch (Throwable $exception) {
             report($exception);
             $failed = true;
-            $matches = [];
         }
 
         return Inertia::render('matches', [
             'matches' => JobListingResource::collection($matches),
-            'filters' => ['country' => $country],
+            'filters' => ['country' => $country, 'mode' => $mode->value],
             'countries' => $listCountries->handle($country),
             'failed' => $failed,
         ]);

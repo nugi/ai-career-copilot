@@ -10,11 +10,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { index as matchesIndex } from '@/routes/matches';
 
 type MatchesProps = {
     matches: { data: Job[] };
-    filters: { country: string | null };
+    filters: {
+        country: string | null;
+        mode: 'keyword' | 'semantic' | 'hybrid';
+    };
     countries: { code: string; name: string }[];
     failed: boolean;
 };
@@ -28,7 +32,22 @@ export default function Matches({
     const changeCountry = (value: string) => {
         router.get(
             matchesIndex.url(),
-            { country: value === 'any' ? '' : value },
+            { country: value === 'any' ? '' : value, mode: filters.mode },
+            {
+                preserveState: true,
+                replace: true,
+            },
+        );
+    };
+
+    const changeMode = (value: string) => {
+        if (!value) {
+            return;
+        }
+
+        router.get(
+            matchesIndex.url(),
+            { country: filters.country ?? '', mode: value },
             {
                 preserveState: true,
                 replace: true,
@@ -42,6 +61,21 @@ export default function Matches({
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8">
                 <Heading title="Matches" />
                 <div className="flex flex-wrap items-center gap-3">
+                    <ToggleGroup
+                        type="single"
+                        variant="outline"
+                        aria-label="Match mode"
+                        value={filters.mode}
+                        onValueChange={changeMode}
+                    >
+                        <ToggleGroupItem value="keyword">
+                            Keyword
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="semantic">
+                            Semantic
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="hybrid">Hybrid</ToggleGroupItem>
+                    </ToggleGroup>
                     <Select
                         value={filters.country ?? 'any'}
                         onValueChange={changeCountry}

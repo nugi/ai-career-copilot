@@ -1,6 +1,6 @@
 # 30. Match openings by exact distance to the profile text
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0031](0031-fuse-keyword-and-semantic-ranks-with-reciprocal-rank-fusion.md) (point 4: the ranking is now the default of a fusion with a keyword leg, and semantic mode keeps this ranking)
 - **Date:** 2026-11-03
 
 ## Context
