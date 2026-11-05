@@ -1,6 +1,6 @@
 # Fit explanations with citations
 
-"Why is this a fit?" on the matches page explains one posting against the user's own resume ([ADR 0034](../adr/0034-explain-fit-with-citations-checked-in-php.md)).
+"Why is this a fit?" on the matches page explains one posting against the user's own resume ([ADR 0034](adr/0034-explain-fit-with-citations-checked-in-php.md)).
 
 ## Pipeline
 
@@ -14,7 +14,7 @@
 
 Open the matches page, pick a posting outside your field (or create one with `JobPosting::factory()` in Tinker, for example "ICU Registered Nurse"), and open `/matches/{id}/fit`. The answer should be a weak fit with the role's requirements listed as missing. If it says "strong fit" with no excerpt under a reason, the post-check failed, and the page would have lowered it.
 
-## Drill: the citation exists, but the claim misrepresents the excerpt
+## When the citation exists but the claim misrepresents the excerpt
 
 The post-check proves only that a cited excerpt was retrieved. "You ran Kubernetes in production" can cite an excerpt that says "Skills: Docker". Measuring this is measuring **faithfulness**: is each claim entailed by the text it cites?
 

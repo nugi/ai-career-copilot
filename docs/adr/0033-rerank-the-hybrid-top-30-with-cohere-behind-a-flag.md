@@ -49,3 +49,7 @@ The Laravel AI SDK has reranking for Cohere, Jina, Voyage AI, OpenRouter and Bed
 3. **An LLM as the reranker:** a prompt that orders 30 postings costs more tokens and is slower than a cross-encoder. Rejected.
 
 **Revisit when** the retrieval evaluation has a hybrid + rerank row, or the cache hit rate in the logs (`matches.reranked`, `cached`) shows that most visits pay.
+
+## Notes
+
+**2026-11-05: measured latency.** Three uncached calls took 1,047 to 1,488 ms from a local machine, one sample per search, above the 300 to 800 ms expected in the decision. All three stayed inside the 3-second timeout, and the cache still removes the cost from later visits. The table is in [`docs/reranking.md`](../reranking.md).
