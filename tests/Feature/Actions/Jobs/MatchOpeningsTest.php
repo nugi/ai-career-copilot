@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Jobs\MatchOpenings;
+use App\Enums\KeywordWeighting;
 use App\Enums\WorkArrangement;
 use App\Models\ExchangeRate;
 use App\Models\JobPosting;
@@ -220,4 +221,42 @@ test('generated search vectors include embedded skills and tolerate missing embe
         ->whereRaw("search_vector @@ phraseto_tsquery('simple', 'laravel')")->orderBy('id')->pluck('id')->all();
 
     expect($ids)->toBe([$skills->id, $title->id, $description->id]);
+});
+
+test('IDF lets a rare term outrank two common ones, and count keeps the old order', function () {
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Work', 'embedding' => null, 'expires_at' => null]);
+    $rare = $postings->create(['title' => 'Laravel developer']);
+    $common = $postings->create(['title' => 'Docker Redis engineer']);
+    $postings->count(6)->create(['title' => 'Docker Redis ops']);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+    $action = app(MatchOpenings::class);
+    $terms = ['Laravel', 'Docker', 'Redis'];
+
+    $count = $action->handle($profile, null, null, 30, $terms);
+    $idf = $action->handle($profile, null, null, 30, $terms, KeywordWeighting::Idf);
+
+    expect($count->pluck('id')->search($common->id))->toBeLessThan($count->pluck('id')->search($rare->id))
+        ->and($idf->first()->id)->toBe($rare->id)
+        ->and(round((float) $idf->first()->getAttribute('keyword_weight'), 4))->toBe(round(log(8), 4));
+});
+
+test('IDF times proficiency lowers a rare beginner skill below a rare expert one', function () {
+    $postings = JobPosting::factory()->remote()->state(['description' => 'Work', 'embedding' => null, 'expires_at' => null]);
+    $rust = $postings->create(['title' => 'Rust developer']);
+    $laravel = $postings->create(['title' => 'Laravel developer']);
+    $postings->count(4)->create(['title' => 'Designer']);
+    $profile = Profile::factory()->remoteOnly()->withoutSalary()->make();
+    $action = app(MatchOpenings::class);
+    $terms = ['Rust', 'Laravel'];
+
+    $idf = $action->handle($profile, null, null, 30, $terms, KeywordWeighting::Idf);
+    $weighted = $action->handle($profile, null, null, 30, $terms, KeywordWeighting::IdfProficiency, ['Rust' => 0.5, 'Laravel' => 1.0]);
+
+    expect($idf->pluck('id')->all())->toBe([$laravel->id, $rust->id])
+        ->and($weighted->pluck('id')->all())->toBe([$laravel->id, $rust->id])
+        ->and(round((float) $weighted[1]->getAttribute('keyword_weight'), 4))->toBe(round(0.5 * log(6), 4));
+
+    $flipped = $action->handle($profile, null, null, 30, $terms, KeywordWeighting::IdfProficiency, ['Rust' => 1.0, 'Laravel' => 0.5]);
+
+    expect($flipped->pluck('id')->all())->toBe([$rust->id, $laravel->id]);
 });
