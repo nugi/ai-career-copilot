@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\File;
  * @var array<string, string>
  */
 const PUBLISHED_PROMPT_HASHES = [
+    'relevance-grader/v1.md' => '0c687b27153d1a71e7b4e2cb7ca7b3ca3f293bf480f67c878fac916ed918f628',
+    'relevance-grader/v2.md' => '7e0d021df62da6a934ba9fa5d2699a20db24cf93ebbf7dd4ae5dca52d2040082',
+    'relevance-grader/v3.md' => 'd18892e8a90164a5d65ca06e5582f8d00882884a0026687719e6feb12b76d0cd',
+    'relevance-grader/v4.md' => 'dea517767ed7735c0d7585e7ad5946ccd18fa1a10aabd3ca1dc8607ed1e9f531',
     'career-advisor/v1.md' => 'b564fbf74884561cf51762627e7002bb228bc483595c560a5f5a046b016fc143',
     'career-advisor/v2.md' => 'f83610ceae85a1c0f31e659ee87b16bac91db1e64b2ae368d7d3839e0696ff81',
     'resume-parser/v1.md' => 'b808ce53957921398795497ebfcb3836bc512bb60795b4d25d50ee173d5faae7',

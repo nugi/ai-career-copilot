@@ -1,8 +1,13 @@
 <?php
 
+use App\Ai\Agents\RelevanceGrader;
+use App\Models\AiUsage;
 use App\Models\JobPosting;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\File;
 use Laravel\Ai\Embeddings;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Reranking;
 
 beforeEach(function (): void {
     $this->goldenPath = storage_path('framework/testing/retrieval-'.uniqid().'.json');
@@ -106,6 +111,179 @@ test('a golden set with no graded relevant label fails and says to pool first', 
     $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--weighting' => ['count']])
         ->expectsOutputToContain('Run --pool and grade the labels first.')
         ->assertFailed();
+});
+
+test('pooling excludes seeded postings even when they are the best match', function () {
+    retrievalPostings();
+    JobPosting::factory()->remote()->withEmbedding()->create([
+        'source' => 'manual', 'external_id' => null, 'title' => 'Laravel Developer',
+        'description' => 'Laravel Developer PHP', 'expires_at' => null,
+        'embedding' => '['.implode(',', [1, ...array_fill(0, 1535, 0)]).']',
+    ]);
+    writeGolden($this->goldenPath, []);
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--pool' => true])
+        ->expectsOutputToContain('Added 3 postings to grade')->assertSuccessful();
+
+    $labels = json_decode(File::get($this->goldenPath), true)['cases'][0]['labels'];
+    expect(array_column($labels, 'posting'))->toEqualCanonicalizing(['himalayas:laravel', 'himalayas:php', 'himalayas:designer']);
+});
+
+test('grading fills null labels and preserves graded labels without sending them', function () {
+    $this->travelTo(now()->setTimezone('UTC')->setDate(2026, 11, 6)->startOfDay());
+    config(['ai-routing.batch_daily_budget_usd' => null, 'ai-routing.global_daily_budget_usd' => null]);
+    retrievalPostings();
+    $graded = ['posting' => 'himalayas:designer', 'grade' => 0];
+    writeGolden($this->goldenPath, [
+        ['posting' => 'himalayas:laravel', 'grade' => null],
+        ['posting' => 'himalayas:php', 'grade' => null],
+        $graded,
+    ]);
+    $golden = json_decode(File::get($this->goldenPath), true);
+    $golden['cases'][] = [...$golden['cases'][0], 'id' => 'already-graded', 'labels' => [$graded]];
+    File::put($this->goldenPath, json_encode($golden));
+    RelevanceGrader::fake([['profile_field' => 'engineering', 'profile_level' => 'mid', 'postings' => [
+        ['posting_id' => 1, 'reason' => ' Same work. ', 'main_work' => 'backend', 'posting_level' => 'mid', 'matches_target_role' => true],
+        ['posting_id' => 1, 'reason' => 'Duplicate.', 'main_work' => 'design', 'posting_level' => 'mid', 'matches_target_role' => false],
+        ['posting_id' => 2, 'reason' => 'Adjacent work.', 'main_work' => 'frontend', 'posting_level' => 'mid', 'matches_target_role' => false],
+    ]]]);
+    Reranking::fake();
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--grade' => true, '--with-rerank' => true, '--pool' => true])
+        ->expectsOutputToContain('Graded: 2. Calls: 1. Not live: 0. Invalid: 0. Cost: $0.000000')
+        ->assertSuccessful();
+
+    $saved = json_decode(File::get($this->goldenPath), true);
+    expect($saved['labelled_on'])->toBe('2026-11-06')
+        ->and($saved['labelled_by'])->toBe('relevance-grader/'.RelevanceGrader::PROMPT_VERSION)
+        ->and($saved['cases'][0]['labels'][2])->toBe($graded);
+    foreach (array_slice($saved['cases'][0]['labels'], 0, 2) as $label) {
+        expect($label['grader'])->toBe('relevance-grader/'.RelevanceGrader::PROMPT_VERSION)->and($label['reason'])->toBe(trim($label['reason']))
+            ->and($label['facts'])->toBe([
+                'main_work' => $label['grade'] === 2 ? 'backend' : 'frontend',
+                'posting_level' => 'mid',
+                'profile_level' => 'mid',
+                'matches_target_role' => $label['grade'] === 2,
+            ]);
+    }
+    expect(array_column(array_slice($saved['cases'][0]['labels'], 0, 2), 'grade'))->toEqualCanonicalizing([2, 1]);
+    RelevanceGrader::assertPromptedTimes(1);
+    RelevanceGrader::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->contains('Laravel developer') && $prompt->contains('PHP engineer') && ! $prompt->contains('Designer'));
+    Embeddings::assertNothingGenerated();
+    Reranking::assertNothingReranked();
+});
+
+test('invalid grader entries and labels without live postings keep null grades', function () {
+    config(['ai-routing.batch_daily_budget_usd' => null, 'ai-routing.global_daily_budget_usd' => null]);
+    $postings = retrievalPostings();
+    $postings['designer']->update(['expires_at' => now()->subDay()]);
+    JobPosting::factory()->create(['source' => 'manual', 'external_id' => null, 'expires_at' => null]);
+    writeGolden($this->goldenPath, array_map(fn (string $key): array => ['posting' => $key, 'grade' => null], [
+        'himalayas:laravel', 'himalayas:php', 'himalayas:designer', 'himalayas:gone', 'manual:',
+    ]));
+    $original = File::get($this->goldenPath);
+    RelevanceGrader::fake([['profile_field' => 'engineering', 'profile_level' => 'mid', 'postings' => [
+        ['posting_id' => 1, 'reason' => 'Unknown work.', 'main_work' => 'unknown', 'posting_level' => 'mid', 'matches_target_role' => true],
+        ['posting_id' => 2, 'reason' => 'Not a boolean.', 'main_work' => 'backend', 'posting_level' => 'mid', 'matches_target_role' => 'true'],
+        ['posting_id' => 99, 'reason' => 'Unknown posting.', 'main_work' => 'backend', 'posting_level' => 'mid', 'matches_target_role' => true],
+        ['posting_id' => '1', 'reason' => 'Not an integer ID.', 'main_work' => 'backend', 'posting_level' => 'mid', 'matches_target_role' => true],
+    ]]]);
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--grade' => true])
+        ->expectsOutputToContain('Graded: 0. Calls: 1. Not live: 3. Invalid: 2.')
+        ->assertSuccessful();
+
+    expect(File::get($this->goldenPath))->toBe($original);
+    RelevanceGrader::assertPromptedTimes(1);
+});
+
+test('an invalid profile level leaves every posting ungraded', function () {
+    config(['ai-routing.batch_daily_budget_usd' => null, 'ai-routing.global_daily_budget_usd' => null]);
+    retrievalPostings();
+    writeGolden($this->goldenPath, [
+        ['posting' => 'himalayas:laravel', 'grade' => null],
+        ['posting' => 'himalayas:php', 'grade' => null],
+    ]);
+    $original = File::get($this->goldenPath);
+    RelevanceGrader::fake([['profile_field' => 'engineering', 'profile_level' => 'unknown', 'postings' => [
+        ['posting_id' => 1, 'reason' => 'Same work.', 'main_work' => 'backend', 'posting_level' => 'mid', 'matches_target_role' => true],
+    ]]]);
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--grade' => true])
+        ->expectsOutputToContain('Graded: 0. Calls: 1. Not live: 0. Invalid: 2.')
+        ->assertSuccessful();
+
+    expect(File::get($this->goldenPath))->toBe($original);
+});
+
+test('relevance grades follow the fact rules', function (string $field, string $profileLevel, string $work, string $postingLevel, bool $matches, int $grade) {
+    expect(RelevanceGrader::grade($field, $profileLevel, $work, $postingLevel, $matches))->toBe($grade);
+})->with([
+    ['engineering', 'junior', 'backend', 'senior', true, 0],
+    ['engineering', 'mid', 'design', 'mid', true, 0],
+    ['engineering', 'mid', 'other', 'mid', true, 0],
+    ['design', 'mid', 'design', 'mid', false, 2],
+    ['design', 'mid', 'frontend', 'mid', false, 1],
+    ['design', 'mid', 'backend', 'mid', false, 0],
+    ['engineering', 'senior', 'backend', 'lead', true, 2],
+    ['engineering', 'senior', 'full_stack', 'senior', false, 1],
+]);
+
+test('a spent batch budget fails grading without a call', function () {
+    config(['ai-routing.batch_daily_budget_usd' => 0.01, 'ai-routing.global_daily_budget_usd' => null]);
+    retrievalPostings();
+    AiUsage::factory()->create(['feature' => 'embedding', 'cost_usd' => 0.02, 'created_at' => now()]);
+    writeGolden($this->goldenPath, [['posting' => 'himalayas:laravel', 'grade' => null]]);
+    $original = File::get($this->goldenPath);
+    RelevanceGrader::fake()->preventStrayPrompts();
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--grade' => true])
+        ->expectsOutputToContain('budget is spent')->assertFailed();
+
+    expect(File::get($this->goldenPath))->toBe($original);
+    RelevanceGrader::assertNeverPrompted();
+    Embeddings::assertNothingGenerated();
+});
+
+test('a failed second case leaves the first saved and a second run grades only the second case', function () {
+    config(['ai-routing.batch_daily_budget_usd' => null, 'ai-routing.global_daily_budget_usd' => null]);
+    retrievalPostings();
+    writeGolden($this->goldenPath, [['posting' => 'himalayas:laravel', 'grade' => null]]);
+    $golden = json_decode(File::get($this->goldenPath), true);
+    $golden['cases'][] = [...$golden['cases'][0], 'id' => 'second', 'labels' => [['posting' => 'himalayas:php', 'grade' => null]]];
+    File::put($this->goldenPath, json_encode($golden));
+    $calls = 0;
+    RelevanceGrader::fake(function () use (&$calls): array {
+        if (++$calls === 2) {
+            throw new RuntimeException('Grader unavailable');
+        }
+
+        return ['profile_field' => 'engineering', 'profile_level' => 'mid', 'postings' => [['posting_id' => 1, 'reason' => 'Same role.', 'main_work' => 'backend', 'posting_level' => 'mid', 'matches_target_role' => true]]];
+    });
+    Exceptions::fake();
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--grade' => true])
+        ->expectsOutputToContain('Case second failed')->assertFailed();
+
+    $saved = json_decode(File::get($this->goldenPath), true);
+    expect($saved['cases'][0]['labels'][0]['grade'])->toBe(2)
+        ->and($saved['cases'][1]['labels'][0]['grade'])->toBeNull();
+    Exceptions::assertReported(RuntimeException::class);
+    $resumedPrompts = [];
+    RelevanceGrader::fake(function (string $prompt) use (&$resumedPrompts): array {
+        $resumedPrompts[] = $prompt;
+
+        return ['profile_field' => 'engineering', 'profile_level' => 'mid', 'postings' => [['posting_id' => 1, 'reason' => 'Adjacent role.', 'main_work' => 'frontend', 'posting_level' => 'mid', 'matches_target_role' => false]]];
+    });
+
+    $this->artisan('eval:retrieval', ['--labels' => $this->goldenPath, '--grade' => true])->assertSuccessful();
+
+    $resumed = json_decode(File::get($this->goldenPath), true);
+    expect($resumed['cases'][0])->toBe($saved['cases'][0])
+        ->and($resumed['cases'][1]['labels'][0]['grade'])->toBe(1);
+    RelevanceGrader::assertPromptedTimes(3);
+    expect($resumedPrompts)->toHaveCount(1)
+        ->and($resumedPrompts[0])->toContain('PHP engineer')->not->toContain('Laravel developer');
 });
 
 test('an unknown weighting is refused', function () {

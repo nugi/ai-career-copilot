@@ -13,6 +13,7 @@ enum AiFeature: string
     case SkillExtraction = 'skill_extraction';
     case Reranking = 'reranking';
     case FitExplanation = 'fit_explanation';
+    case RelevanceGrading = 'relevance_grading';
 
     /**
      * Determine whether the feature runs as background work that no user waits for, which the batch budget limits.
@@ -20,6 +21,7 @@ enum AiFeature: string
     public function runsInBatch(): bool
     {
         return match ($this) {
+            self::RelevanceGrading => true,
             self::SkillExtraction => true,
             self::Embedding => true,
             self::FitScoring => false,

@@ -20,6 +20,7 @@ return [
         'skill_extraction' => 'cheap',
         'chat' => 'cheap',
         'fit_explanation' => 'cheap',
+        'relevance_grading' => 'cheap',
     ],
 
     /*

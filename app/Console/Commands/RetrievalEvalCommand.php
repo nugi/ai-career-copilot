@@ -7,22 +7,30 @@ use App\Actions\Jobs\MatchOpenings;
 use App\Actions\Jobs\ProfileEmbeddingText;
 use App\Actions\Jobs\RerankOpenings;
 use App\Actions\Jobs\SearchOpenings;
+use App\Ai\Agents\RelevanceGrader;
+use App\Ai\DailyBudget;
 use App\Ai\EmbedTexts;
+use App\Enums\AiFeature;
 use App\Enums\KeywordWeighting;
 use App\Evals\Retrieval\GoldenProfile;
 use App\Evals\Retrieval\RetrievalMetrics;
+use App\Models\AiUsage;
 use App\Models\JobPosting;
 use App\Models\Profile;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use JsonException;
+use Laravel\Ai\Responses\StructuredAgentResponse;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 use RuntimeException;
 use Throwable;
 
-#[Signature('eval:retrieval {--labels=tests/Evals/retrieval.json : The golden set} {--weighting=* : Keyword weightings to compare: count, idf, idf_proficiency (default all)} {--with-rerank : Add a reranked variant of each hybrid ranking (calls Cohere)} {--pool : Add every unlabelled posting from the top 10 of any variant to the golden set, with a null grade, and stop} {--bootstrap=0 : Resamples for the 95% intervals of nDCG@10; 0 turns them off} {--save : Write the results as a JSON file} {--output=docs/evals/retrieval : The directory that --save writes to}')]
+#[Signature('eval:retrieval {--labels=tests/Evals/retrieval.json : The golden set} {--weighting=* : Keyword weightings to compare: count, idf, idf_proficiency (default all)} {--with-rerank : Add a reranked variant of each hybrid ranking (calls Cohere)} {--pool : Add every unlabelled posting from the top 10 of any variant to the golden set, with a null grade, and stop} {--grade : Fill each null grade with the relevance grader, save after each case, and stop} {--bootstrap=0 : Resamples for the 95% intervals of nDCG@10; 0 turns them off} {--save : Write the results as a JSON file} {--output=docs/evals/retrieval : The directory that --save writes to}')]
 #[Description('Measure recall@10, MRR and nDCG@10 of each ranking mode on the golden set of profiles.')]
 class RetrievalEvalCommand extends Command
 {
@@ -59,6 +67,10 @@ class RetrievalEvalCommand extends Command
 
         if ($weightings === null) {
             return self::FAILURE;
+        }
+
+        if ($this->option('grade')) {
+            return $this->grade($path, $golden);
         }
 
         if ($this->option('with-rerank')) {
@@ -130,6 +142,10 @@ class RetrievalEvalCommand extends Command
             $byOpening = [];
 
             foreach ($postings as $posting) {
+                if ($posting->source === 'manual') {
+                    continue;
+                }
+
                 $opening = (int) $posting->opening_id;
                 $openings[] = $opening;
                 $byOpening[$opening] = $posting;
@@ -139,6 +155,143 @@ class RetrievalEvalCommand extends Command
         }
 
         return $lists;
+    }
+
+    /**
+     * Fill only null labels, persisting each answered case so interrupted runs can resume.
+     *
+     * @param  array<string, mixed>  $golden
+     */
+    private function grade(string $path, array $golden): int
+    {
+        $grader = new RelevanceGrader;
+        $budget = app(DailyBudget::class);
+        $graded = 0;
+        $calls = 0;
+        $notLive = 0;
+        $invalid = 0;
+        $invocations = [];
+
+        foreach ($golden['cases'] as $caseIndex => $case) {
+            $selected = [];
+
+            foreach ($case['labels'] as $labelIndex => $label) {
+                if ($label['grade'] === null) {
+                    $selected[$labelIndex] = $label['posting'];
+                }
+            }
+
+            if ($selected === []) {
+                continue;
+            }
+
+            $live = JobPosting::query()->live()->where('source', '!=', 'manual')
+                ->whereIn(DB::raw("source || ':' || external_id"), array_values($selected))
+                ->with('skills')->orderBy('id')->get()
+                ->keyBy(fn (JobPosting $posting): string => "{$posting->source}:{$posting->external_id}");
+            $pending = [];
+
+            foreach ($selected as $labelIndex => $key) {
+                if (! isset($live[$key])) {
+                    $notLive++;
+
+                    continue;
+                }
+
+                $pending[] = ['label' => $labelIndex, 'posting' => $live[$key]];
+            }
+
+            if ($pending === []) {
+                continue;
+            }
+
+            $pending = (new Randomizer(new Mt19937(self::SEED)))->shuffleArray($pending);
+            $postings = [];
+
+            foreach ($pending as $index => $entry) {
+                $postings[$index + 1] = $entry['posting'];
+            }
+
+            if ($budget->isBatchExceeded()) {
+                $this->error('The batch budget is spent. Earlier cases stay saved.');
+
+                return self::FAILURE;
+            }
+
+            try {
+                $calls++;
+                $response = $grader->prompt($grader->message($case['profile'], $postings));
+
+                if (! $response instanceof StructuredAgentResponse) {
+                    throw new RuntimeException('The relevance grader returned no structured answer.');
+                }
+
+                $invocations[] = $response->invocationId;
+            } catch (Throwable $exception) {
+                report($exception);
+                $this->error("Case {$case['id']} failed: {$exception->getMessage()}");
+
+                return self::FAILURE;
+            }
+
+            $profileField = $response['profile_field'] ?? null;
+            $profileLevel = $response['profile_level'] ?? null;
+
+            if (! in_array($profileField, RelevanceGrader::PROFILE_FIELDS, true)
+                || ! in_array($profileLevel, RelevanceGrader::LEVELS, true)) {
+                $invalid += count($postings);
+
+                continue;
+            }
+
+            $accepted = [];
+            $entries = $response['postings'] ?? null;
+
+            foreach (is_array($entries) ? $entries : [] as $entry) {
+                if (! is_array($entry)) {
+                    continue;
+                }
+
+                $number = $entry['posting_id'] ?? null;
+                $reason = $entry['reason'] ?? null;
+                $mainWork = $entry['main_work'] ?? null;
+                $postingLevel = $entry['posting_level'] ?? null;
+                $matchesTargetRole = $entry['matches_target_role'] ?? null;
+
+                if (! is_int($number) || ! isset($postings[$number]) || isset($accepted[$number])
+                    || ! is_string($reason) || ! in_array($mainWork, RelevanceGrader::MAIN_WORK, true)
+                    || ! in_array($postingLevel, RelevanceGrader::LEVELS, true) || ! is_bool($matchesTargetRole)) {
+                    continue;
+                }
+
+                $labelIndex = $pending[$number - 1]['label'];
+                $golden['cases'][$caseIndex]['labels'][$labelIndex]['grade'] = RelevanceGrader::grade($profileField, $profileLevel, $mainWork, $postingLevel, $matchesTargetRole);
+                $golden['cases'][$caseIndex]['labels'][$labelIndex]['grader'] = 'relevance-grader/'.RelevanceGrader::PROMPT_VERSION;
+                $golden['cases'][$caseIndex]['labels'][$labelIndex]['reason'] = trim($reason);
+                $golden['cases'][$caseIndex]['labels'][$labelIndex]['facts'] = [
+                    'main_work' => $mainWork,
+                    'posting_level' => $postingLevel,
+                    'profile_level' => $profileLevel,
+                    'matches_target_role' => $matchesTargetRole,
+                ];
+                $accepted[$number] = true;
+                $graded++;
+            }
+
+            $invalid += count($postings) - count($accepted);
+
+            if ($accepted !== []) {
+                $golden['labelled_on'] = now()->utc()->format('Y-m-d');
+                $golden['labelled_by'] = 'relevance-grader/'.RelevanceGrader::PROMPT_VERSION;
+                File::put($path, json_encode($golden, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n");
+            }
+        }
+
+        $cost = (float) AiUsage::query()->where('feature', AiFeature::RelevanceGrading->value)
+            ->whereIn('invocation_id', $invocations)->sum('cost_usd');
+        $this->info(sprintf('Graded: %d. Calls: %d. Not live: %d. Invalid: %d. Cost: $%.6f', $graded, $calls, $notLive, $invalid, $cost));
+
+        return self::SUCCESS;
     }
 
     /**
@@ -320,7 +473,7 @@ class RetrievalEvalCommand extends Command
         $sha = trim(Process::run('git rev-parse --short HEAD')->output()) ?: 'unknown';
         $date = now()->utc();
         $directory = (string) $this->option('output');
-        $directory = str_starts_with($directory, '/') ? $directory : base_path($directory);
+        $directory = preg_match('~^(?:[A-Za-z]:[\\\\/]|/)~', $directory) === 1 ? $directory : base_path($directory);
         $file = $directory.'/'.$date->format('Y-m-d-His')."-{$sha}.json";
 
         File::ensureDirectoryExists(dirname($file));
@@ -355,7 +508,7 @@ class RetrievalEvalCommand extends Command
     {
         $lookup = [];
 
-        foreach (JobPosting::query()->live()->whereNotNull('opening_id')->get(['source', 'external_id', 'opening_id']) as $posting) {
+        foreach (JobPosting::query()->live()->where('source', '!=', 'manual')->whereNotNull('opening_id')->get(['source', 'external_id', 'opening_id']) as $posting) {
             $lookup["{$posting->source}:{$posting->external_id}"] = (int) $posting->opening_id;
         }
 
