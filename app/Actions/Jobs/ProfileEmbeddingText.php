@@ -34,6 +34,40 @@ final class ProfileEmbeddingText
     }
 
     /**
+     * Map each keyword term to its proficiency multiplier for the IdfProficiency weighting (ADR 0035): 1.0 for a target
+     * role or an expert skill, down to 0.5 for a beginner one. Proficiency tilts the weight; it does not override rarity.
+     *
+     * @return array<string, float>
+     */
+    public function keywordMultipliers(Profile $profile): array
+    {
+        $profile->loadMissing('user.skills');
+        $multipliers = [];
+
+        foreach ($profile->target_roles as $role) {
+            if (trim($role) !== '') {
+                $multipliers[trim($role)] = 1.0;
+            }
+        }
+
+        $skills = $this->skillNames($profile);
+
+        foreach ($profile->user->skills as $skill) {
+            if (in_array($skill->name, $skills, true)) {
+                $multipliers[$skill->name] ??= match ($skill->pivot->proficiency) {
+                    SkillProficiency::Expert => 1.0,
+                    SkillProficiency::Advanced => 0.85,
+                    SkillProficiency::Intermediate => 0.7,
+                    SkillProficiency::Beginner => 0.5,
+                    default => 0.7,
+                };
+            }
+        }
+
+        return $multipliers;
+    }
+
+    /**
      * @return list<string>
      */
     private function skillNames(Profile $profile): array
