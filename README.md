@@ -71,9 +71,20 @@ composer test
 
 ## Retrieval quality
 
-`php artisan eval:retrieval` scores the matches ranking on 20 graded fixture profiles: recall@10, MRR and nDCG@10 for each mode, with bootstrap intervals ([ADR 0035](docs/adr/0035-measure-retrieval-on-a-graded-golden-set-of-profiles.md), [workflow](docs/learning/retrieval-eval.md)). Saved runs are in [`docs/evals/retrieval`](docs/evals/retrieval).
+`php artisan eval:retrieval` scores the matches ranking on 20 graded fixture profiles: recall@10, MRR and nDCG@10 for each mode, with bootstrap intervals ([ADR 0035](docs/adr/0035-measure-retrieval-on-a-graded-golden-set-of-profiles.md), [workflow](docs/retrieval-eval.md)). Saved runs are in [`docs/evals/retrieval`](docs/evals/retrieval).
 
-The baseline table goes here after the first graded run. Until then the default mode is hybrid with the `count` weighting.
+Baseline, 19 of 20 cases (one case has no eligible label), 310 graded labels, 10,000 bootstrap resamples ([run](docs/evals/retrieval/2026-11-09-084349-7a92c4b.json)):
+
+| Mode                        | Recall@10 | MRR   | nDCG@10 | vs hybrid (95% interval)  |
+| --------------------------- | --------- | ----- | ------- | ------------------------- |
+| Semantic                    | 0.652     | 0.804 | 0.831   | +0.032 (−0.030 to +0.104) |
+| Keyword, count              | 0.458     | 0.616 | 0.653   | −0.146 (−0.231 to −0.073) |
+| **Hybrid, count** (default) | 0.643     | 0.784 | 0.799   |                           |
+| Hybrid, count + rerank      | 0.661     | 0.781 | 0.818   | +0.019 (−0.056 to +0.099) |
+| Hybrid, IDF                 | 0.646     | 0.741 | 0.787   | −0.013 (−0.051 to +0.017) |
+| Hybrid, IDF + proficiency   | 0.646     | 0.742 | 0.787   | −0.013 (−0.046 to +0.012) |
+
+Keyword alone is clearly worse. No other mode beats hybrid with `count` by more than the noise, so the default stays.
 
 ## Contributing
 

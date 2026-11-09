@@ -1,0 +1,1210 @@
+{
+    "date": "2026-11-09T08:43:49+00:00",
+    "git_sha": "7a92c4b",
+    "settings": {
+        "embedding_model": "text-embedding-3-small",
+        "rerank_model": "rerank-v4.0-pro",
+        "rerank_candidates": 30,
+        "rrf_k": 60,
+        "weightings": ["count", "idf", "idf_proficiency"],
+        "k": 10,
+        "bootstrap_samples": 10000,
+        "bootstrap_seed": 25
+    },
+    "corpus": {
+        "live_postings": 188
+    },
+    "labels": {
+        "graded": 310,
+        "live_share": 1.0
+    },
+    "summary": {
+        "semantic": {
+            "recall_at_10": 0.6521663739461523,
+            "mrr": 0.8035087719298245,
+            "ndcg_at_10": 0.8311893949943869,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.8311893949943869,
+                "low": 0.7600211092302679,
+                "high": 0.894108935840122
+            },
+            "ndcg_vs_baseline": {
+                "mean": 0.031837345268962446,
+                "low": -0.029751752820562905,
+                "high": 0.10438315280569603
+            }
+        },
+        "keyword:count": {
+            "recall_at_10": 0.4580342633666733,
+            "mrr": 0.6158008658008658,
+            "ndcg_at_10": 0.6530619912565371,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.6530619912565371,
+                "low": 0.4958083972322993,
+                "high": 0.7927185748628995
+            },
+            "ndcg_vs_baseline": {
+                "mean": -0.1462900584688873,
+                "low": -0.23070904180272947,
+                "high": -0.07289072947896037
+            }
+        },
+        "hybrid:count": {
+            "recall_at_10": 0.6432283090870349,
+            "mrr": 0.7842105263157895,
+            "ndcg_at_10": 0.7993520497254245,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.7993520497254245,
+                "low": 0.6961670041912548,
+                "high": 0.8875647215477619
+            }
+        },
+        "hybrid:count+rerank": {
+            "recall_at_10": 0.6610645663969764,
+            "mrr": 0.780701754385965,
+            "ndcg_at_10": 0.8184319090665659,
+            "cases": 19,
+            "unjudged_in_top_10": 1,
+            "ndcg_interval": {
+                "mean": 0.8184319090665659,
+                "low": 0.7364779781182595,
+                "high": 0.8981498821310364
+            },
+            "ndcg_vs_baseline": {
+                "mean": 0.019079859341141245,
+                "low": -0.05643068671480299,
+                "high": 0.09882632287695259
+            }
+        },
+        "keyword:idf": {
+            "recall_at_10": 0.46111213348055446,
+            "mrr": 0.5771929824561404,
+            "ndcg_at_10": 0.6502715385702065,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.6502715385702065,
+                "low": 0.49495547358353775,
+                "high": 0.7888191609760333
+            },
+            "ndcg_vs_baseline": {
+                "mean": -0.1490805111552183,
+                "low": -0.23794627348022013,
+                "high": -0.07149323866533014
+            }
+        },
+        "hybrid:idf": {
+            "recall_at_10": 0.646152285695222,
+            "mrr": 0.7408906882591094,
+            "ndcg_at_10": 0.7867852224745875,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.7867852224745875,
+                "low": 0.6779780325486177,
+                "high": 0.8800470670606998
+            },
+            "ndcg_vs_baseline": {
+                "mean": -0.012566827250837088,
+                "low": -0.05057173291741349,
+                "high": 0.016618381896980863
+            }
+        },
+        "hybrid:idf+rerank": {
+            "recall_at_10": 0.65837982423855,
+            "mrr": 0.7894736842105263,
+            "ndcg_at_10": 0.8223328925435297,
+            "cases": 19,
+            "unjudged_in_top_10": 1,
+            "ndcg_interval": {
+                "mean": 0.8223328925435297,
+                "low": 0.7402605318582267,
+                "high": 0.9014756992761753
+            },
+            "ndcg_vs_baseline": {
+                "mean": 0.022980842818104984,
+                "low": -0.05660759042460955,
+                "high": 0.10542883543695802
+            }
+        },
+        "keyword:idf_proficiency": {
+            "recall_at_10": 0.46111213348055446,
+            "mrr": 0.5742181540808543,
+            "ndcg_at_10": 0.6414978530100394,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.6414978530100394,
+                "low": 0.4869550048630925,
+                "high": 0.7793100393370449
+            },
+            "ndcg_vs_baseline": {
+                "mean": -0.15785419671538517,
+                "low": -0.2452278918527587,
+                "high": -0.07818183563027298
+            }
+        },
+        "hybrid:idf_proficiency": {
+            "recall_at_10": 0.646152285695222,
+            "mrr": 0.7418859649122806,
+            "ndcg_at_10": 0.7865283473119101,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.7865283473119101,
+                "low": 0.6807874494155975,
+                "high": 0.8760309473833076
+            },
+            "ndcg_vs_baseline": {
+                "mean": -0.012823702413514534,
+                "low": -0.045573562129218335,
+                "high": 0.011795743125707601
+            }
+        },
+        "hybrid:idf_proficiency+rerank": {
+            "recall_at_10": 0.6607721687361576,
+            "mrr": 0.780701754385965,
+            "ndcg_at_10": 0.8178475641668269,
+            "cases": 19,
+            "unjudged_in_top_10": 0,
+            "ndcg_interval": {
+                "mean": 0.8178475641668269,
+                "low": 0.7350639577763881,
+                "high": 0.8977902937866421
+            },
+            "ndcg_vs_baseline": {
+                "mean": 0.018495514441402395,
+                "low": -0.05746032661237928,
+                "high": 0.09827098059054462
+            }
+        }
+    },
+    "cases": {
+        "semantic": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.804532155482531
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9074250374176303
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9477344873475498
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9664515752024123
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.1,
+                "ndcg_at_10": 0.6561709361507526
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8632555551147043
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8622770126295182
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7510342033075287
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.7247516925919817
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.5625,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6402522810131778
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.4525081529734507
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8772153153380493
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.3888888888888889,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8356173231935312
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8724430235590779
+            }
+        },
+        "keyword:count": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 0.6,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8683595134906049
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.878961873034099
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9305687780632227
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6708806426217222
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8013015874979799
+            },
+            "mobile-id": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.045454545454545456,
+                "ndcg_at_10": 0.5821032065260976
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 0.07142857142857142,
+                "ndcg_at_10": 0.3333333333333333
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8639970704708095
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.45,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5007524247163964
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 0.8,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.7726578571095908
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7768604938853789
+            },
+            "qa-automation-id": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9197207891481876
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.3888888888888889,
+                "mrr": 0.25,
+                "ndcg_at_10": 0.5723010521757378
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9363792118010483
+            }
+        },
+        "hybrid:count": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9832184408687481
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9510907186004267
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8943938982876649
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9664515752024123
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.06666666666666667,
+                "ndcg_at_10": 0.5821032065260976
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6885850935030453
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8663839018099021
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7510342033075287
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.791723929537097
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7576494534023693
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.3333333333333333,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.16716045496620227
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9197207891481876
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.4444444444444444,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7372435260519274
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            }
+        },
+        "hybrid:count+rerank": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9008240627729516
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8383354523103074
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.6733749740432623
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8055438181658655
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.45,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.6248010325558118
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7887225384603443
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.6257049680303419
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5437713091520254
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.6181983632023828
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            }
+        },
+        "keyword:idf": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 0.6,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8261942844722937
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.47368421052631576,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.92663607790064
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.7002755876478819
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.7628151922071689
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8013015874979799
+            },
+            "mobile-id": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.05,
+                "ndcg_at_10": 0.5821032065260976
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.3333333333333333
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8169545203371427
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.45,
+                "mrr": 0.25,
+                "ndcg_at_10": 0.4835703377024361
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 0.8,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.7726578571095908
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8988252059479765
+            },
+            "qa-automation-id": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9197207891481876
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.4444444444444444,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.5943920412021426
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9363792118010483
+            }
+        },
+        "hybrid:idf": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.804532155482531
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9537125187088151
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9035650050446238
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.93745961589594
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.07692307692307693,
+                "ndcg_at_10": 0.5821032065260976
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.42976832828870953
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8647609320229795
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8087001469345483
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.791723929537097
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7913443385687328
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.3333333333333333,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.16716045496620227
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7831588414694278
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            }
+        },
+        "hybrid:idf+rerank": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8990684392693267
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8013015874979799
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.7956300780129391
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8055438181658655
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.652487967776726
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7887225384603443
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.6257049680303419
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5437713091520254
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.4444444444444444,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.5811644983900552
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            }
+        },
+        "keyword:idf_proficiency": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 0.6,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8683595134906049
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.47368421052631576,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9216017310213247
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.7002755876478819
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8361791143065289
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8013015874979799
+            },
+            "mobile-id": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.043478260869565216,
+                "ndcg_at_10": 0.5821032065260976
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.3333333333333333
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8169545203371427
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.45,
+                "mrr": 0.2,
+                "ndcg_at_10": 0.47517536716196335
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 0.8,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.7726578571095908
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8988252059479765
+            },
+            "qa-automation-id": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_10": 0.0
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6509209298071326
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.4444444444444444,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.5943920412021426
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.4090909090909091,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9363792118010483
+            }
+        },
+        "hybrid:idf_proficiency": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.804532155482531
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9477344873475498
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9069212362975007
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9664515752024123
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.0625,
+                "ndcg_at_10": 0.5821032065260976
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 0.2,
+                "ndcg_at_10": 0.47879675185156656
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8647609320229795
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8087001469345483
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.791723929537097
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7913443385687328
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.3333333333333333,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.16716045496620227
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.9197207891481876
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7831588414694278
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            }
+        },
+        "hybrid:idf_proficiency+rerank": {
+            "baseline-1-remote-id-laravel": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-2-remote-any-laravel": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-3-remote-id-python": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "baseline-4-onsite-hybrid-id": {
+                "recall_at_10": null,
+                "mrr": null,
+                "ndcg_at_10": null
+            },
+            "baseline-5-react-any": {
+                "recall_at_10": 0.5555555555555556,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "java-kafka-remote": {
+                "recall_at_10": 0.5263157894736842,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8990684392693267
+            },
+            "ml-search-remote": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8383354523103074
+            },
+            "mobile-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.5,
+                "ndcg_at_10": 0.6309297535714575
+            },
+            "devops-sre-remote": {
+                "recall_at_10": 0.4166666666666667,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.6733749740432623
+            },
+            "data-engineer-remote": {
+                "recall_at_10": 0.38461538461538464,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "rails-remote": {
+                "recall_at_10": 0.6428571428571429,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.8055438181658655
+            },
+            "security-remote": {
+                "recall_at_10": 0.35714285714285715,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "dotnet-csharp-remote": {
+                "recall_at_10": 0.5,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.652487967776726
+            },
+            "node-typescript-remote-id": {
+                "recall_at_10": 1.0,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            },
+            "go-backend-remote": {
+                "recall_at_10": 0.625,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.7887225384603443
+            },
+            "qa-automation-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5
+            },
+            "product-designer-remote": {
+                "recall_at_10": 0.6666666666666666,
+                "mrr": 1.0,
+                "ndcg_at_10": 0.6257049680303419
+            },
+            "junior-laravel-id": {
+                "recall_at_10": 1.0,
+                "mrr": 0.3333333333333333,
+                "ndcg_at_10": 0.5437713091520254
+            },
+            "lead-engineer-remote": {
+                "recall_at_10": 0.4444444444444444,
+                "mrr": 0.16666666666666666,
+                "ndcg_at_10": 0.5811644983900552
+            },
+            "sparse-profile-any": {
+                "recall_at_10": 0.45454545454545453,
+                "mrr": 1.0,
+                "ndcg_at_10": 1.0
+            }
+        }
+    }
+}
