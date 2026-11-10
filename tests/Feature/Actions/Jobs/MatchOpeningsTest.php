@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Jobs\MatchOpenings;
+use App\Actions\Jobs\PostingEmbeddingText;
 use App\Enums\KeywordWeighting;
 use App\Enums\WorkArrangement;
 use App\Models\ExchangeRate;
@@ -210,6 +211,19 @@ test('every filtered posting keeps its keyword rank without a cap on the leg', f
     expect($results)->toHaveCount(56);
     expect($results->last()->id)->toBe($target->id);
     expect((int) $results->last()->getAttribute('keyword_rank'))->toBe(56);
+});
+
+test('the search vector reads skills from the posting embedding text format', function (): void {
+    $skill = Skill::factory()->create(['name' => 'Zephyrscript']);
+    $posting = JobPosting::factory()->withEmbedding()->hasAttached($skill, ['is_required' => true])->create([
+        'title' => 'Engineer', 'description' => 'Work',
+    ]);
+    $posting->embedded_text = app(PostingEmbeddingText::class)->text($posting->load('skills'));
+    $posting->save();
+
+    $vector = DB::table('job_postings')->where('id', $posting->id)->value(DB::raw('search_vector::text'));
+
+    expect($vector)->toMatch('/\'zephyrscript\':\d+B/');
 });
 
 test('generated search vectors include embedded skills and tolerate missing embedded text', function () {

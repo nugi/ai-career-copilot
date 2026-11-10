@@ -7,14 +7,14 @@ namespace App\Actions\Fit;
  *
  * @phpstan-type Excerpt array{id: int, section: string, content: string}
  * @phpstan-type Reason array{claim: string, excerpts: list<Excerpt>}
- * @phpstan-type Status 'ready'|'no_resume'|'resume_not_ready'|'budget'|'failed'
+ * @phpstan-type Status 'ready'|'no_resume'|'resume_not_ready'|'posting_not_ready'|'budget'|'failed'
  * @phpstan-type Verdict 'strong_fit'|'partial_fit'|'weak_fit'
  * @phpstan-type Data array{status: Status, verdict: Verdict|null, summary: string, reasons: list<Reason>, missing_requirements: list<string>, dropped_reasons: int, downgraded: bool}
  */
 final readonly class FitExplanation
 {
     /**
-     * @param  'ready'|'no_resume'|'resume_not_ready'|'budget'|'failed'  $status
+     * @param  'ready'|'no_resume'|'resume_not_ready'|'posting_not_ready'|'budget'|'failed'  $status
      * @param  'strong_fit'|'partial_fit'|'weak_fit'|null  $verdict
      * @param  list<Reason>  $reasons
      * @param  list<string>  $missingRequirements
@@ -32,7 +32,7 @@ final readonly class FitExplanation
     /**
      * An explanation that could not be made, for the given reason.
      *
-     * @param  'no_resume'|'resume_not_ready'|'budget'|'failed'  $status
+     * @param  'no_resume'|'resume_not_ready'|'posting_not_ready'|'budget'|'failed'  $status
      */
     public static function unavailable(string $status): self
     {
