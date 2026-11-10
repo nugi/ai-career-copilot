@@ -8,7 +8,13 @@ import { index as matchesIndex } from '@/routes/matches';
 type Excerpt = { id: number; section: string; content: string };
 type Verdict = 'strong_fit' | 'partial_fit' | 'weak_fit';
 type Explanation = {
-    status: 'ready' | 'no_resume' | 'resume_not_ready' | 'budget' | 'failed';
+    status:
+        | 'ready'
+        | 'no_resume'
+        | 'resume_not_ready'
+        | 'posting_not_ready'
+        | 'budget'
+        | 'failed';
     verdict: Verdict | null;
     summary: string;
     reasons: { claim: string; excerpts: Excerpt[] }[];
@@ -40,6 +46,7 @@ const unavailable: Record<Exclude<Explanation['status'], 'ready'>, string> = {
     no_resume: 'Upload a resume to see why this job fits you.',
     resume_not_ready:
         'Your resume is still being processed. Try again in a minute.',
+    posting_not_ready: 'This job is still being processed. Try again later.',
     budget: "You have used today's AI budget. It resets at midnight UTC.",
     failed: 'The explanation is unavailable right now. Try again later.',
 };

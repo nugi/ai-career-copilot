@@ -52,7 +52,7 @@ The text depends on two things that change at different times:
 **A role summary in the text (not now).** ADR 0026, alternative 4 asks whether a one-line summary of the description, made by the skill extractor, should join the text.
 
 - **For:** it brings the product, the domain and the team back into the vector, for a few output tokens and no extra call.
-- **Against:** it is model-written text, so it can drift between prompt versions. A new prompt version would re-embed every posting. It also adds back some of the dilution that made the short text win.
+- **Against:** it is model-written text, so it can drift between prompt versions. Vectors are keyed on the hash of the embedded text, so a new prompt version re-embeds only the postings whose summary changes. Cost is not the objection; instability is: the same posting can move in the ranking for a reason that has nothing to do with the posting. It also adds back some of the dilution that made the short text win.
 
 The retrieval golden set measures it: title + skills against title + summary + skills, on the same pooled, blind labels. It joins the text only on a measured gain in Recall@10 above the noise of the set.
 

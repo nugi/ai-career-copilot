@@ -196,6 +196,33 @@ test('an answer is cached and a changed posting asks again', function () {
     FitExplainer::assertPromptedTimes(2);
 });
 
+test('a changed explainer model asks again', function (): void {
+    FitExplainer::fake([fitOutput(), fitOutput()]);
+    [$user] = userWithChunks(['Built Laravel APIs.' => fitVector([1])]);
+    $posting = fitPosting();
+    $explain = app(ExplainFit::class);
+
+    expect($explain->handle($user, $posting)->status)->toBe('ready');
+    config(['ai-routing.tiers.cheap.openai' => 'gpt-6.1-sol']);
+    expect($explain->handle($user, $posting)->status)->toBe('ready');
+
+    FitExplainer::assertPromptedTimes(2);
+});
+
+test('a cached answer is served after the user budget is spent', function (): void {
+    FitExplainer::fake([fitOutput()]);
+    [$user] = userWithChunks(['Built Laravel APIs.' => fitVector([1])]);
+    $posting = fitPosting();
+    $explain = app(ExplainFit::class);
+    $first = $explain->handle($user, $posting);
+    config(['ai-routing.daily_budget_usd' => 0.01]);
+    AiUsage::factory()->create(['user_id' => $user->id, 'cost_usd' => 0.02, 'created_at' => now()]);
+
+    expect($explain->handle($user, $posting)->toArray())->toBe($first->toArray())
+        ->and($first->status)->toBe('ready');
+    FitExplainer::assertPromptedTimes(1);
+});
+
 test('an invalid output is retried once with its errors and then fails', function () {
     FitExplainer::fake([fitOutput(['verdict' => 'great']), fitOutput(['verdict' => 'great'])]);
     [$user] = userWithChunks(['Built Laravel APIs.' => fitVector([1])]);
@@ -217,15 +244,26 @@ test('a spent daily budget of the user stops the call', function () {
     FitExplainer::assertNeverPrompted();
 });
 
-test('a posting without a current vector is embedded before the search', function () {
-    Embeddings::fake(fn (): array => [array_fill(0, 1536, 0.1)]);
-    FitExplainer::fake([fitOutput()]);
+test('a posting without a current vector is not ready and makes no call', function (?string $vector, ?string $model): void {
+    Embeddings::fake()->preventStrayEmbeddings();
+    FitExplainer::fake()->preventStrayPrompts();
     [$user] = userWithChunks(['Built Laravel APIs.' => fitVector([1])]);
-    $posting = JobPosting::factory()->remote()->create(['embedding' => null, 'expires_at' => null]);
+    $posting = JobPosting::factory()->remote()->withEmbedding()->create([
+        'embedding' => $vector, 'embedding_model' => $model, 'expires_at' => null,
+        'embedded_at' => $vector === null ? null : now(),
+        'embedding_text_hash' => $vector === null ? null : hash('sha256', 'Posting'),
+        'embedded_text' => $vector === null ? null : 'Posting',
+    ]);
+    config(['ai-routing.daily_budget_usd' => 0.01]);
+    AiUsage::factory()->create(['user_id' => $user->id, 'cost_usd' => 0.02, 'created_at' => now()]);
 
-    expect(app(ExplainFit::class)->handle($user, $posting)->status)->toBe('ready');
-    Embeddings::assertGenerated(fn (): bool => true);
-});
+    expect(app(ExplainFit::class)->handle($user, $posting)->status)->toBe('posting_not_ready');
+    Embeddings::assertNothingGenerated();
+    FitExplainer::assertNeverPrompted();
+})->with([
+    'missing vector' => [null, null],
+    'outdated model' => [fitVector([1]), 'old-embedding-model'],
+]);
 
 test('a sampled answer queues a faithfulness check with the claims and the excerpt texts', function () {
     config(['ai-routing.fit_explanations.faithfulness_sample_rate' => 1.0]);

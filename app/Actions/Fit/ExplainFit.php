@@ -4,6 +4,8 @@ namespace App\Actions\Fit;
 
 use App\Ai\Agents\FitExplainer;
 use App\Ai\DailyBudget;
+use App\Ai\ModelRouter;
+use App\Enums\AiFeature;
 use App\Jobs\CheckFitFaithfulness;
 use App\Models\JobPosting;
 use App\Models\ResumeChunk;
@@ -22,7 +24,8 @@ use Throwable;
  * The nearest chunks of the primary resume become numbered excerpts. The model's answer is validated, and then checked
  * in PHP: a citation of an excerpt that was not sent is removed, a reason left with no citation is dropped, and a fit
  * verdict with no grounded reason left is lowered to a weak fit. The answer is cached under the hash of everything the
- * model read, so it changes when the posting, the resume or the prompt changes.
+ * model read and the configured models, so it changes when the posting, the resume, the prompt or a model changes. A
+ * posting without a current vector is not ready: no embed is paid for in the request.
  *
  * @phpstan-import-type Data from FitExplanation
  */
@@ -36,6 +39,7 @@ final class ExplainFit
         private RetrieveResumeExcerpts $retrieve,
         private DailyBudget $dailyBudget,
         private Cache $cache,
+        private ModelRouter $modelRouter,
     ) {}
 
     /**
@@ -48,6 +52,10 @@ final class ExplainFit
 
         if ($resume === null || $resume->parsed_at === null) {
             return FitExplanation::unavailable('no_resume');
+        }
+
+        if (! $this->retrieve->hasCurrentVector($posting)) {
+            return FitExplanation::unavailable('posting_not_ready');
         }
 
         try {
@@ -70,6 +78,7 @@ final class ExplainFit
             $user->getKey(), $posting->title, $posting->company_name, $skills, $description,
             $chunks->map(fn (ResumeChunk $chunk): array => [$chunk->id, $chunk->content])->all(),
             FitExplainer::PROMPT_VERSION,
+            $this->modelRouter->models(AiFeature::FitExplanation),
         ], JSON_THROW_ON_ERROR));
 
         /** @var Data|null $cached */

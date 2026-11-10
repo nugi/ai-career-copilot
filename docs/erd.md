@@ -18,6 +18,7 @@ erDiagram
     job_postings ||--o{ job_matches : "scored in"
     resumes |o--o{ job_matches : "scored against"
     users |o--o{ ai_usages : incurs
+    job_postings |o--o{ fit_faithfulness_checks : "judged in"
 
     users {
         bigint id PK
@@ -164,6 +165,18 @@ erDiagram
         int output_tokens
         decimal cost_usd
         int latency_ms
+        timestamp created_at
+    }
+    fit_faithfulness_checks {
+        bigint id PK
+        bigint job_posting_id FK
+        string prompt_version
+        string judge_prompt_version
+        smallint claims
+        smallint supported
+        smallint unsupported
+        smallint unjudged
+        decimal score
         timestamp created_at
     }
     ingestion_runs {
@@ -323,6 +336,16 @@ Append-only log of every AI call, with no `updated_at`.
 | The user's spend this month, for budgets and rate limits | `(user_id, created_at)` |
 | Cost per feature and model per day                       | `(created_at)`          |
 | Cost per tier, agent and model for the last 7 days       | `(created_at)`          |
+
+### fit_faithfulness_checks
+
+Append-only, one row per sampled fit explanation that `CheckFitFaithfulness` judged ([ADR 0034](adr/0034-explain-fit-with-citations-checked-in-php.md)). It stores counts only: the claim texts quote the resume and stay in the log. Deleting a posting sets `job_posting_id` to `null`, so the score history survives.
+
+| Query                                           | Index                          |
+| ----------------------------------------------- | ------------------------------ |
+| The score trend of one prompt version over time | `(prompt_version, created_at)` |
+
+CHECK constraints: the counts are not negative and add up to `claims`; `score` is null or between 0 and 1.
 
 ### ingestion_runs
 

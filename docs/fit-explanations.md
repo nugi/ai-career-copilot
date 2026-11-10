@@ -8,7 +8,7 @@
 2. `FitExplainer` returns a verdict, a summary, reasons that cite excerpt numbers, and missing requirements.
 3. PHP removes citations of numbers that were not sent, drops each reason left with none, and lowers a fit verdict with no reason left to a weak fit.
 4. The page shows each reason with the excerpts it cites.
-5. 10% of new answers queue a faithfulness check that logs the share of supported claims.
+5. 10% of new answers queue a faithfulness check that stores the share of supported claims.
 
 ## How to test it with an unfit job
 
@@ -28,6 +28,8 @@ Cost of the LLM judge per answer, on the cheap tier ($0.10 per million input tok
 
 The score is per prompt version: the share of claims judged supported. A judge from the same model family shares the explainer's blind spots, so calibrate it once with hand labels on 30 to 50 claims. Measure the judge's precision and recall for "unsupported" before trusting a trend.
 
-## Faithfulness log
+## Faithfulness score
 
-`fit.faithfulness` log lines carry `job_posting_id`, `prompt_version`, `claims`, `supported`, `score` and the `unsupported` claims. To read the score for a prompt version, filter the log on `fit.faithfulness` and average `score` by `prompt_version`.
+Each check stores a row in `fit_faithfulness_checks` with `prompt_version`, `judge_prompt_version`, `claims`, `supported`, `unsupported`, `unjudged` and `score`. A claim with no verdict from the judge counts as unjudged, so a judge that skips claims does not lower the score. To read the score for a prompt version, average `score` grouped by `prompt_version`, and watch `unjudged` beside it.
+
+`fit.faithfulness` log lines carry the same counts and the texts of the `unsupported` claims, which the table does not store.
