@@ -15,6 +15,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $job_posting_id
  * @property int|null $resume_id
  * @property int $score 0 to 100.
+ * @property string|null $scoring_version
+ * @property array<string, array{value: float|null, weight: int, detail: array<string, mixed>}> $breakdown
+ * @property array<string, mixed> $inputs
+ * @property list<string> $matched_skills
+ * @property list<string> $missing_skills
+ * @property int|null $profile_version
  * @property list<string> $reasons
  * @property CarbonImmutable $scored_at
  * @property CarbonImmutable|null $created_at
@@ -23,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read JobPosting $jobPosting
  * @property-read Resume|null $resume
  */
-#[Fillable(['job_posting_id', 'resume_id', 'score', 'reasons', 'scored_at'])]
+#[Fillable(['job_posting_id', 'resume_id', 'score', 'reasons', 'scored_at', 'scoring_version', 'breakdown', 'inputs', 'matched_skills', 'missing_skills', 'profile_version'])]
 class JobMatch extends Model
 {
     /** @use HasFactory<JobMatchFactory> */
@@ -38,6 +44,11 @@ class JobMatch extends Model
     {
         return [
             'score' => 'integer',
+            'breakdown' => 'array',
+            'inputs' => 'array',
+            'matched_skills' => 'array',
+            'missing_skills' => 'array',
+            'profile_version' => 'integer',
             'reasons' => 'array',
             'scored_at' => 'datetime',
         ];
