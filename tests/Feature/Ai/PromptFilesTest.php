@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\File;
  * @var array<string, string>
  */
 const PUBLISHED_PROMPT_HASHES = [
+    'career-copilot/v1.md' => '980b9e3e1309971f5d7b3da861eb42e2c13b824d838d2f35a330b5c846e258af',
     'relevance-grader/v1.md' => '0c687b27153d1a71e7b4e2cb7ca7b3ca3f293bf480f67c878fac916ed918f628',
     'relevance-grader/v2.md' => '7e0d021df62da6a934ba9fa5d2699a20db24cf93ebbf7dd4ae5dca52d2040082',
     'relevance-grader/v3.md' => 'd18892e8a90164a5d65ca06e5582f8d00882884a0026687719e6feb12b76d0cd',

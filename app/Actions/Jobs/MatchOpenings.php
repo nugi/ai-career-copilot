@@ -39,8 +39,9 @@ final class MatchOpenings
         array $terms = [],
         KeywordWeighting $weighting = KeywordWeighting::Count,
         array $multipliers = [],
+        ?JobSearch $search = null,
     ): Collection {
-        $search = new JobSearch(array_values($profile->work_arrangements->all()), $country, null, true);
+        $search ??= new JobSearch(array_values($profile->work_arrangements->all()), $country, null, true);
         $query = $this->searchOpenings->query($search, $profile);
         $termArray = '{'.implode(',', array_map(fn (string $term): string => '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $term).'"', $terms)).'}';
         $multiplierArray = '{'.implode(',', array_map(fn (string $term): string => (string) (float) ($multipliers[$term] ?? 1.0), $terms)).'}';
