@@ -3,7 +3,7 @@
 namespace App\Actions\Jobs;
 
 use App\Actions\Money\ExchangeRates;
-use App\Enums\Currency;
+use App\Enums\SalaryPeriod;
 use App\JobSources\JobSourceRegistry;
 use App\Models\JobPosting;
 use App\Models\Profile;
@@ -80,8 +80,14 @@ final class SearchOpenings
             $query->whereHas('skills', fn (Builder $skills) => $skills->whereKey($search->skill->id));
         }
 
-        if ($search->meetsFloor && $profile->min_salary !== null && $profile->salary_currency !== null) {
-            $this->filterFloor($query, $profile);
+        $floor = $search->floor;
+
+        if ($floor === null && $profile->min_salary !== null && $profile->salary_currency !== null) {
+            $floor = new SalaryFloor($profile->min_salary, $profile->salary_currency->value, $profile->salary_period ?? SalaryPeriod::Yearly);
+        }
+
+        if ($search->meetsFloor && $floor !== null) {
+            $this->filterFloor($query, $floor);
         }
 
         return $query;
@@ -105,11 +111,11 @@ final class SearchOpenings
      *
      * @param  Builder<JobPosting>  $query
      */
-    private function filterFloor(Builder $query, Profile $profile): void
+    private function filterFloor(Builder $query, SalaryFloor $floor): void
     {
-        $rates = $this->exchangeRates->latestFrom($profile->salary_currency->value);
-        $factor = $profile->salary_period?->annualFactor($profile->salary_currency === Currency::Idr ? 'ID' : null) ?? 1;
-        $annualFloor = $profile->min_salary * $factor;
+        $rates = $this->exchangeRates->latestFrom($floor->currency);
+        $factor = $floor->period->annualFactor($floor->currency === 'IDR' ? 'ID' : null);
+        $annualFloor = $floor->amount * $factor;
 
         $query->where(function (Builder $pay) use ($rates, $annualFloor): void {
             $pay->whereNull('pay.salary_currency')

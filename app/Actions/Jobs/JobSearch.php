@@ -20,5 +20,6 @@ final readonly class JobSearch
         public ?string $country,
         public ?Skill $skill,
         public bool $meetsFloor,
+        public ?SalaryFloor $floor = null,
     ) {}
 }

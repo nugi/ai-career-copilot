@@ -14,11 +14,11 @@ final class ProfileEmbeddingText
     /**
      * Choose the ten best skills, then sort their names for a stable vector input.
      */
-    public function text(Profile $profile): string
+    public function text(Profile $profile, ?string $role = null): string
     {
-        $skills = $this->skillNames($profile);
+        $skills = $this->topSkills($profile);
 
-        return implode(', ', $profile->target_roles).($skills === [] ? '' : "\nSkills: ".implode(', ', $skills));
+        return (trim($role ?? '') !== '' ? trim($role) : implode(', ', $profile->target_roles)).($skills === [] ? '' : "\nSkills: ".implode(', ', $skills));
     }
 
     /**
@@ -26,11 +26,13 @@ final class ProfileEmbeddingText
      *
      * @return list<string>
      */
-    public function keywordTerms(Profile $profile): array
+    public function keywordTerms(Profile $profile, ?string $role = null): array
     {
-        $roles = array_values(array_filter(array_map(trim(...), $profile->target_roles), fn (string $role): bool => $role !== ''));
+        $roles = trim($role ?? '') !== ''
+            ? [trim($role)]
+            : array_values(array_filter(array_map(trim(...), $profile->target_roles), fn (string $role): bool => $role !== ''));
 
-        return [...$roles, ...$this->skillNames($profile)];
+        return [...$roles, ...$this->topSkills($profile)];
     }
 
     /**
@@ -50,7 +52,7 @@ final class ProfileEmbeddingText
             }
         }
 
-        $skills = $this->skillNames($profile);
+        $skills = $this->topSkills($profile);
 
         foreach ($profile->user->skills as $skill) {
             if (in_array($skill->name, $skills, true)) {
@@ -70,7 +72,7 @@ final class ProfileEmbeddingText
     /**
      * @return list<string>
      */
-    private function skillNames(Profile $profile): array
+    public function topSkills(Profile $profile): array
     {
         $profile->loadMissing('user.skills');
 

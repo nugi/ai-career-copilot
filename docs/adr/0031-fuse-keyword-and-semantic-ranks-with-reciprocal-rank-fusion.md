@@ -42,7 +42,7 @@
 4. **Rank hides size.** The first posting of a weak list scores as well as the first posting of a strong list. The list is still always full, as in ADR 0030, drawback 3.
 5. **No full-text index.** The statement reads the materialized set of filtered rows, so a GIN index on the column could not be used. Computing the vector for each row took about 0.6 ms, so the column is stored. Revisit with the 50,000-row performance test.
 6. **The constants are not tuned.** The 60, the 50 and the equal weight of the legs are the usual defaults. The retrieval evaluation decides whether other values help.
-7. **The query is the profile.** A user cannot ask for "Python" from a Laravel profile in any mode.
+7. **The query is the profile.** A user cannot ask for "Python" from a Laravel profile on the matches page. The copilot's `SearchJobs` tool takes a typed role, which replaces the target roles in both legs; the skills stay the profile's ([agent design](../agent-design.md)).
 
 **Alternatives considered**
 
