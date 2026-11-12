@@ -8,6 +8,7 @@ use App\Ai\Contracts\TracksUsage;
 use App\Ai\ModelRouter;
 use App\Ai\Prompts\Instructions;
 use App\Ai\Tools\GetUserProfile;
+use App\Ai\Tools\ScoreFit;
 use App\Ai\Tools\SearchJobs;
 use App\Enums\AiFeature;
 use App\Models\User;
@@ -92,13 +93,14 @@ class CareerCopilot implements Agent, HasPromptVersion, HasProviderOptions, HasT
     /**
      * Get the tools scoped to the signed-in user.
      *
-     * @return list<GetUserProfile|SearchJobs>
+     * @return list<GetUserProfile|SearchJobs|ScoreFit>
      */
     public function tools(): array
     {
         return [
             app()->make(GetUserProfile::class, ['user' => $this->user]),
             app()->make(SearchJobs::class, ['user' => $this->user]),
+            app()->make(ScoreFit::class, ['user' => $this->user]),
         ];
     }
 }

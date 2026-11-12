@@ -147,6 +147,12 @@ erDiagram
         bigint job_posting_id FK
         bigint resume_id FK
         smallint score
+        string scoring_version
+        jsonb breakdown
+        jsonb inputs
+        jsonb matched_skills
+        jsonb missing_skills
+        int profile_version
         jsonb reasons
         timestamp scored_at
     }
@@ -316,7 +322,7 @@ Why a pivot table and not a `jsonb` array: [ADR 0003](adr/0003-store-job-skills-
 
 ### job_matches
 
-One current score per user and posting.
+One current score per user and posting. The row keeps the inputs, the per-factor breakdown and the `scoring_version` that made the score, so a score can be explained from the row alone ([ADR 0036](adr/0036-score-fit-in-php-over-the-factors-it-can-measure.md)).
 
 | Query                                                                   | Index                              |
 | ----------------------------------------------------------------------- | ---------------------------------- |

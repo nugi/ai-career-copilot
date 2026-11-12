@@ -39,6 +39,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0033](0033-rerank-the-hybrid-top-30-with-cohere-behind-a-flag.md)            | Rerank the hybrid top 30 with Cohere behind a flag            | Accepted                    |
 | [0034](0034-explain-fit-with-citations-checked-in-php.md)                     | Explain fit with citations checked in PHP                     | Accepted                    |
 | [0035](0035-measure-retrieval-on-a-graded-golden-set-of-profiles.md)          | Measure retrieval on a graded golden set of profiles          | Accepted                    |
+| [0036](0036-score-fit-in-php-over-the-factors-it-can-measure.md)              | Score fit in PHP over the factors it can measure              | Accepted                    |
 
 ## Adding a record
 
