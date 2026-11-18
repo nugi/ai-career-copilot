@@ -21,6 +21,8 @@ return [
         'chat' => 'cheap',
         'fit_explanation' => 'cheap',
         'relevance_grading' => 'cheap',
+        'copilot' => 'cheap',
+        'conversation_summary' => 'cheap',
     ],
 
     /*
@@ -164,11 +166,11 @@ return [
     | Daily Budget
     |--------------------------------------------------------------------------
     |
-    | daily_budget_usd is the most that one user may spend on advisor calls
+    | daily_budget_usd is the most that one user may spend on AI calls, except the copilot
     | each UTC day, in USD. It is a fairness limit.
     |
     | global_daily_budget_usd is the most that all users together may spend
-    | each UTC day, in USD. When the spend reaches it, the advisor stops for
+    | each UTC day, in USD. When the spend reaches it, AI calls stop for
     | every user until midnight UTC.
     |
     | Resume parsing never stops, but its cost counts in both sums.
@@ -176,7 +178,7 @@ return [
     | batch_daily_budget_usd is the most that batch features (skill
     | extraction, embeddings) may spend each UTC day, in USD. Batch work
     | stops at this budget or at the global budget, so it cannot use up
-    | the share that the advisor needs.
+    | the share that the copilot needs.
     |
     | Null turns a check off.
     |
@@ -187,5 +189,45 @@ return [
     'global_daily_budget_usd' => env('AI_GLOBAL_DAILY_BUDGET_USD') === null ? null : (float) env('AI_GLOBAL_DAILY_BUDGET_USD'),
 
     'batch_daily_budget_usd' => env('AI_BATCH_DAILY_BUDGET_USD') === null ? null : (float) env('AI_BATCH_DAILY_BUDGET_USD'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Copilot
+    |--------------------------------------------------------------------------
+    |
+    | turn_cost_usd and turn_seconds limit one turn of the copilot: a step
+    | that starts past either limit runs without tools and answers with the
+    | results it has.
+    |
+    | daily_budget_usd is the most that one user may spend on the copilot each
+    | UTC day, in USD. Null turns the check off. Copilot spend does not count
+    | in daily_budget_usd, and the global budget still counts it.
+    |
+    */
+
+    'copilot' => [
+        'turn_cost_usd' => 0.005,
+        'turn_seconds' => 60,
+        'daily_budget_usd' => env('AI_COPILOT_DAILY_BUDGET_USD') === null ? null : (float) env('AI_COPILOT_DAILY_BUDGET_USD'),
+        'summarize' => env('AI_COPILOT_SUMMARIZE') === null ? true : (bool) env('AI_COPILOT_SUMMARIZE'),
+        'summary_window' => 10,
+        'summary_batch' => 10,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | New Account Reserve
+    |--------------------------------------------------------------------------
+    |
+    | An account is new for new_account_days after it is created, or until
+    | its primary resume is parsed. New accounts may spend at most
+    | new_account_share of the global daily budget each UTC day, so that
+    | established accounts keep the rest (ADR 0014).
+    |
+    */
+
+    'new_account_days' => 3,
+
+    'new_account_share' => 0.3,
 
 ];

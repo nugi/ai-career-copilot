@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Resume\ParseResume;
-use App\Ai\Agents\CareerAdvisor;
+use App\Ai\Agents\CareerCopilot;
 use App\Ai\Agents\ResumeParser;
 use App\Ai\ModelRouter;
 use App\Enums\AiFeature;
@@ -43,19 +43,19 @@ test('an embedding call writes one succeeded usage row without a user', function
         ->and($usage->latency_ms)->toBeGreaterThanOrEqual(0);
 });
 
-test('an advisor answer writes one succeeded usage row', function () {
-    CareerAdvisor::fake(['Build one API project.']);
+test('a copilot answer writes one succeeded usage row', function () {
+    CareerCopilot::fake(['Build one API project.']);
     $user = User::factory()->onboarded()->create();
 
-    (new CareerAdvisor($user))->prompt('What should I learn next?');
+    (new CareerCopilot($user))->prompt('What should I learn next?');
 
     $usage = AiUsage::query()->sole();
 
     expect($usage->user_id)->toBe($user->id)
-        ->and($usage->feature)->toBe(AiFeature::Chat)
+        ->and($usage->feature)->toBe(AiFeature::Copilot)
         ->and($usage->tier)->toBe(ModelTier::Cheap)
-        ->and($usage->agent)->toBe('CareerAdvisor')
-        ->and($usage->prompt_version)->toBe(CareerAdvisor::PROMPT_VERSION)
+        ->and($usage->agent)->toBe('CareerCopilot')
+        ->and($usage->prompt_version)->toBe(CareerCopilot::PROMPT_VERSION)
         ->and($usage->status)->toBe(AiUsageStatus::Succeeded)
         ->and($usage->provider)->toBe('openai')
         ->and($usage->model)->toBe('gpt-6-luna')
@@ -65,14 +65,14 @@ test('an advisor answer writes one succeeded usage row', function () {
         ->and($usage->latency_ms)->toBeGreaterThanOrEqual(0);
 });
 
-test('a streamed advisor answer writes one succeeded usage row', function () {
-    CareerAdvisor::fake(['Build one API project.']);
+test('a streamed copilot answer writes one succeeded usage row', function () {
+    CareerCopilot::fake(['Build one API project.']);
 
-    advisor()->stream('What should I learn next?')->each(fn () => null);
+    copilot()->stream('What should I learn next?')->each(fn () => null);
 
     $usage = AiUsage::query()->sole();
 
-    expect($usage->feature)->toBe(AiFeature::Chat)
+    expect($usage->feature)->toBe(AiFeature::Copilot)
         ->and($usage->status)->toBe(AiUsageStatus::Succeeded)
         ->and($usage->provider)->toBe('openai')
         ->and($usage->model)->toBe('gpt-6-luna');
@@ -101,7 +101,7 @@ test('a failover writes a failed_over row and a succeeded row for the same invoc
         'api.anthropic.com/*' => Http::response(anthropicAnswer('Start with one project.')),
     ]);
 
-    advisor()->prompt('What should I learn next?');
+    copilot()->prompt('What should I learn next?');
 
     $usages = AiUsage::query()->orderBy('id')->get();
 
@@ -124,7 +124,7 @@ test('a dropped connection writes a failed_over row with estimated tokens', func
         'api.anthropic.com/*' => Http::response(anthropicAnswer('Start with one project.')),
     ]);
 
-    advisor()->prompt('What should I learn next?');
+    copilot()->prompt('What should I learn next?');
 
     $usages = AiUsage::query()->orderBy('id')->get();
 
@@ -141,7 +141,7 @@ test('an outage on every provider writes a failed_over row and a failed row and 
         'api.anthropic.com/*' => Http::response(['type' => 'error', 'error' => ['type' => 'overloaded_error', 'message' => 'Overloaded.']], 529),
     ]);
 
-    expect(fn () => advisor()->prompt('What should I learn next?'))->toThrow(ProviderOverloadedException::class);
+    expect(fn () => copilot()->prompt('What should I learn next?'))->toThrow(ProviderOverloadedException::class);
 
     $usages = AiUsage::query()->orderBy('id')->get();
 
@@ -156,9 +156,9 @@ test('an outage on every provider writes a failed_over row and a failed row and 
 test('a usage row that cannot be written does not fail the AI call', function () {
     Log::spy();
     AiUsage::creating(fn () => throw new RuntimeException('The usage table is unavailable.'));
-    CareerAdvisor::fake(['Build one API project.']);
+    CareerCopilot::fake(['Build one API project.']);
 
-    $response = advisor()->prompt('What should I learn next?');
+    $response = copilot()->prompt('What should I learn next?');
 
     expect($response->text)->toBe('Build one API project.')
         ->and(AiUsage::query()->count())->toBe(0);
@@ -171,7 +171,7 @@ test('the recorded cost of a call is the cost of its model and tokens', function
         'api.openai.com/*' => Http::response(openAiAnswer('Build one API project.')),
     ]);
 
-    advisor()->prompt('What should I learn next?');
+    copilot()->prompt('What should I learn next?');
 
     $usage = AiUsage::query()->sole();
 

@@ -29,7 +29,7 @@ test('a streamed answer is logged with the provider, the model and the token cou
     Http::fake(['api.openai.com/*' => Http::response(openAiStreamedAnswer('Start with one portfolio project.'))]);
 
     $this->actingAs(User::factory()->onboarded()->create())
-        ->postJson(route('advisor.stream'), ['question' => 'What should I learn next?'])
+        ->postJson(route('copilot.stream'), ['message' => 'What should I learn next?'])
         ->assertOk()
         ->streamedContent();
 
@@ -53,7 +53,7 @@ test('a streamed answer closes the circuit of the provider', function () {
     Http::fake(['api.openai.com/*' => Http::response(openAiStreamedAnswer('Build one API project.'))]);
 
     $this->actingAs(User::factory()->onboarded()->create())
-        ->postJson(route('advisor.stream'), ['question' => 'What should I learn next?'])
+        ->postJson(route('copilot.stream'), ['message' => 'What should I learn next?'])
         ->assertOk()
         ->streamedContent();
 

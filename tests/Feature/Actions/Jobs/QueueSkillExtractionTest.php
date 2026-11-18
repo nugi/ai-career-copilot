@@ -67,7 +67,7 @@ test('nothing is queued while the global budget is spent', function () {
     Queue::assertNothingPushed();
 });
 
-test('nothing is queued when batch work has spent the batch budget, and the advisor stays open', function () {
+test('nothing is queued when batch work has spent the batch budget, and the copilot stays open', function () {
     Queue::fake();
     config(['ai-routing.global_daily_budget_usd' => 1.00, 'ai-routing.batch_daily_budget_usd' => 0.30]);
     AiUsage::factory()->create(['feature' => AiFeature::SkillExtraction, 'cost_usd' => 0.30, 'created_at' => now()]);

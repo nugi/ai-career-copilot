@@ -5,6 +5,7 @@ namespace App\Ai\Agents;
 use App\Ai\CircuitBreaker;
 use App\Ai\Contracts\HasPromptVersion;
 use App\Ai\Contracts\TracksUsage;
+use App\Ai\Middleware\LimitTurn;
 use App\Ai\ModelRouter;
 use App\Ai\Prompts\Instructions;
 use App\Ai\Tools\GetUserProfile;
@@ -14,20 +15,30 @@ use App\Enums\AiFeature;
 use App\Models\User;
 use Laravel\Ai\Attributes\MaxSteps;
 use Laravel\Ai\Attributes\Timeout;
+use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\Conversational;
+use Laravel\Ai\Contracts\ConversationStore;
+use Laravel\Ai\Contracts\HasMiddleware;
 use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Messages\Message;
+use Laravel\Ai\Models\Conversation;
+use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Promptable;
 use Stringable;
 
 #[MaxSteps(5)]
 #[Timeout(30)]
-class CareerCopilot implements Agent, HasPromptVersion, HasProviderOptions, HasTools, TracksUsage
+class CareerCopilot implements Agent, Conversational, HasMiddleware, HasPromptVersion, HasProviderOptions, HasTools, TracksUsage
 {
     use Promptable;
+    use RemembersConversations {
+        messages as private rememberedMessages;
+    }
 
-    public const PROMPT_VERSION = 'v1';
+    public const PROMPT_VERSION = 'v2';
 
     public function __construct(public User $user) {}
 
@@ -54,7 +65,7 @@ class CareerCopilot implements Agent, HasPromptVersion, HasProviderOptions, HasT
      */
     public function task(): AiFeature
     {
-        return AiFeature::Chat;
+        return AiFeature::Copilot;
     }
 
     /**
@@ -91,6 +102,22 @@ class CareerCopilot implements Agent, HasPromptVersion, HasProviderOptions, HasT
     }
 
     /**
+     * Get the middleware wrapping each generation step of the agent.
+     *
+     * A new LimitTurn serves one turn only, because it keeps the start time of the turn.
+     *
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [new LimitTurn(
+            app(ModelRouter::class),
+            (float) config('ai-routing.copilot.turn_cost_usd'),
+            (int) config('ai-routing.copilot.turn_seconds'),
+        )];
+    }
+
+    /**
      * Get the tools scoped to the signed-in user.
      *
      * @return list<GetUserProfile|SearchJobs|ScoreFit>
@@ -102,5 +129,63 @@ class CareerCopilot implements Agent, HasPromptVersion, HasProviderOptions, HasT
             app()->make(SearchJobs::class, ['user' => $this->user]),
             app()->make(ScoreFit::class, ['user' => $this->user]),
         ];
+    }
+
+    /**
+     * Get the messages the copilot reads.
+     *
+     * When the conversation has a summary, the messages are the summary, then the stored messages newer than summary_through. The
+     * newer messages come from the store as the SDK builds them, so each tool call keeps its result. Without a summary, the
+     * messages are the SDK's own.
+     *
+     * @return iterable<int, Message>
+     */
+    public function messages(): iterable
+    {
+        $conversation = $this->summarizedConversation();
+
+        if ($conversation === null) {
+            return $this->rememberedMessages();
+        }
+
+        $conversationId = $conversation->getKey();
+        $newerCount = ConversationMessage::query()
+            ->where('conversation_id', $conversationId)
+            ->where('id', '>', $conversation->getAttribute('summary_through'))
+            ->count();
+
+        $summaryMessage = new Message('user', "Summary of the earlier conversation:\n".$conversation->getAttribute('summary'));
+
+        if ($newerCount === 0) {
+            return [$summaryMessage];
+        }
+
+        $newerMessages = resolve(ConversationStore::class)
+            ->getLatestConversationMessages($conversationId, min($newerCount, $this->maxConversationMessages()))
+            ->all();
+
+        return [$summaryMessage, ...$newerMessages];
+    }
+
+    /**
+     * Get the current conversation with its summary, or null when the copilot reads every message.
+     *
+     * The summary is read only when summaries are on, and when the summary and its last message are both stored.
+     */
+    private function summarizedConversation(): ?Conversation
+    {
+        $conversationId = $this->currentConversation();
+
+        if ($conversationId === null || ! config('ai-routing.copilot.summarize')) {
+            return null;
+        }
+
+        $conversation = Conversation::query()->find($conversationId, ['id', 'summary', 'summary_through']);
+
+        if ($conversation === null || $conversation->getAttribute('summary') === null || $conversation->getAttribute('summary_through') === null) {
+            return null;
+        }
+
+        return $conversation;
     }
 }

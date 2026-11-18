@@ -9,6 +9,7 @@ use App\Jobs\EmbedResumeChunks;
 use App\Jobs\ExtractJobSkills;
 use App\Jobs\IngestJobSource;
 use App\Jobs\ParseUploadedResume;
+use App\Jobs\SummarizeConversation;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -61,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         Queue::route(EmbedJobPostings::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(EmbedResumeChunks::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
         Queue::route(CheckFitFaithfulness::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
+        Queue::route(SummarizeConversation::class, queue: 'ai-batch', connection: config('queue.ai.batch_connection'));
     }
 
     /**
@@ -70,7 +72,7 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('embeddings', fn () => Limit::perMinute(60));
 
-        RateLimiter::for('advisor', fn (Request $request) => Limit::perMinute(10)
+        RateLimiter::for('copilot', fn (Request $request) => Limit::perMinute(10)
             ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
 
         RateLimiter::for('resume-uploads', fn (Request $request): Limit => Limit::perHour(5)

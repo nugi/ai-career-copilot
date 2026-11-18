@@ -49,3 +49,5 @@ At the measured $0.000115 per posting text, $0.30 is about 2,600 texts a day, wh
 ## Notes
 
 **2026-10-23: fake accounts.** The global budget can be spent by accounts made only to spend it. At $0.02 each, 50 accounts reach the $1.00 cap and switch the advisor off for every user. Email verification does not stop this, because throwaway addresses are free. The planned fix is to reserve part of the global budget for established accounts, such as accounts older than a few days or with an uploaded resume, so new accounts cannot use all of it. Per-plan quotas replace this later.
+
+**2026-11-13: the reserve ships.** With the copilot ([ADR 0037](0037-remember-copilot-conversations-with-a-summary-and-a-recent-window.md)), a new account is one younger than `new_account_days` (3) or without a parsed primary resume. New accounts together may spend at most `new_account_share` (30%) of the global cap each UTC day; past that, a new account gets "AI is busy for new accounts today" while established accounts keep the rest. At the copilot's $0.05 per user, 6 fresh accounts spend the $0.30 share, and the other $0.70 stays for established accounts.

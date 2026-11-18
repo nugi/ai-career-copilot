@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
  */
 const PUBLISHED_PROMPT_HASHES = [
     'career-copilot/v1.md' => '980b9e3e1309971f5d7b3da861eb42e2c13b824d838d2f35a330b5c846e258af',
+    'career-copilot/v2.md' => '17c9c07fb1546fe550f4822a892cdfddc54b961bb837d8e9b5552295e1a558c8',
     'relevance-grader/v1.md' => '0c687b27153d1a71e7b4e2cb7ca7b3ca3f293bf480f67c878fac916ed918f628',
     'relevance-grader/v2.md' => '7e0d021df62da6a934ba9fa5d2699a20db24cf93ebbf7dd4ae5dca52d2040082',
     'relevance-grader/v3.md' => 'd18892e8a90164a5d65ca06e5582f8d00882884a0026687719e6feb12b76d0cd',
@@ -21,6 +22,7 @@ const PUBLISHED_PROMPT_HASHES = [
     'job-skill-extractor/v3.md' => 'c83e4abd652b3b17670254fd1e0c139f6bdb0649de83c8a3623fac6186c85eaf',
     'fit-explainer/v1.md' => '8e7678111b663b05840f3e44ae6ae435e163e286b7ad08158b315487e6378026',
     'faithfulness-judge/v1.md' => '92f1643ac696ed0ab61e15c96a4fc42dc2f2d14e24c85408e4525c2b42a98e0a',
+    'conversation-summarizer/v1.md' => '78d141ee520f2dc25d735a4f90632123ee8ffadc2330977abb52dd8273749bcf',
 ];
 
 test('published prompts have not changed', function () {

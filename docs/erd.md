@@ -19,6 +19,8 @@ erDiagram
     resumes |o--o{ job_matches : "scored against"
     users |o--o{ ai_usages : incurs
     job_postings |o--o{ fit_faithfulness_checks : "judged in"
+    users |o--o{ agent_conversations : "talks in"
+    agent_conversations ||--o{ agent_conversation_messages : holds
 
     users {
         bigint id PK
@@ -184,6 +186,24 @@ erDiagram
         smallint unjudged
         decimal score
         timestamp created_at
+    }
+    agent_conversations {
+        string id PK
+        string participant_type
+        bigint participant_id
+        string title
+        text summary
+        string summary_through
+        string summary_version
+    }
+    agent_conversation_messages {
+        string id PK
+        string conversation_id FK
+        string agent
+        string role
+        text content
+        longtext steps
+        text usage
     }
     ingestion_runs {
         bigint id PK
@@ -373,3 +393,13 @@ The ECB daily reference rates, one row per date and currency, stored by `exchang
 | Store one day's file again without duplicates     | unique `(rate_date, currency)` |
 
 CHECK constraints: `currency ~ '^[A-Z]{3}$'` and `rate > 0`.
+
+### agent_conversations and agent_conversation_messages
+
+The SDK's conversation tables for the copilot ([ADR 0037](adr/0037-remember-copilot-conversations-with-a-summary-and-a-recent-window.md)). The participant is the user (`participant_type`, `participant_id`). A message keeps its steps with the tool calls and their results, so later turns can use them. `summary`, `summary_through` and `summary_version` are this app's columns: the summary of every message up to `summary_through`.
+
+| Query                                  | Index                                                             |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| The user's conversations, newest first | `(participant_type, participant_id, updated_at)`                  |
+| A conversation's messages in order     | `(conversation_id, participant_type, participant_id, updated_at)` |
+| The user's messages of one agent       | `(participant_type, participant_id, agent)`                       |
