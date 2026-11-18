@@ -15,13 +15,13 @@ test('the circuit opens after three failovers and the next question goes straigh
     ]);
 
     foreach (range(1, 3) as $attempt) {
-        advisor()->prompt('What should I learn next?');
+        copilot()->prompt('What should I learn next?');
     }
 
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context) => $message === 'ai.circuit.opened'
         && $context['provider'] === 'openai');
 
-    $response = advisor()->prompt('What should I learn next?');
+    $response = copilot()->prompt('What should I learn next?');
 
     expect($response->meta->provider)->toBe('anthropic');
     expect(Http::recorded(fn (Request $request) => str_contains($request->url(), 'api.openai.com')))->toHaveCount(3);
@@ -40,13 +40,13 @@ test('the primary is tried again after the cooldown and a success closes the cir
     ]);
 
     foreach (range(1, 3) as $attempt) {
-        advisor()->prompt('What should I learn next?');
+        copilot()->prompt('What should I learn next?');
     }
 
     $this->travel(CircuitBreaker::COOLDOWN_SECONDS + 1)->seconds();
     $openAiIsDown = false;
 
-    $response = advisor()->prompt('What should I learn next?');
+    $response = copilot()->prompt('What should I learn next?');
 
     expect($response->text)->toBe('Build one API project.')
         ->and($response->meta->provider)->toBe('openai');
@@ -61,12 +61,12 @@ test('one failure after the cooldown opens the circuit again at once', function 
     ]);
 
     foreach (range(1, 3) as $attempt) {
-        advisor()->prompt('What should I learn next?');
+        copilot()->prompt('What should I learn next?');
     }
 
     $this->travel(CircuitBreaker::COOLDOWN_SECONDS + 1)->seconds();
 
-    advisor()->prompt('What should I learn next?');
+    copilot()->prompt('What should I learn next?');
 
     expect(app(CircuitBreaker::class)->isOpen('openai'))->toBeTrue();
 });
@@ -78,7 +78,7 @@ test('a failure of the last provider is counted', function () {
     ]);
 
     foreach (range(1, 3) as $attempt) {
-        expect(fn () => advisor()->prompt('What should I learn next?'))->toThrow(ProviderOverloadedException::class);
+        expect(fn () => copilot()->prompt('What should I learn next?'))->toThrow(ProviderOverloadedException::class);
     }
 
     expect(Http::recorded(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')))->toHaveCount(3)
@@ -92,7 +92,7 @@ test('a rejected key on the last provider is not counted', function () {
     ]);
 
     foreach (range(1, 3) as $attempt) {
-        expect(fn () => advisor()->prompt('What should I learn next?'))->toThrow(RequestException::class);
+        expect(fn () => copilot()->prompt('What should I learn next?'))->toThrow(RequestException::class);
     }
 
     expect(Http::recorded(fn (Request $request) => str_contains($request->url(), 'api.anthropic.com')))->toHaveCount(3)

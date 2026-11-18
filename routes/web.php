@@ -1,7 +1,6 @@
 <?php
 
-use App\Http\Controllers\AdvisorChatController;
-use App\Http\Controllers\AdvisorController;
+use App\Http\Controllers\CopilotController;
 use App\Http\Controllers\FitController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\MatchController;
@@ -21,18 +20,15 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('matches', [MatchController::class, 'index'])->name('matches.index');
-    Route::get('matches/{posting}/fit', [FitController::class, 'show'])->whereNumber('posting')->middleware('throttle:advisor')->name('matches.fit');
+    Route::get('matches/{posting}/fit', [FitController::class, 'show'])->whereNumber('posting')->middleware('throttle:copilot')->name('matches.fit');
 
-    Route::get('advisor', [AdvisorChatController::class, 'show'])->name('advisor.chat');
+    Route::get('advisor', fn () => redirect()->route('copilot.show', [], 301))->name('advisor.redirect');
+    Route::get('copilot/{conversation?}', [CopilotController::class, 'show'])->name('copilot.show');
+    Route::post('copilot/stream', [CopilotController::class, 'stream'])->middleware(['throttle:copilot', 'ai.budget:copilot'])->name('copilot.stream');
 
     Route::get('resumes', [ResumeController::class, 'index'])->name('resumes.index');
     Route::post('resumes', [ResumeController::class, 'store'])->middleware('throttle:resume-uploads')->name('resumes.store');
     Route::get('resumes/{resume}/content', [ResumeController::class, 'content'])->whereNumber('resume')->name('resumes.content');
-});
-
-Route::middleware(['auth', 'verified', 'onboarded', 'throttle:advisor', 'ai.budget'])->group(function () {
-    Route::post('advisor', AdvisorController::class)->name('advisor.ask');
-    Route::post('advisor/stream', [AdvisorChatController::class, 'stream'])->name('advisor.stream');
 });
 
 require __DIR__.'/settings.php';

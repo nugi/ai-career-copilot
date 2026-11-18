@@ -7,7 +7,7 @@ use App\Models\AiUsage;
 test('the report groups the last days by tier, agent, provider and model and adds tier totals', function () {
     AiUsage::factory()->create([
         'tier' => ModelTier::Strong,
-        'agent' => 'CareerAdvisor',
+        'agent' => 'CareerCopilot',
         'provider' => 'openai',
         'model' => 'gpt-6.1-sol',
         'status' => AiUsageStatus::Succeeded,
@@ -34,7 +34,7 @@ test('the report groups the last days by tier, agent, provider and model and add
 
     AiUsage::factory()->create([
         'tier' => ModelTier::Strong,
-        'agent' => 'CareerAdvisor',
+        'agent' => 'CareerCopilot',
         'provider' => 'anthropic',
         'model' => 'claude-sonnet-5-5',
         'cost_usd' => 9.99,
@@ -46,7 +46,7 @@ test('the report groups the last days by tier, agent, provider and model and add
             ['Tier', 'Agent', 'Provider', 'Model', 'Calls', 'Failed', 'Estimated', 'Input tokens', 'Output tokens', 'Cost (USD)', 'Avg cost (USD)', 'Avg latency (ms)'],
             [
                 ['cheap', 'ResumeParser', 'openai', 'gpt-6-luna', 1, 1, 1, 200, 100, '0.0100', '0.010000', 500],
-                ['strong', 'CareerAdvisor', 'openai', 'gpt-6.1-sol', 1, 0, 0, 1_000, 500, '0.1000', '0.100000', 1_000],
+                ['strong', 'CareerCopilot', 'openai', 'gpt-6.1-sol', 1, 0, 0, 1_000, 500, '0.1000', '0.100000', 1_000],
             ],
         )
         ->expectsTable(

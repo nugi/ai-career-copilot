@@ -1,6 +1,6 @@
 <?php
 
-use App\Ai\Agents\CareerAdvisor;
+use App\Ai\Agents\CareerCopilot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -106,11 +106,11 @@ function anthropicAnswer(string $text): array
 }
 
 /**
- * A career advisor for a user who has finished onboarding.
+ * A career copilot for a user who has finished onboarding.
  */
-function advisor(): CareerAdvisor
+function copilot(): CareerCopilot
 {
-    return new CareerAdvisor(User::factory()->onboarded()->create());
+    return new CareerCopilot(User::factory()->onboarded()->create());
 }
 
 /**

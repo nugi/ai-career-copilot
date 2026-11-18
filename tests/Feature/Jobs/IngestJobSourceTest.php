@@ -10,6 +10,7 @@ use App\JobSources\Exceptions\JobSourceUnavailable;
 use App\JobSources\FakeJobSource;
 use App\JobSources\JobSourceRegistry;
 use App\Models\IngestionRun;
+use Carbon\CarbonImmutable;
 use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -21,6 +22,11 @@ function ingestSourceRegistry(JobSource $source): JobSourceRegistry
 {
     return new JobSourceRegistry([$source]);
 }
+
+// The sample postings of FakeJobSource carry fixed expiry dates, so the tests run on a fixed day before they expire.
+beforeEach(function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-21 00:00:00', 'UTC'));
+});
 
 test('a successful run records the counts', function () {
     Log::spy();

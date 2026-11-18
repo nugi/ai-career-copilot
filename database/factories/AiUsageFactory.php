@@ -28,7 +28,7 @@ class AiUsageFactory extends Factory
             'user_id' => User::factory(),
             'feature' => fake()->randomElement([AiFeature::FitScoring, AiFeature::SkillGapPlan, AiFeature::ResumeSuggestion, AiFeature::Chat]),
             'invocation_id' => fake()->uuid(),
-            'agent' => 'CareerAdvisor',
+            'agent' => 'CareerCopilot',
             'tier' => ModelTier::Strong,
             'prompt_version' => 'v2',
             'provider' => 'anthropic',

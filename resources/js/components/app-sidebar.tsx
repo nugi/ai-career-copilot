@@ -23,7 +23,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { chat as advisorChat } from '@/routes/advisor';
+import { show as copilotShow } from '@/routes/copilot';
 import { index as jobsIndex } from '@/routes/jobs';
 import { index as matchesIndex } from '@/routes/matches';
 import { edit as editOnboarding } from '@/routes/onboarding';
@@ -57,8 +57,8 @@ const mainNavItems: NavItem[] = [
         icon: FileText,
     },
     {
-        title: 'Career advisor',
-        href: advisorChat(),
+        title: 'Copilot',
+        href: copilotShow(),
         icon: MessageSquare,
     },
 ];
