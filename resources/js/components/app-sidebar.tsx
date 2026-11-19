@@ -7,6 +7,7 @@ import {
     LayoutGrid,
     MessageSquare,
     Sparkles,
+    Sprout,
     SlidersHorizontal,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { show as copilotShow } from '@/routes/copilot';
+import { show as growShow } from '@/routes/grow';
 import { index as jobsIndex } from '@/routes/jobs';
 import { index as matchesIndex } from '@/routes/matches';
 import { edit as editOnboarding } from '@/routes/onboarding';
@@ -45,6 +47,11 @@ const mainNavItems: NavItem[] = [
         title: 'Matches',
         href: matchesIndex(),
         icon: Sparkles,
+    },
+    {
+        title: 'Grow',
+        href: growShow(),
+        icon: Sprout,
     },
     {
         title: 'Job preferences',

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CopilotController;
 use App\Http\Controllers\FitController;
+use App\Http\Controllers\GrowController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\OnboardingController;
@@ -21,6 +22,8 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('matches', [MatchController::class, 'index'])->name('matches.index');
     Route::get('matches/{posting}/fit', [FitController::class, 'show'])->whereNumber('posting')->middleware('throttle:copilot')->name('matches.fit');
+    Route::get('grow', [GrowController::class, 'show'])->name('grow.show');
+    Route::post('grow/plan', [GrowController::class, 'plan'])->middleware('throttle:copilot')->name('grow.plan');
 
     Route::get('advisor', fn () => redirect()->route('copilot.show', [], 301))->name('advisor.redirect');
     Route::get('copilot/{conversation?}', [CopilotController::class, 'show'])->name('copilot.show');
