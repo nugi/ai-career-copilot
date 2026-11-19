@@ -23,6 +23,7 @@ return [
         'relevance_grading' => 'cheap',
         'copilot' => 'cheap',
         'conversation_summary' => 'cheap',
+        'skill_gap_plan' => 'cheap',
     ],
 
     /*
