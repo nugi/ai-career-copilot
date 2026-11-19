@@ -21,6 +21,7 @@ erDiagram
     job_postings |o--o{ fit_faithfulness_checks : "judged in"
     users |o--o{ agent_conversations : "talks in"
     agent_conversations ||--o{ agent_conversation_messages : holds
+    users ||--o| learning_plans : follows
 
     users {
         bigint id PK
@@ -158,6 +159,14 @@ erDiagram
         jsonb reasons
         timestamp scored_at
     }
+    learning_plans {
+        bigint id PK
+        bigint user_id FK,UK
+        jsonb gaps
+        jsonb plan
+        string prompt_version
+        timestamp generated_at
+    }
     ai_usages {
         bigint id PK
         bigint user_id FK
@@ -234,7 +243,7 @@ erDiagram
 - **CHECK constraints** guard the rules that every writer must follow, including imports, queue jobs and raw SQL: enum values, salary range and unit, score range, and non-negative counts, sizes and costs. Validation repeats them for user-facing messages.
 - **No unsigned types:** PostgreSQL has none, and Laravel's `unsigned()` modifier is silently ignored. Columns that must not go negative have a `>= 0` CHECK instead.
 - **Foreign keys** get an index only when a query needs one. PostgreSQL does not index them automatically, and each table lists the queries that justify its indexes.
-- **Deletes:** deleting a user removes their profile, resumes, chunks, skills and matches. `ai_usages.user_id` becomes `null` so cost history survives. Deleting a resume keeps its matches and sets `resume_id` to `null`.
+- **Deletes:** deleting a user removes their profile, resumes, chunks, skills, matches and learning plan. `ai_usages.user_id` becomes `null` so cost history survives. Deleting a resume keeps its matches and sets `resume_id` to `null`.
 - **Vectors** are `vector(1536)` columns on `job_postings` and `resume_chunks` ([ADR 0026](adr/0026-embed-jobs-by-title-and-skills-with-text-embedding-3-small.md)), each with the model that made it and the time. A CHECK keeps the three columns all null or all set, so a vector never has an unknown model. Only `job_postings` has an HNSW index on cosine distance ([ADR 0001](adr/0001-use-postgresql-with-pgvector.md)). Chunks are searched inside one resume, so they need none.
 - **Full-text search:** `job_postings.search_vector` is a stored generated column: the title (weight A), the skill names from the `Skills:` line of `embedded_text` (B) and the description (C), in the `simple` configuration. It has no index yet, because the hybrid query reads a materialized set of filtered rows ([ADR 0031](adr/0031-fuse-keyword-and-semantic-ranks-with-reciprocal-rank-fusion.md)).
 - **Not yet in the schema:** a trigram index for skill autocomplete.
@@ -352,6 +361,14 @@ One current score per user and posting. The row keeps the inputs, the per-factor
 | Rescore every match scored against a resume that changed or was deleted | `(resume_id)`                      |
 
 CHECK constraint: `score between 0 and 100`.
+
+### learning_plans
+
+One plan per user: the 4-week plan from the top skill gaps, with the gaps it was made from and the prompt version ([ADR 0038](adr/0038-rank-skill-gaps-by-fit-and-recency-and-plan-from-the-top-five.md)). A new plan replaces the row, at most once in 24 hours.
+
+| Query                           | Index              |
+| ------------------------------- | ------------------ |
+| The user's plan, and its upsert | `unique (user_id)` |
 
 ### ai_usages
 

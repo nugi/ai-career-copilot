@@ -41,6 +41,7 @@ This directory records significant architecture decisions: the context, the deci
 | [0035](0035-measure-retrieval-on-a-graded-golden-set-of-profiles.md)              | Measure retrieval on a graded golden set of profiles              | Accepted                    |
 | [0036](0036-score-fit-in-php-over-the-factors-it-can-measure.md)                  | Score fit in PHP over the factors it can measure                  | Accepted                    |
 | [0037](0037-remember-copilot-conversations-with-a-summary-and-a-recent-window.md) | Remember copilot conversations with a summary and a recent window | Accepted                    |
+| [0038](0038-rank-skill-gaps-by-fit-and-recency-and-plan-from-the-top-five.md)     | Rank skill gaps by fit and recency, and plan from the top five    | Accepted                    |
 
 ## Adding a record
 
