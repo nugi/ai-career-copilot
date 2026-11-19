@@ -21,6 +21,7 @@ const PUBLISHED_PROMPT_HASHES = [
     'job-skill-extractor/v2.md' => 'a3ea6c1559b456905b23b493a6adfbcff69d4094e304923d1e85cadeb1cce1eb',
     'job-skill-extractor/v3.md' => 'c83e4abd652b3b17670254fd1e0c139f6bdb0649de83c8a3623fac6186c85eaf',
     'fit-explainer/v1.md' => '8e7678111b663b05840f3e44ae6ae435e163e286b7ad08158b315487e6378026',
+    'learning-planner/v1.md' => '88f95700429fbccc5d0fd8aa7037b44122e7fc36e5f9917c9bf47c4553aa6a0a',
     'faithfulness-judge/v1.md' => '92f1643ac696ed0ab61e15c96a4fc42dc2f2d14e24c85408e4525c2b42a98e0a',
     'conversation-summarizer/v1.md' => '78d141ee520f2dc25d735a4f90632123ee8ffadc2330977abb52dd8273749bcf',
 ];

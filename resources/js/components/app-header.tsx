@@ -7,6 +7,7 @@ import {
     MessageSquare,
     Search,
     SlidersHorizontal,
+    Sprout,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
@@ -42,6 +43,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { show as copilotShow } from '@/routes/copilot';
+import { show as growShow } from '@/routes/grow';
 import { edit as editOnboarding } from '@/routes/onboarding';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
@@ -64,6 +66,11 @@ const mainNavItems: NavItem[] = [
         title: 'Copilot',
         href: copilotShow(),
         icon: MessageSquare,
+    },
+    {
+        title: 'Grow',
+        href: growShow(),
+        icon: Sprout,
     },
 ];
 

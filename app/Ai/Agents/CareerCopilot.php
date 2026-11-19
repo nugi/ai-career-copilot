@@ -11,6 +11,7 @@ use App\Ai\Prompts\Instructions;
 use App\Ai\Tools\GetUserProfile;
 use App\Ai\Tools\ScoreFit;
 use App\Ai\Tools\SearchJobs;
+use App\Ai\Tools\SkillGaps;
 use App\Enums\AiFeature;
 use App\Models\User;
 use Laravel\Ai\Attributes\MaxSteps;
@@ -120,7 +121,7 @@ class CareerCopilot implements Agent, Conversational, HasMiddleware, HasPromptVe
     /**
      * Get the tools scoped to the signed-in user.
      *
-     * @return list<GetUserProfile|SearchJobs|ScoreFit>
+     * @return list<GetUserProfile|SearchJobs|ScoreFit|SkillGaps>
      */
     public function tools(): array
     {
@@ -128,6 +129,7 @@ class CareerCopilot implements Agent, Conversational, HasMiddleware, HasPromptVe
             app()->make(GetUserProfile::class, ['user' => $this->user]),
             app()->make(SearchJobs::class, ['user' => $this->user]),
             app()->make(ScoreFit::class, ['user' => $this->user]),
+            app()->make(SkillGaps::class, ['user' => $this->user]),
         ];
     }
 
